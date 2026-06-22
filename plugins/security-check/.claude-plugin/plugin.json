@@ -1,0 +1,17 @@
+{
+  "name": "security-check",
+  "version": "2.0.0",
+  "description": "Dependency and package security toolkit with three skills: audit a system/OS or globally-installed package before installing it (system-package-audit), triage reported vulnerabilities in a project's dependencies (vulnerability-report-triage), and vet a new dependency before adopting it (dependency-adoption-review).",
+  "keywords": [
+    "security",
+    "audit",
+    "vulnerability",
+    "triage",
+    "cve",
+    "dependabot",
+    "license",
+    "dependency-review",
+    "supply-chain",
+    "dependencies"
+  ]
+}

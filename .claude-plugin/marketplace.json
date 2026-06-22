@@ -12,7 +12,7 @@
     { "name": "ui-validation", "source": "./plugins/ui-validation" },
     { "name": "pr-review-code-simplicity", "source": "./plugins/pr-review-code-simplicity" },
     { "name": "download-figma-screenshot", "source": "./plugins/download-figma-screenshot" },
-    { "name": "package-security-check", "source": "./plugins/package-security-check" },
+    { "name": "security-check", "source": "./plugins/security-check" },
     { "name": "productive-debug", "source": "./plugins/productive-debug" },
     { "name": "stack-essentials", "source": "./plugins/stack-essentials" },
     { "name": "progress", "source": "./plugins/progress" },
