@@ -1,0 +1,11 @@
+{
+  "name": "ui-validation",
+  "version": "1.0.1",
+  "description": "Validate UI against a Figma design using snapshot tests and a multimodal visual comparison. Framework-agnostic loop: implement with shared components, snapshot, fetch Figma, compare, fix or STOP-and-ask.",
+  "keywords": [
+    "ui",
+    "figma",
+    "snapshot",
+    "validation"
+  ]
+}

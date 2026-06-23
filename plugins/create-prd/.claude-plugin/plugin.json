@@ -1,0 +1,10 @@
+{
+  "name": "create-prd",
+  "version": "1.0.1",
+  "description": "Generate a Product Requirements Document (PRD) in Markdown. Guided flow with clarifying questions, structured output, and iterative refinement.",
+  "keywords": [
+    "prd",
+    "requirements",
+    "product"
+  ]
+}

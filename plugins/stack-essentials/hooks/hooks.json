@@ -1,0 +1,16 @@
+{
+  "hooks": {
+    "SessionStart": [
+      {
+        "matcher": "*",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "node \"${CLAUDE_PLUGIN_ROOT}/hooks/check-rules-updates.mjs\"",
+            "timeout": 2000
+          }
+        ]
+      }
+    ]
+  }
+}

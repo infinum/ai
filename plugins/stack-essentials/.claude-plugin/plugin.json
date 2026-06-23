@@ -1,0 +1,11 @@
+{
+  "name": "stack-essentials",
+  "version": "1.0.0",
+  "description": "Baseline notifications for the Infinum AI Stack — flags stale local rules at session start so you know when to re-run the installer.",
+  "keywords": [
+    "infinum",
+    "essentials",
+    "notifications",
+    "updates"
+  ]
+}

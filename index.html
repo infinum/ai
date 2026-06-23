@@ -1,0 +1,743 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Infinum AI Stack — Infinum</title>
+<link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --red:       #D63027;
+    --red-light: #FDECEA;
+    --red-mid:   #F5C6C3;
+    --black:     #111111;
+    --gray-90:   #1E1E1E;
+    --gray-70:   #4A4A4A;
+    --gray-50:   #767676;
+    --gray-30:   #BCBCBC;
+    --gray-10:   #F0F0F0;
+    --gray-05:   #F7F7F7;
+    --white:     #FFFFFF;
+    --border:    #E2E2E2;
+    --text:      #1E1E1E;
+    --muted:     #666666;
+  }
+
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+
+  body {
+    background: var(--white);
+    color: var(--text);
+    font-family: 'Plus Jakarta Sans', system-ui, sans-serif;
+    font-size: 15px;
+    line-height: 1.6;
+    -webkit-font-smoothing: antialiased;
+  }
+
+  /* ── LAYOUT ── */
+  .page {
+    max-width: 860px;
+    margin: 0 auto;
+    padding: 64px 32px 96px;
+  }
+
+  /* ── HEADER ── */
+  .header {
+    margin-bottom: 56px;
+    padding-bottom: 40px;
+    border-bottom: 2px solid var(--black);
+  }
+
+  .eyebrow {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 12px;
+    font-weight: 600;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    color: var(--red);
+    margin-bottom: 20px;
+  }
+
+  .eyebrow-dot {
+    width: 6px;
+    height: 6px;
+    border-radius: 50%;
+    background: var(--red);
+    flex-shrink: 0;
+  }
+
+  h1 {
+    font-size: clamp(34px, 5vw, 52px);
+    font-weight: 800;
+    line-height: 1.08;
+    letter-spacing: -0.025em;
+    color: var(--black);
+    margin-bottom: 18px;
+  }
+
+  .tagline {
+    font-size: 17px;
+    color: var(--muted);
+    line-height: 1.65;
+    max-width: 620px;
+    font-weight: 400;
+    margin-bottom: 14px;
+  }
+
+  .access-note {
+    font-size: 13px;
+    color: var(--gray-50);
+    line-height: 1.6;
+    max-width: 620px;
+    font-style: italic;
+  }
+
+  .access-note a {
+    color: var(--red);
+    font-weight: 600;
+    text-decoration: none;
+    font-style: normal;
+  }
+
+  .access-note a:hover { text-decoration: underline; }
+
+  /* ── ANALOGY (intro box) ── */
+  .analogy {
+    background: var(--gray-05);
+    border: 1px solid var(--border);
+    border-left: 3px solid var(--red);
+    padding: 18px 22px;
+    margin-bottom: 52px;
+    font-size: 15px;
+    color: var(--gray-70);
+    line-height: 1.7;
+  }
+
+  .analogy strong { color: var(--black); font-weight: 600; }
+
+  /* ── SECTION LABEL ── */
+  .section-label {
+    font-size: 11px;
+    font-weight: 700;
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
+    color: var(--gray-50);
+    margin-bottom: 12px;
+  }
+
+  /* ── COMPONENTS OVERVIEW GRID ── */
+  .components {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 1px;
+    background: var(--border);
+    border: 1px solid var(--border);
+    margin-bottom: 52px;
+  }
+
+  .component {
+    background: var(--white);
+    padding: 18px 20px;
+  }
+
+  .component-num {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 11px;
+    color: var(--red);
+    font-weight: 500;
+    letter-spacing: 0.06em;
+    margin-bottom: 8px;
+  }
+
+  .component-name {
+    font-size: 16px;
+    font-weight: 700;
+    color: var(--black);
+    margin-bottom: 6px;
+  }
+
+  .component-desc {
+    font-size: 13.5px;
+    color: var(--gray-70);
+    line-height: 1.55;
+  }
+
+  /* ── SETUP BLOCK (dark header) ── */
+  .setup {
+    border: 1px solid var(--border);
+    overflow: hidden;
+    margin-bottom: 52px;
+  }
+
+  .setup-head {
+    display: flex;
+    align-items: center;
+    gap: 14px;
+    padding: 18px 24px;
+    background: var(--black);
+    border-bottom: 1px solid rgba(255,255,255,0.1);
+  }
+
+  .setup-icon {
+    width: 32px;
+    height: 32px;
+    border-radius: 50%;
+    background: var(--red);
+    color: var(--white);
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 14px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+    font-weight: 700;
+  }
+
+  .setup-title { font-size: 16px; font-weight: 700; color: var(--white); }
+  .setup-subtitle { font-size: 12px; color: rgba(255,255,255,0.5); margin-top: 2px; }
+
+  .setup-body { padding: 24px; background: var(--white); }
+
+  .setup-intro {
+    font-size: 14px;
+    color: var(--gray-70);
+    line-height: 1.65;
+    margin-bottom: 18px;
+  }
+
+  .cmd {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 13.5px;
+    background: var(--black);
+    color: #F7F7F7;
+    padding: 14px 18px;
+    margin-bottom: 18px;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+  }
+
+  .cmd-prompt { color: var(--red); font-weight: 700; flex-shrink: 0; }
+
+  .setup-foot {
+    font-size: 13px;
+    color: var(--gray-50);
+    line-height: 1.6;
+  }
+
+  .setup-foot strong { color: var(--black); font-weight: 600; }
+
+  /* ── PART CARDS ── */
+  .parts { display: flex; flex-direction: column; gap: 2px; margin-bottom: 52px; }
+
+  .part-card { border: 1px solid var(--border); background: var(--white); overflow: hidden; }
+
+  .part-head {
+    display: flex;
+    align-items: center;
+    gap: 16px;
+    padding: 20px 24px;
+    border-bottom: 1px solid var(--border);
+    background: var(--white);
+  }
+
+  .part-num {
+    width: 38px;
+    height: 38px;
+    border-radius: 50%;
+    background: var(--red);
+    color: var(--white);
+    font-size: 13px;
+    font-weight: 800;
+    font-family: 'JetBrains Mono', monospace;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+  }
+
+  .part-meta { flex: 1; }
+
+  .part-title {
+    font-size: 17px;
+    font-weight: 700;
+    color: var(--black);
+    margin-bottom: 2px;
+  }
+
+  .part-sub { font-size: 13px; color: var(--muted); }
+
+  .part-tag {
+    font-size: 11px;
+    font-weight: 700;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    color: var(--muted);
+    background: var(--gray-05);
+    border: 1px solid var(--border);
+    padding: 4px 10px;
+    white-space: nowrap;
+  }
+
+  .part-body { padding: 24px; }
+
+  .part-intro {
+    font-size: 14.5px;
+    color: var(--gray-70);
+    line-height: 1.7;
+    margin-bottom: 18px;
+  }
+
+  .part-intro strong { color: var(--black); font-weight: 600; }
+
+  .part-intro code {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 13px;
+    background: var(--gray-05);
+    border: 1px solid var(--border);
+    padding: 1px 6px;
+  }
+
+  /* Bullet rows */
+  .bullets { display: flex; flex-direction: column; gap: 8px; margin-bottom: 16px; }
+
+  .bullet {
+    display: flex;
+    gap: 10px;
+    font-size: 14px;
+    line-height: 1.55;
+    color: var(--gray-70);
+  }
+
+  .bullet-arrow {
+    color: var(--red);
+    font-weight: 700;
+    flex-shrink: 0;
+    margin-top: 1px;
+  }
+
+  .bullet strong { color: var(--black); font-weight: 600; }
+
+  /* Skill rows */
+  .skill-list {
+    display: flex;
+    flex-direction: column;
+    gap: 1px;
+    border: 1px solid var(--border);
+    background: var(--border);
+    margin-bottom: 16px;
+  }
+
+  .skill-row {
+    display: grid;
+    grid-template-columns: 220px 1fr;
+    background: var(--white);
+  }
+
+  .skill-name {
+    padding: 14px 16px;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 13px;
+    font-weight: 500;
+    color: var(--black);
+    background: var(--gray-05);
+    border-right: 1px solid var(--border);
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+
+  .skill-name::before {
+    content: '/';
+    color: var(--red);
+    font-weight: 700;
+  }
+
+  .skill-text {
+    padding: 14px 16px;
+    font-size: 13.5px;
+    color: var(--gray-70);
+    line-height: 1.6;
+  }
+
+  .skill-text strong { color: var(--black); font-weight: 600; }
+
+  /* Phantom command chips */
+  .cmds {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+    margin-bottom: 18px;
+  }
+
+  .cmd-chip {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 12.5px;
+    background: var(--gray-05);
+    border: 1px solid var(--border);
+    color: var(--black);
+    padding: 5px 10px;
+    font-weight: 500;
+  }
+
+  /* Phantom flow strip */
+  .flow {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 1px;
+    background: var(--border);
+    border: 1px solid var(--border);
+  }
+
+  .flow-step {
+    background: var(--white);
+    padding: 14px 16px;
+  }
+
+  .flow-num {
+    font-size: 10px;
+    font-weight: 700;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    color: var(--red);
+    margin-bottom: 4px;
+    font-family: 'JetBrains Mono', monospace;
+  }
+
+  .flow-text {
+    font-size: 13px;
+    color: var(--gray-70);
+    line-height: 1.5;
+  }
+
+  /* Inline link */
+  a.inline {
+    color: var(--red);
+    font-weight: 600;
+    text-decoration: none;
+  }
+  a.inline:hover { text-decoration: underline; }
+
+  /* Component card as link */
+  a.component-link {
+    text-decoration: none;
+    color: inherit;
+    display: block;
+  }
+  a.component-link:hover { background: var(--gray-05); }
+  a.component-link .component-name { color: var(--red); }
+
+  /* Part title as link */
+  .part-title-link {
+    color: inherit;
+    text-decoration: none;
+  }
+  .part-title-link:hover { color: var(--red); }
+
+  /* Note callout */
+  .note {
+    background: var(--gray-05);
+    border: 1px solid var(--border);
+    border-left: 3px solid var(--gray-30);
+    padding: 12px 16px;
+    font-size: 13.5px;
+    color: var(--gray-70);
+    line-height: 1.65;
+    margin-top: 16px;
+  }
+
+  .note strong { color: var(--black); font-weight: 600; }
+
+  /* ── GLOSSARY ── */
+  .glossary { border: 1px solid var(--border); overflow: hidden; }
+
+  .glossary-head {
+    padding: 14px 20px;
+    background: var(--black);
+    border-bottom: 1px solid rgba(255,255,255,0.08);
+  }
+
+  .glossary-head .section-label { color: rgba(255,255,255,0.4); margin-bottom: 0; }
+
+  .glossary-row {
+    display: grid;
+    grid-template-columns: 160px 1fr;
+    border-top: 1px solid var(--border);
+  }
+
+  .glossary-term {
+    padding: 12px 16px;
+    font-size: 13px;
+    font-weight: 700;
+    color: var(--black);
+    background: var(--gray-05);
+    border-right: 1px solid var(--border);
+    display: flex;
+    align-items: center;
+    font-family: 'JetBrains Mono', monospace;
+  }
+
+  .glossary-def {
+    padding: 12px 16px;
+    font-size: 13.5px;
+    color: var(--gray-70);
+    line-height: 1.55;
+  }
+
+  .glossary-def a { color: var(--red); font-weight: 600; text-decoration: none; }
+  .glossary-def a:hover { text-decoration: underline; }
+
+  /* ── RESPONSIVE ── */
+  @media (max-width: 640px) {
+    .page { padding: 40px 20px 64px; }
+    .components { grid-template-columns: 1fr; }
+    .skill-row { grid-template-columns: 1fr; }
+    .skill-name { border-right: none; border-bottom: 1px solid var(--border); }
+    .flow { grid-template-columns: 1fr 1fr; }
+    .part-tag { display: none; }
+    .glossary-row { grid-template-columns: 1fr; }
+    .glossary-term { border-right: none; border-bottom: 1px solid var(--border); }
+  }
+</style>
+</head>
+<body>
+<div class="page">
+
+  <!-- HEADER -->
+  <div class="header">
+    <div class="eyebrow"><span class="eyebrow-dot"></span>Infinum · Engineering · The Stack</div>
+    <h1>Infinum<br>AI Stack.</h1>
+    <p class="tagline">A workflow, a spec engine, a set of skills, and an in-house agent — packaged together and installed per repo with one command.</p>
+    <p class="access-note">More details, the full skill catalogue, and install commands are available to Infinum employees at <a href="https://github.com/infinum/ai">github.com/infinum/ai</a>.</p>
+  </div>
+
+  <!-- ANALOGY / INTRO -->
+  <div class="analogy">
+    <strong>Why a stack:</strong> building with AI without scaffolding produces fast garbage. After two years of practice we've shipped what the missing scaffolding actually is — workflow, skills, and agent, distributed as a single installable thing that lives alongside the code it works on.
+  </div>
+
+  <!-- COMPONENTS OVERVIEW -->
+  <div class="section-label">What's in the stack</div>
+  <div class="components">
+    <a href="psdd/" class="component component-link">
+      <div class="component-num">01</div>
+      <div class="component-name">PSDD ↗</div>
+      <div class="component-desc">Pragmatic Spec Driven Development — the 4-step workflow. Depth scales with the work.</div>
+    </a>
+    <div class="component">
+      <div class="component-num">02</div>
+      <div class="component-name">Superpowers</div>
+      <div class="component-desc">The spec-driven engine inside PSDD. Brainstorm, plan, TDD, self-review — all as skills.</div>
+    </div>
+    <div class="component">
+      <div class="component-num">03</div>
+      <div class="component-name">Skills marketplace</div>
+      <div class="component-desc">PRD authoring, security audits, UI validation, local PR review — each one a separate plugin.</div>
+    </div>
+    <div class="component">
+      <div class="component-num">04</div>
+      <div class="component-name">Phantom</div>
+      <div class="component-desc">Our Slack-native AI agent. Drops a fix in your repo from a Slack thread, runs your validation, opens the PR.</div>
+    </div>
+  </div>
+
+  <!-- SETUP -->
+  <div class="section-label">One-time setup</div>
+  <div class="setup">
+    <div class="setup-head">
+      <div class="setup-icon">$</div>
+      <div>
+        <div class="setup-title">Install the stack with one command</div>
+        <div class="setup-subtitle">Idempotent — re-run any time to update rules or pick up new plugins</div>
+      </div>
+    </div>
+    <div class="setup-body">
+      <p class="setup-intro">A single setup script registers the Infinum marketplace in Claude Code, lays down team rules and personalization stubs, and walks you through an interactive prompt to install the skills you want. Re-runnable; safe.</p>
+      <div class="cmd">
+        <span class="cmd-prompt">$</span>
+        <span>pnpm dlx --allow-build=infinum-ai github:infinum/ai</span>
+      </div>
+      <p class="setup-intro"><a class="inline" href="https://infinum.com/handbook/frontend/node/security/running-scripts-safely" target="_blank" rel="noopener noreferrer">How and why to use pnpm?</a></p>
+      <p class="setup-foot"><strong>Project-level over user-level.</strong> When configuration lives in the repo, improvements travel with the project — not just with the engineer. Also installable via the <code style="font-family:'JetBrains Mono',monospace;background:var(--gray-05);border:1px solid var(--border);padding:1px 6px;font-size:12px;">pnpm dlx --allow-build=skills-cli skills</code> CLI for Cursor, Copilot, and Firebender.</p>
+    </div>
+  </div>
+
+  <!-- THE FOUR PARTS -->
+  <div class="section-label">The four parts, in detail</div>
+  <div class="parts">
+
+    <!-- 01 PSDD -->
+    <div class="part-card">
+      <div class="part-head">
+        <div class="part-num">01</div>
+        <div class="part-meta">
+          <div class="part-title"><a href="psdd/" class="part-title-link">PSDD — the workflow ↗</a></div>
+          <div class="part-sub">Pragmatic Spec Driven Development</div>
+        </div>
+        <div class="part-tag">Workflow</div>
+      </div>
+      <div class="part-body">
+        <p class="part-intro">Infinum's 4-step workflow for shipping features with AI. The same four steps apply to every task — <strong>depth scales with complexity and risk.</strong></p>
+
+        <div class="bullets">
+          <div class="bullet"><span class="bullet-arrow">→</span><span><strong>Understand.</strong> Remove uncertainty before anything else. PRD, technical brief, or short prompt — depth scales with risk.</span></div>
+          <div class="bullet"><span class="bullet-arrow">→</span><span><strong>Design.</strong> Agree on the technical direction. No code yet. Ask the model how it would build it.</span></div>
+          <div class="bullet"><span class="bullet-arrow">→</span><span><strong>Plan.</strong> Turn the agreed design into an ordered, reviewable plan. Last clear checkpoint before code runs.</span></div>
+          <div class="bullet"><span class="bullet-arrow">→</span><span><strong>Build.</strong> The agent runs. Because the upfront work is done, it stays aligned. Corrections are fast and targeted.</span></div>
+        </div>
+
+        <div class="note">
+          <strong>Three lanes:</strong> small / low-risk compresses all four steps into one prompt; purely technical work skips the PRD for a tight technical brief; large or high-risk work gets every step in full. Read the full guide at <a class="inline" href="https://infinum.github.io/ai/psdd/">infinum.github.io/ai/psdd</a>.
+        </div>
+      </div>
+    </div>
+
+    <!-- 02 SUPERPOWERS -->
+    <div class="part-card">
+      <div class="part-head">
+        <div class="part-num">02</div>
+        <div class="part-meta">
+          <div class="part-title">Superpowers — the spec engine</div>
+          <div class="part-sub">Brainstorm → spec → plan → code → review, all as skills</div>
+        </div>
+        <div class="part-tag">Engine</div>
+      </div>
+      <div class="part-body">
+        <p class="part-intro">PSDD is the workflow. <strong>Superpowers is the engine inside Steps 2 and 3</strong> — the spec-driven development plugin we adopt as the default. It treats spec, plan, and review as first-class skills, not afterthoughts.</p>
+
+        <div class="bullets">
+          <div class="bullet"><span class="bullet-arrow">→</span><span><strong>Brainstorming and exploration</strong> before any plan exists.</span></div>
+          <div class="bullet"><span class="bullet-arrow">→</span><span><strong>Written specs reviewed by independent subagents</strong> — parallel passes to catch ambiguities.</span></div>
+          <div class="bullet"><span class="bullet-arrow">→</span><span><strong>Implementation plans with phases and verification gates</strong> — not "go write the code."</span></div>
+          <div class="bullet"><span class="bullet-arrow">→</span><span><strong>TDD as a default,</strong> not an option. Self-review before "done."</span></div>
+        </div>
+
+        <div class="note">
+          Superpowers is open source by <a class="inline" href="https://github.com/obra/superpowers">@obra</a>. It's the recommended default in our setup, but the stack is agent-agnostic — bring your own equivalent if you prefer.
+        </div>
+      </div>
+    </div>
+
+    <!-- 03 SKILLS -->
+    <div class="part-card">
+      <div class="part-head">
+        <div class="part-num">03</div>
+        <div class="part-meta">
+          <div class="part-title">Skills — per-repo plugins</div>
+          <div class="part-sub">Install only what the project needs</div>
+        </div>
+        <div class="part-tag">Skills</div>
+      </div>
+      <div class="part-body">
+        <p class="part-intro">Each skill is a separate installable plugin. Engineers add only what they need, updates ship per-skill, and the configuration lives next to the repo it works on. <strong>Improvements travel with the project</strong> — not just with the engineer. A selection of what we ship today:</p>
+
+        <div class="skill-list">
+          <div class="skill-row">
+            <div class="skill-name">create-prd</div>
+            <div class="skill-text"><strong>Generates a structured PRD in Markdown.</strong> Guided flow with clarifying questions, iterative refinement, and a consistent structure — goals, non-goals, user stories, acceptance criteria, constraints.</div>
+          </div>
+          <div class="skill-row">
+            <div class="skill-name">claude-setup-audit</div>
+            <div class="skill-text"><strong>Security audit of an engineer's AI tooling.</strong> Scans the local Claude Code installation for vulnerabilities, malicious code, prompt injection, and risks across every extensibility point. We audit our tools the way we audit our codebases.</div>
+          </div>
+          <div class="skill-row">
+            <div class="skill-name">ui-validation</div>
+            <div class="skill-text"><strong>Figma-vs-implementation diff before QA gets involved.</strong> Snapshot tests plus a multimodal visual comparison loop — implement with shared components, snapshot, fetch Figma, compare, fix or stop-and-ask. Framework-agnostic.</div>
+          </div>
+          <div class="skill-row">
+            <div class="skill-name">pr-review-code-simplicity</div>
+            <div class="skill-text"><strong>Local agentic PR review before you push.</strong> Reviews against the six laws of software design from <em>Code Simplicity</em> (Max Kanat-Alexander). Findings focus on long-term maintenance cost, not style.</div>
+          </div>
+          <div class="skill-row">
+            <div class="skill-name">package-security-check</div>
+            <div class="skill-text"><strong>Supply-chain audit of a package before you update it.</strong> Layered checks across GitHub source, registry metadata, install scripts, known CVEs, maintainer changes, and the version diff.</div>
+          </div>
+        </div>
+
+        <div class="note">
+          <strong>This is a selection, not the full catalogue.</strong> The marketplace grows continuously. Current list and install commands live in the repo at <a class="inline" href="https://github.com/infinum/ai">github.com/infinum/ai</a>.
+        </div>
+      </div>
+    </div>
+
+    <!-- 04 PHANTOM -->
+    <div class="part-card">
+      <div class="part-head">
+        <div class="part-num">04</div>
+        <div class="part-meta">
+          <div class="part-title">Phantom — the Slack-native agent</div>
+          <div class="part-sub">Fix, build, review, explain — from a Slack thread</div>
+        </div>
+        <div class="part-tag">Agent</div>
+      </div>
+      <div class="part-body">
+        <p class="part-intro">An AI agent we built ourselves and run on real production projects. <strong>Open a Slack thread, drop the context, mention <code>@Phantom</code></strong>, and an isolated, sandboxed agent clones the repo, reads the thread, applies the change, runs your validation, and opens a pull request — assigned to a human owner.</p>
+
+        <div class="cmds">
+          <span class="cmd-chip">@Phantom fix</span>
+          <span class="cmd-chip">@Phantom build</span>
+          <span class="cmd-chip">@Phantom review</span>
+          <span class="cmd-chip">@Phantom explain</span>
+          <span class="cmd-chip">@Phantom vuln-fix</span>
+        </div>
+
+        <div class="bullets">
+          <div class="bullet"><span class="bullet-arrow">→</span><span><strong>Sandboxed Docker containers per job.</strong> Per-stack images for Android, Flutter, JVM, .NET, MAUI, Ruby, and a base image. No ambient repo access, no shared state.</span></div>
+          <div class="bullet"><span class="bullet-arrow">→</span><span><strong>Self-registers by DM.</strong> No YAML edits, no setup PR. Open a chat with Phantom, say "set up a project," and it walks you through.</span></div>
+          <div class="bullet"><span class="bullet-arrow">→</span><span><strong>Human ownership on every PR.</strong> Phantom opens; humans merge. The agent is fast; the judgment stays with the team.</span></div>
+        </div>
+
+        <div class="flow">
+          <div class="flow-step">
+            <div class="flow-num">01 thread</div>
+            <div class="flow-text">QA or dev posts the bug, context, screenshots, Figma link.</div>
+          </div>
+          <div class="flow-step">
+            <div class="flow-num">02 mention</div>
+            <div class="flow-text">@Phantom fix — the agent reads the whole thread.</div>
+          </div>
+          <div class="flow-step">
+            <div class="flow-num">03 work</div>
+            <div class="flow-text">Clones, fixes, runs lint / tests / build in a sandbox.</div>
+          </div>
+          <div class="flow-step">
+            <div class="flow-num">04 PR</div>
+            <div class="flow-text">Opens a pull request, reports back in the thread.</div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+  </div>
+
+  <!-- GLOSSARY -->
+  <div class="section-label" style="margin-top:52px;">Glossary</div>
+  <div class="glossary">
+    <div class="glossary-head"><div class="section-label">Terms used in the stack</div></div>
+    <div class="glossary-row">
+      <div class="glossary-term">The Stack</div>
+      <div class="glossary-def">The packaged combination of workflow, spec engine, skills, and agent that Infinum engineers install per-repo. Described in this document.</div>
+    </div>
+    <div class="glossary-row">
+      <div class="glossary-term">PSDD</div>
+      <div class="glossary-def">Pragmatic Spec Driven Development — Infinum's 4-step workflow for building with AI. Full guide at <a href="psdd/">infinum.github.io/ai/psdd</a>.</div>
+    </div>
+    <div class="glossary-row">
+      <div class="glossary-term">Superpowers</div>
+      <div class="glossary-def">Open-source spec-driven development plugin by <a href="https://github.com/obra/superpowers">@obra</a>, adopted as our default. Powers Spec → Plan → Code with brainstorming, planning, TDD, and self-review skills.</div>
+    </div>
+    <div class="glossary-row">
+      <div class="glossary-term">Skill</div>
+      <div class="glossary-def">A focused, reusable instruction set installed as a plugin. Defined in a SKILL.md file. Each Infinum skill ships as its own plugin so engineers install only what they need.</div>
+    </div>
+    <div class="glossary-row">
+      <div class="glossary-term">Phantom</div>
+      <div class="glossary-def">Infinum's in-house Slack-native AI agent. Runs jobs in isolated Docker containers; opens PRs assigned to a human owner. Repo: <a href="https://github.com/infinum/ai-phantom">infinum/ai-phantom</a>.</div>
+    </div>
+  </div>
+
+</div>
+</body>
+</html>

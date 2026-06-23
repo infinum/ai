@@ -1,0 +1,13 @@
+{
+  "name": "progress",
+  "version": "1.1.0",
+  "description": "Local repo housekeeping for the feature you're working on: save a disposable per-feature progress note for session handoff (under ~/.claude/progress/, never committed), and clean up after a PR merges by pruning the merged branch and worktree. All local.",
+  "keywords": [
+    "progress",
+    "session",
+    "handoff",
+    "cleanup",
+    "git",
+    "worktree"
+  ]
+}

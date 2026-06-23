@@ -1,0 +1,21 @@
+{
+  "name": "infinum-ai",
+  "owner": {
+    "name": "Infinum"
+  },
+  "metadata": {
+    "description": "Infinum AI engineering skills and tools"
+  },
+  "plugins": [
+    { "name": "create-prd", "source": "./plugins/create-prd" },
+    { "name": "claude-setup-audit", "source": "./plugins/claude-setup-audit" },
+    { "name": "ui-validation", "source": "./plugins/ui-validation" },
+    { "name": "pr-review-code-simplicity", "source": "./plugins/pr-review-code-simplicity" },
+    { "name": "download-figma-screenshot", "source": "./plugins/download-figma-screenshot" },
+    { "name": "package-security-check", "source": "./plugins/package-security-check" },
+    { "name": "productive-debug", "source": "./plugins/productive-debug" },
+    { "name": "stack-essentials", "source": "./plugins/stack-essentials" },
+    { "name": "progress", "source": "./plugins/progress" },
+    { "name": "mobile-deploy", "source": "./plugins/mobile-deploy" }
+  ]
+}

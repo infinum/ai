@@ -1,0 +1,50 @@
+#!/bin/sh
+# Pre-commit: validate every plugin manifest under plugins/.
+#
+# Claude Code's manifest validator silently drops plugins that have
+# unrecognized root keys — meaning a marketplace can ship a plugin that
+# never appears in the user's UI. This hook catches that class of bug
+# at commit time instead of "why isn't it showing up?" time.
+#
+# Skips with a yellow warning when the `claude` CLI isn't on PATH (so
+# contributors editing docs without Claude Code installed aren't blocked).
+# Bypass with `git commit --no-verify` if you genuinely need to.
+
+set -e
+
+if ! command -v claude >/dev/null 2>&1; then
+  printf '\033[33m⚠ Skipping plugin validation: `claude` CLI not on PATH.\033[0m\n' >&2
+  exit 0
+fi
+
+# Find the repo root so the hook works regardless of where git invokes it.
+repo_root=$(git rev-parse --show-toplevel)
+cd "$repo_root"
+
+if [ ! -d plugins ]; then
+  exit 0
+fi
+
+failed=0
+out=$(mktemp)
+trap 'rm -f "$out"' EXIT
+
+for plugin in plugins/*/; do
+  manifest="$plugin.claude-plugin/plugin.json"
+  if [ ! -f "$manifest" ]; then
+    continue
+  fi
+  if claude plugin validate "$plugin" >"$out" 2>&1; then
+    :
+  else
+    printf '\033[31m✘ Plugin failed validation: %s\033[0m\n' "$plugin" >&2
+    sed 's/^/    /' "$out" >&2
+    failed=1
+  fi
+done
+
+if [ $failed -eq 1 ]; then
+  printf '\n\033[31mCommit blocked — fix the manifest(s) above and retry.\033[0m\n' >&2
+  printf 'If you must bypass this check: git commit --no-verify\n' >&2
+  exit 1
+fi

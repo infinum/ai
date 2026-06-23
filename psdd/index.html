@@ -1,0 +1,1091 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Pragmatic Spec Driven Development (PSDD) — Infinum</title>
+<link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --red:       #D63027;
+    --red-light: #FDECEA;
+    --red-mid:   #F5C6C3;
+    --black:     #111111;
+    --gray-90:   #1E1E1E;
+    --gray-70:   #4A4A4A;
+    --gray-50:   #767676;
+    --gray-30:   #BCBCBC;
+    --gray-10:   #F0F0F0;
+    --gray-05:   #F7F7F7;
+    --white:     #FFFFFF;
+    --border:    #E2E2E2;
+    --text:      #1E1E1E;
+    --muted:     #666666;
+    --dial-step-col: 150px;
+  }
+
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+
+  body {
+    background: var(--white);
+    color: var(--text);
+    font-family: 'Plus Jakarta Sans', system-ui, sans-serif;
+    font-size: 15px;
+    line-height: 1.6;
+    -webkit-font-smoothing: antialiased;
+  }
+
+  /* ── LAYOUT ── */
+  .page {
+    max-width: 860px;
+    margin: 0 auto;
+    padding: 64px 32px 96px;
+  }
+
+  /* ── BACK LINK ── */
+  .back-link {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    font-size: 11px;
+    font-weight: 700;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    color: var(--gray-50);
+    text-decoration: none;
+    margin-bottom: 36px;
+  }
+
+  .back-link:hover { color: var(--black); }
+
+  /* ── HEADER ── */
+  .header {
+    margin-bottom: 56px;
+    padding-bottom: 40px;
+    border-bottom: 2px solid var(--black);
+  }
+
+  .eyebrow {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 12px;
+    font-weight: 600;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    color: var(--red);
+    margin-bottom: 20px;
+  }
+
+  .eyebrow-dot {
+    width: 6px;
+    height: 6px;
+    border-radius: 50%;
+    background: var(--red);
+    flex-shrink: 0;
+  }
+
+  h1 {
+    font-size: clamp(34px, 5vw, 52px);
+    font-weight: 800;
+    line-height: 1.08;
+    letter-spacing: -0.025em;
+    color: var(--black);
+    margin-bottom: 18px;
+  }
+
+  .tagline {
+    font-size: 17px;
+    color: var(--muted);
+    line-height: 1.65;
+    max-width: 560px;
+    font-weight: 400;
+  }
+
+  /* ── ANALOGY ── */
+  .analogy {
+    background: var(--gray-05);
+    border: 1px solid var(--border);
+    border-left: 3px solid var(--red);
+    padding: 18px 22px;
+    margin-bottom: 52px;
+    font-size: 15px;
+    color: var(--gray-70);
+    line-height: 1.7;
+  }
+
+  .analogy strong { color: var(--black); font-weight: 600; }
+
+  /* ── SECTION LABEL ── */
+  .section-label {
+    font-size: 11px;
+    font-weight: 700;
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
+    color: var(--gray-50);
+    margin-bottom: 12px;
+  }
+
+  /* ── COMPLEXITY DIAL ── */
+  .dial-wrap { margin-bottom: 8px; }
+
+  .dial {
+    border: 1px solid var(--border);
+    overflow: hidden;
+    margin-bottom: 0;
+  }
+
+  .dial-header {
+    display: grid;
+    grid-template-columns: var(--dial-step-col) 1fr 1fr 1fr;
+    background: var(--black);
+  }
+
+  .dial-hcell {
+    padding: 10px 16px;
+    font-size: 11px;
+    font-weight: 700;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    color: rgba(255,255,255,0.5);
+    border-left: 1px solid rgba(255,255,255,0.08);
+  }
+
+  .dial-hcell:first-child { border-left: none; color: rgba(255,255,255,0.3); }
+  .dial-hcell.col-small  { color: #6FCF97; }
+  .dial-hcell.col-tech   { color: #BB86FC; }
+  .dial-hcell.col-large  { color: #F2994A; }
+
+  .dial-row {
+    display: grid;
+    grid-template-columns: var(--dial-step-col) 1fr 1fr 1fr;
+    border-top: 1px solid var(--border);
+  }
+
+  .dial-cell {
+    padding: 13px 16px;
+    font-size: 13.5px;
+    color: var(--gray-70);
+    line-height: 1.5;
+    border-left: 1px solid var(--border);
+    vertical-align: top;
+  }
+
+  .dial-cell:first-child {
+    border-left: none;
+    font-size: 12px;
+    font-weight: 700;
+    letter-spacing: 0.05em;
+    text-transform: uppercase;
+    color: var(--black);
+    background: var(--gray-05);
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+
+  .step-pip {
+    width: 20px;
+    height: 20px;
+    border-radius: 50%;
+    font-size: 11px;
+    font-weight: 800;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+    color: var(--white);
+    background: var(--black);
+  }
+
+  .dial-cell.col-small { background: #F5FBF7; }
+  .dial-cell.col-tech  { background: #FAF7FF; }
+  .dial-cell.col-large { background: #FEF9F3; }
+
+  .dial-rule {
+    border: 1px solid var(--border);
+    border-top: none;
+    background: var(--gray-05);
+    padding: 13px 16px;
+    font-size: 13px;
+    color: var(--muted);
+    line-height: 1.6;
+    margin-bottom: 52px;
+  }
+
+  .dial-rule strong { color: var(--black); font-weight: 600; }
+
+  /* ── STEP CARDS ── */
+  .steps { display: flex; flex-direction: column; gap: 2px; margin-bottom: 52px; }
+
+  .step-card { border: 1px solid var(--border); background: var(--white); overflow: hidden; }
+
+  .step-head {
+    display: flex;
+    align-items: center;
+    gap: 16px;
+    padding: 20px 24px;
+    border-bottom: 1px solid var(--border);
+    cursor: pointer;
+    user-select: none;
+    background: var(--white);
+  }
+
+  .step-head:hover { background: var(--gray-05); }
+
+  .step-num {
+    width: 38px;
+    height: 38px;
+    border-radius: 50%;
+    background: var(--black);
+    color: var(--white);
+    font-size: 15px;
+    font-weight: 800;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+  }
+
+  .step-num.active { background: var(--red); }
+
+  .step-meta { flex: 1; }
+
+  .step-title {
+    font-size: 17px;
+    font-weight: 700;
+    color: var(--black);
+    margin-bottom: 2px;
+  }
+
+  .step-sub {
+    font-size: 13px;
+    color: var(--muted);
+  }
+
+  .step-done {
+    font-size: 12px;
+    color: var(--muted);
+    background: var(--gray-05);
+    border: 1px solid var(--border);
+    padding: 4px 10px;
+    white-space: nowrap;
+    font-weight: 500;
+  }
+
+  .step-toggle {
+    font-size: 18px;
+    color: var(--gray-30);
+    font-weight: 300;
+    line-height: 1;
+    margin-left: 8px;
+  }
+
+  .step-body { padding: 24px; display: none; border-top: 1px solid var(--border); }
+  .step-body.open { display: block; }
+
+  .step-intro {
+    font-size: 15px;
+    color: var(--gray-70);
+    line-height: 1.7;
+    margin-bottom: 20px;
+  }
+
+  /* MODEL PILL */
+  .model-pill {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    background: var(--gray-05);
+    border: 1px solid var(--border);
+    border-left: 3px solid var(--black);
+    color: var(--black);
+    font-size: 13px;
+    font-weight: 600;
+    padding: 8px 14px;
+    margin-bottom: 20px;
+  }
+
+  .model-pill.efficient { border-left-color: var(--gray-50); }
+
+  .model-pill-label { color: var(--gray-50); font-weight: 400; margin-right: 2px; }
+
+  /* SUBLANES */
+  .sublanes { display: flex; flex-direction: column; gap: 1px; margin-bottom: 20px; border: 1px solid var(--border); }
+
+  .sublane-head {
+    padding: 10px 16px;
+    font-size: 12px;
+    font-weight: 700;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    border-bottom: 1px solid var(--border);
+    background: var(--gray-05);
+  }
+
+  .sublane-body { padding: 16px; background: var(--white); }
+
+  .sublane-desc {
+    font-size: 13.5px;
+    color: var(--gray-70);
+    line-height: 1.65;
+    margin-bottom: 14px;
+  }
+
+  /* ACTIONS */
+  .actions { display: flex; flex-direction: column; gap: 8px; margin-bottom: 14px; }
+
+  .action {
+    display: flex;
+    gap: 10px;
+    font-size: 14px;
+    line-height: 1.55;
+    color: var(--gray-70);
+  }
+
+  .action-arrow {
+    color: var(--red);
+    font-weight: 700;
+    flex-shrink: 0;
+    margin-top: 1px;
+  }
+
+  .action strong { color: var(--black); font-weight: 600; }
+
+  /* PROMPTS */
+  .prompts { display: flex; flex-direction: column; gap: 8px; }
+
+  .prompt {
+    background: var(--gray-05);
+    border: 1px solid var(--border);
+    border-left: 2px solid var(--gray-30);
+    padding: 12px 16px;
+  }
+
+  .prompt-label {
+    font-size: 10px;
+    font-weight: 700;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    color: var(--gray-50);
+    margin-bottom: 5px;
+    font-family: 'JetBrains Mono', monospace;
+  }
+
+  .prompt-text {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 12.5px;
+    color: var(--gray-70);
+    line-height: 1.65;
+  }
+
+  /* BEFORE/AFTER */
+  .compare { margin-top: 20px; }
+
+  .compare-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 1px; border: 1px solid var(--border); }
+
+  .compare-box { overflow: hidden; }
+
+  .compare-head {
+    padding: 8px 14px;
+    font-size: 11px;
+    font-weight: 700;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    border-bottom: 1px solid var(--border);
+  }
+
+  .compare-head.bad  { background: #FFF0F0; color: #C0392B; }
+  .compare-head.good { background: #F0FFF5; color: #27AE60; }
+
+  .compare-content {
+    padding: 14px;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 12px;
+    color: var(--gray-70);
+    line-height: 1.65;
+    background: var(--white);
+  }
+
+  .compare-note {
+    display: block;
+    margin-top: 8px;
+    font-family: 'Plus Jakarta Sans', sans-serif;
+    font-size: 12px;
+    color: var(--gray-50);
+    font-style: italic;
+  }
+
+  /* ── PATHS ── */
+  .paths {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+    margin-bottom: 52px;
+  }
+
+  .path {
+    border: 1px solid var(--border);
+    overflow: hidden;
+  }
+
+  .path-head {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 12px 16px;
+    background: var(--gray-05);
+    border-bottom: 1px solid var(--border);
+  }
+
+  .path-dot {
+    width: 10px;
+    height: 10px;
+    border-radius: 50%;
+    flex-shrink: 0;
+  }
+
+  .path-dot.green  { background: #6FCF97; }
+  .path-dot.purple { background: #BB86FC; }
+  .path-dot.orange { background: #F2994A; }
+
+  .path-name {
+    font-size: 13px;
+    font-weight: 700;
+    color: var(--black);
+    flex: 1;
+  }
+
+  .path-when {
+    font-size: 12px;
+    color: var(--gray-50);
+  }
+
+  .path-steps {
+    display: flex;
+    align-items: stretch;
+    padding: 0;
+  }
+
+  .path-step {
+    flex: 1;
+    padding: 14px 16px;
+    border-right: 1px solid var(--border);
+    position: relative;
+  }
+
+  .path-step:last-child { border-right: none; }
+
+  .path-step-num {
+    font-size: 10px;
+    font-weight: 700;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: var(--gray-50);
+    margin-bottom: 4px;
+  }
+
+  .path-step-text {
+    font-size: 13px;
+    color: var(--gray-70);
+    line-height: 1.5;
+  }
+
+  .path-step.merged {
+    background: var(--gray-05);
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+  }
+
+  .path-step.merged .path-step-num {
+    color: var(--red);
+  }
+
+  .path-step.merged .path-step-text {
+    color: var(--black);
+    font-weight: 500;
+  }
+
+  .path-note {
+    padding: 10px 16px;
+    border-top: 1px solid var(--border);
+    font-size: 12px;
+    color: var(--gray-50);
+    line-height: 1.55;
+    background: var(--white);
+  }
+
+  .path-note strong { color: var(--black); font-weight: 600; }
+
+  /* CONTEXT WINDOW SECTION */
+  .context-box {
+    border: 1px solid var(--border);
+    overflow: hidden;
+    margin-bottom: 52px;
+  }
+
+  .context-head {
+    display: flex;
+    align-items: center;
+    gap: 14px;
+    padding: 18px 24px;
+    background: var(--black);
+    border-bottom: 1px solid rgba(255,255,255,0.1);
+  }
+
+  .context-icon {
+    width: 32px;
+    height: 32px;
+    border-radius: 50%;
+    background: var(--red);
+    color: var(--white);
+    font-size: 15px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+    font-weight: 700;
+  }
+
+  .context-title { font-size: 16px; font-weight: 700; color: var(--white); }
+  .context-subtitle { font-size: 12px; color: rgba(255,255,255,0.5); margin-top: 2px; }
+
+  .context-body { padding: 24px; background: var(--white); }
+
+  .context-alert {
+    background: var(--red-light);
+    border: 1px solid var(--red-mid);
+    padding: 12px 16px;
+    font-size: 13.5px;
+    color: var(--red);
+    line-height: 1.6;
+    margin-bottom: 22px;
+    font-weight: 500;
+  }
+
+  .context-cols { display: grid; grid-template-columns: 1fr 1fr; gap: 24px; margin-bottom: 18px; }
+
+  .context-col-label {
+    font-size: 11px;
+    font-weight: 700;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    color: var(--gray-50);
+    margin-bottom: 12px;
+  }
+
+  .context-list { display: flex; flex-direction: column; gap: 8px; }
+
+  .context-item {
+    font-size: 13.5px;
+    color: var(--gray-70);
+    line-height: 1.55;
+    padding-left: 16px;
+    position: relative;
+  }
+
+  .context-item::before {
+    content: '—';
+    position: absolute;
+    left: 0;
+    color: var(--gray-30);
+    font-weight: 400;
+  }
+
+  .context-rule {
+    background: var(--gray-05);
+    border: 1px solid var(--border);
+    padding: 12px 16px;
+    font-size: 13.5px;
+    color: var(--gray-70);
+    line-height: 1.65;
+  }
+
+  .context-rule strong { color: var(--black); font-weight: 600; }
+
+  /* ── GLOSSARY ── */
+  .glossary { border: 1px solid var(--border); overflow: hidden; }
+
+  .glossary-head {
+    padding: 14px 20px;
+    background: var(--black);
+    border-bottom: 1px solid rgba(255,255,255,0.08);
+  }
+
+  .glossary-head .section-label { color: rgba(255,255,255,0.4); margin-bottom: 0; }
+
+  .glossary-row {
+    display: grid;
+    grid-template-columns: 140px 1fr;
+    border-top: 1px solid var(--border);
+  }
+
+  .glossary-term {
+    padding: 12px 16px;
+    font-size: 13px;
+    font-weight: 700;
+    color: var(--black);
+    background: var(--gray-05);
+    border-right: 1px solid var(--border);
+    display: flex;
+    align-items: center;
+    font-family: 'JetBrains Mono', monospace;
+  }
+
+  .glossary-def {
+    padding: 12px 16px;
+    font-size: 13.5px;
+    color: var(--gray-70);
+    line-height: 1.55;
+  }
+
+  @media (max-width: 640px) {
+    :root { --dial-step-col: 110px; }
+    .page { padding: 40px 20px 64px; }
+    .compare-grid { grid-template-columns: 1fr; }
+    .context-cols { grid-template-columns: 1fr; }
+    .dial-cell, .dial-hcell { padding: 10px 10px; font-size: 12px; }
+    .step-done { display: none; }
+    .path-steps { flex-direction: column; }
+    .path-step { border-right: none; border-bottom: 1px solid var(--border); }
+    .path-step:last-child { border-bottom: none; }
+  }
+</style>
+</head>
+<body>
+<div class="page">
+
+  <a href="../" class="back-link">← The Infinum AI Harness</a>
+
+  <!-- HEADER -->
+  <div class="header">
+    <div class="eyebrow"><span class="eyebrow-dot"></span>Infinum · Engineering · PSDD</div>
+    <h1>Pragmatic Spec<br>Driven Development.</h1>
+    <p class="tagline">PSDD — Infinum's 4-step approach for shipping features with AI, from a quick fix to a full system. Same process, different depth.</p>
+  </div>
+
+  <!-- ANALOGY -->
+  <div class="analogy">
+    <strong>The core idea behind PSDD:</strong> Think of a good architect. They don't swing a hammer until they know what they're building and where the walls go. This workflow is that — applied to AI. You invest a few minutes up front to align the model with your intent, and everything that follows gets faster and more predictable.
+  </div>
+
+  <!-- COMPLEXITY DIAL -->
+  <div class="section-label">Complexity dial — pick your lane</div>
+  <div class="dial-wrap">
+    <div class="dial">
+      <div class="dial-header">
+        <div class="dial-hcell">Step</div>
+        <div class="dial-hcell col-small">⬤ Small / Low-risk</div>
+        <div class="dial-hcell col-tech">◆ Purely technical</div>
+        <div class="dial-hcell col-large">▲ Large / High-risk</div>
+      </div>
+      <div class="dial-row">
+        <div class="dial-cell"><span class="step-pip">1</span>Understand</div>
+        <div class="dial-cell col-small">Short prompt or bullet points</div>
+        <div class="dial-cell col-tech">Technical brief: goal, constraints, success checks, rollout</div>
+        <div class="dial-cell col-large">Full PRD/FRD — goals, constraints, acceptance criteria (or a well-refined task that covers the same ground)</div>
+      </div>
+      <div class="dial-row">
+        <div class="dial-cell"><span class="step-pip">2</span>Design</div>
+        <div class="dial-cell col-small">Agree on approach in chat, keep in context</div>
+        <div class="dial-cell col-tech">Agree on approach in chat, keep in context</div>
+        <div class="dial-cell col-large">Written tech spec, reviewed by a fresh agent</div>
+      </div>
+      <div class="dial-row">
+        <div class="dial-cell"><span class="step-pip">3</span>Plan</div>
+        <div class="dial-cell col-small">Short ordered list of what changes where</div>
+        <div class="dial-cell col-tech">Ordered list including rollback strategy</div>
+        <div class="dial-cell col-large">Structured plan in Plan mode, reviewed before execution</div>
+      </div>
+      <div class="dial-row">
+        <div class="dial-cell"><span class="step-pip">4</span>Build</div>
+        <div class="dial-cell col-small">Run it, review, commit</div>
+        <div class="dial-cell col-tech">Run it, validate parity, canary if needed</div>
+        <div class="dial-cell col-large">Agent execution in Build mode, step-by-step validation</div>
+      </div>
+    </div>
+    <div class="dial-rule">
+      <strong>Rule of thumb:</strong> High complexity / ambiguity (especially user-facing) → full PRD. Smaller features → a clear description is enough. Purely technical work (refactors, upgrades, migrations) → skip the PRD, write a tight technical brief instead. If your task already has a well-written description with goals, constraints, and acceptance criteria from refinement — use that as your PRD base.
+    </div>
+  </div>
+
+  <!-- STEPS -->
+  <div class="section-label" style="margin-top:52px;">The 4 steps — what you actually do</div>
+  <div class="steps">
+
+    <!-- STEP 1 -->
+    <div class="step-card">
+      <div class="step-head" onclick="toggle(this)">
+        <div class="step-num active">1</div>
+        <div class="step-meta">
+          <div class="step-title">Understand the feature</div>
+          <div class="step-sub">Remove uncertainty before anything else</div>
+        </div>
+        <div class="step-done">Done when: requirements are clear and testable</div>
+        <div class="step-toggle">+</div>
+      </div>
+      <div class="step-body open">
+        <p class="step-intro">Before writing a single line of code, make sure you and the AI agree on what "done" means. Use the model to challenge assumptions and surface edge cases. The context you capture here directly determines how well the model performs in the next three steps.</p>
+
+        <div class="model-pill">
+          <span class="model-pill-label">Model</span>
+          Top-tier — Claude Opus, Codex
+          <span style="color:var(--gray-50);font-weight:400;margin-left:4px;">stronger reasoning finds better edge cases early</span>
+        </div>
+
+        <div class="sublanes">
+          <div>
+            <div class="sublane-head" style="color:#27AE60;">A — Small feature or change</div>
+            <div class="sublane-body">
+              <p class="sublane-desc">Use when the work is contained, the goal is clear, and the blast radius is small.</p>
+              <div class="actions">
+                <div class="action"><span class="action-arrow">→</span><span><strong>Write a prompt</strong> describing the feature: goal, expected behavior, key edge cases. That prompt <em>is</em> your Step 1 output — use it directly to start Step 2.</span></div>
+                <div class="action"><span class="action-arrow">→</span><span>Optionally, do a quick back-and-forth with the AI to tighten requirements before moving on.</span></div>
+              </div>
+              <div class="prompts" style="margin-top:12px;">
+                <div class="prompt">
+                  <div class="prompt-label">Example</div>
+                  <div class="prompt-text">"Add a 'Save for later' option in the cart. Items should move to a separate list, stay across sessions, easy to move back. Edge cases: out of stock, price changes, not logged in. Ask missing questions, then propose a technical approach."</div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <div>
+            <div class="sublane-head" style="color:#8B5CF6;">B — Purely technical change</div>
+            <div class="sublane-body">
+              <p class="sublane-desc">Use for refactors, upgrades, migrations, performance work. The risk is technical correctness, not unclear requirements — skip the PRD, write a tight technical brief instead (goal, constraints, success checks, rollout/rollback).</p>
+              <div class="prompts">
+                <div class="prompt">
+                  <div class="prompt-label">Example</div>
+                  <div class="prompt-text">"Migrate background jobs from Celery to a managed queue service. Goal: same behavior, improved observability. Constraints: no user-facing changes. Success = parity tests + canary rollout + easy rollback. Talk through the safest approach."</div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <div>
+            <div class="sublane-head" style="color:#E67E22;">C — Large or complex feature</div>
+            <div class="sublane-body">
+              <p class="sublane-desc">Use when the feature is ambiguous, cross-cutting, risky, or involves many edge cases. If your task from refinement already covers goals, constraints, and acceptance criteria, use that as your PRD base. Otherwise, use the <a href="https://github.com/infinum/ai/blob/main/skills/create-prd/SKILL.md" style="color:var(--red);font-weight:600;">PRD skill</a> to produce a structured document: goals/non-goals, user stories, functional requirements, acceptance criteria, and constraints. Light on implementation — the "what" and "why", not the "how."</p>
+              <div class="prompts">
+                <div class="prompt">
+                  <div class="prompt-label">Example</div>
+                  <div class="prompt-text">"Let's create a PRD for: Subscriptions / recurring deliveries. Customers can subscribe to products (weekly/monthly), manage skips and cancellations, and see upcoming shipments."</div>
+                </div>
+                <div class="prompt">
+                  <div class="prompt-label">Example</div>
+                  <div class="prompt-text">"Let's create a PRD for: Loyalty and rewards program. Customers earn points on purchases, unlock tiers with benefits, and redeem points at checkout. Needs rules for expiration, partial redemption, and integration with promotions."</div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+      </div>
+    </div>
+
+    <!-- STEP 2 -->
+    <div class="step-card">
+      <div class="step-head" onclick="toggle(this)">
+        <div class="step-num">2</div>
+        <div class="step-meta">
+          <div class="step-title">Design the solution</div>
+          <div class="step-sub">Agree on the technical direction — no code yet</div>
+        </div>
+        <div class="step-done">Done when: approach is agreed and risks are addressed</div>
+        <div class="step-toggle">+</div>
+      </div>
+      <div class="step-body">
+        <p class="step-intro">The main control lever in the workflow. Before any code runs, get the AI to propose its approach — then steer it or let a good proposal change your mind. Stay in Ask mode only. No code changes happen in this step.</p>
+
+        <div class="model-pill">
+          <span class="model-pill-label">Model</span>
+          Top-tier — Claude Opus, Codex
+          <span style="color:var(--gray-50);font-weight:400;margin-left:4px;">reasoning quality matters most here</span>
+        </div>
+
+        <div class="actions" style="margin-bottom:20px;">
+          <div class="action"><span class="action-arrow">→</span><span><strong>Ask: "How would you build this?"</strong> Let the model propose a solution first.</span></div>
+          <div class="action"><span class="action-arrow">→</span><span><strong>State hard constraints clearly.</strong> Then push back, redirect, or accept better ideas. Iterate in Ask mode.</span></div>
+          <div class="action"><span class="action-arrow">→</span><span><strong>Output:</strong> for small features, the agreement in chat is enough. For larger ones, write it into a tech spec — then open a fresh chat and have a new agent critique it until feedback is minor.</span></div>
+        </div>
+
+        <div class="prompts">
+          <div class="prompt">
+            <div class="prompt-label">Open-ended</div>
+            <div class="prompt-text">"Don't make any code changes. How would you approach building this? Consider our existing architecture. Outline main components, data flow, and edge cases."</div>
+          </div>
+          <div class="prompt">
+            <div class="prompt-label">With constraints</div>
+            <div class="prompt-text">"No code changes. Constraints: must use existing service layer, avoid DB schema changes, keep API backward compatible. Propose an approach and call out trade-offs."</div>
+          </div>
+          <div class="prompt">
+            <div class="prompt-label">Produce the spec</div>
+            <div class="prompt-text">"Based on our discussion, write a technical specification in markdown. Include enough detail so the feature can be implemented without ambiguity."</div>
+          </div>
+          <div class="prompt">
+            <div class="prompt-label">Review pass — open a fresh chat</div>
+            <div class="prompt-text">"Review this technical specification and identify gaps, unclear areas, risks, and edge cases. Suggest concrete improvements."</div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- STEP 3 -->
+    <div class="step-card">
+      <div class="step-head" onclick="toggle(this)">
+        <div class="step-num">3</div>
+        <div class="step-meta">
+          <div class="step-title">Plan</div>
+          <div class="step-sub">Turn the agreed direction into ordered steps</div>
+        </div>
+        <div class="step-done">Done when: plan is reviewed and approved</div>
+        <div class="step-toggle">+</div>
+      </div>
+      <div class="step-body">
+        <p class="step-intro">Convert your understanding and agreed design into a concrete implementation plan. AI performs significantly better when work is decomposed into smaller, well-defined tasks. The plan should be reviewable before a single line of code runs — this is your last clear checkpoint.</p>
+
+        <div class="model-pill">
+          <span class="model-pill-label">Model</span>
+          Top-tier — Claude Opus, Codex
+          <span style="color:var(--gray-50);font-weight:400;margin-left:4px;">better plans mean fewer surprises during execution</span>
+        </div>
+
+        <div class="actions" style="margin-bottom:20px;">
+          <div class="action"><span class="action-arrow">→</span><span><strong>Switch to Plan mode</strong> in Cursor or Claude Code.</span></div>
+          <div class="action"><span class="action-arrow">→</span><span><strong>Provide context:</strong> small features stay in the same chat; larger ones include the PRD and tech spec.</span></div>
+          <div class="action"><span class="action-arrow">→</span><span><strong>Review before approving.</strong> Check sequencing, missing pieces — migrations, edge cases, tests, rollout. Adjust anything that looks off.</span></div>
+        </div>
+
+        <div class="prompts">
+          <div class="prompt">
+            <div class="prompt-label">From discussion</div>
+            <div class="prompt-text">"Generate an implementation plan based on our discussion. Break it into clear, ordered steps with checkpoints."</div>
+          </div>
+          <div class="prompt">
+            <div class="prompt-label">From artifacts</div>
+            <div class="prompt-text">"Using the attached PRD and technical specification, generate an implementation plan. Include sequencing, affected areas, and validation steps."</div>
+          </div>
+          <div class="prompt">
+            <div class="prompt-label">Refine</div>
+            <div class="prompt-text">"Update the plan to include migration steps and rollback strategy. Also add tests for edge cases we discussed."</div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- STEP 4 -->
+    <div class="step-card">
+      <div class="step-head" onclick="toggle(this)">
+        <div class="step-num">4</div>
+        <div class="step-meta">
+          <div class="step-title">Build</div>
+          <div class="step-sub">Execute the plan — then review like any other change</div>
+        </div>
+        <div class="step-done">Done when: tested and validated against Step 1</div>
+        <div class="step-toggle">+</div>
+      </div>
+      <div class="step-body">
+        <p class="step-intro">Now the agent runs. Because you did the work upfront, it stays aligned and you rarely need to re-explain decisions. When something isn't right, corrections are fast and targeted.</p>
+
+        <div class="model-pill efficient">
+          <span class="model-pill-label">Model</span>
+          Cost-efficient — Claude Sonnet, Codex
+          <span style="color:var(--gray-50);font-weight:400;margin-left:4px;">execution-heavy, many tokens, main reasoning is done</span>
+        </div>
+
+        <div class="actions" style="margin-bottom:20px;">
+          <div class="action"><span class="action-arrow">→</span><span><strong>Switch to Build / Agent mode.</strong> Approve the plan and let it execute.</span></div>
+          <div class="action"><span class="action-arrow">→</span><span><strong>Review the output:</strong> focus on business-critical paths and core logic. Skim boilerplate and wiring unless it looks suspicious.</span></div>
+          <div class="action"><span class="action-arrow">→</span><span><strong>Iterate:</strong> if something needs adjusting, tell the agent what to change. It has full context, so fixes are fast and targeted.</span></div>
+          <div class="action"><span class="action-arrow">→</span><span><strong>Run and test.</strong> Does it meet the acceptance criteria from Step 1? Paste failing logs back to the agent if needed.</span></div>
+        </div>
+
+        <div class="prompts" style="margin-bottom:16px;">
+          <div class="prompt">
+            <div class="prompt-label">Targeted adjustment</div>
+            <div class="prompt-text">"Refactor the implementation of [component] to follow [pattern]. Keep behavior the same and update tests if needed."</div>
+          </div>
+          <div class="prompt">
+            <div class="prompt-label">Fix from logs</div>
+            <div class="prompt-text">"Here's the failing test output / exception stack trace: … Identify the root cause and fix it. Add regression coverage if appropriate."</div>
+          </div>
+        </div>
+
+        <div style="background:var(--gray-05);border:1px solid var(--border);border-left:3px solid var(--gray-30);padding:12px 16px;font-size:13.5px;color:var(--gray-70);line-height:1.65;">
+          <strong style="color:var(--black);">Note on codebase patterns:</strong> Agents repeat patterns already present in the codebase — an advantage when patterns are healthy, a problem when they aren't. Consistently messy build results are usually a signal to improve conventions or add the right rules/skills.
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- PICK YOUR PATH -->
+  <div class="section-label">Pick your path</div>
+  <div class="paths">
+
+    <!-- SMALL -->
+    <div class="path">
+      <div class="path-head">
+        <div class="path-dot green"></div>
+        <div class="path-name">Small / Low-risk</div>
+        <div class="path-when">Goal is clear, blast radius is small</div>
+      </div>
+      <div class="path-steps">
+        <div class="path-step merged" style="flex:2;">
+          <div class="path-step-num">Steps 1–3 · One prompt</div>
+          <div class="path-step-text">Write a clear description: goal, behavior, constraints, edge cases. That single prompt <em>is</em> your understanding, design, and plan.</div>
+        </div>
+        <div class="path-step">
+          <div class="path-step-num">Step 4 · Build</div>
+          <div class="path-step-text">Run, review, commit.</div>
+        </div>
+      </div>
+      <div class="path-note">You're not skipping steps — the work is just small enough that they compress into one move.</div>
+    </div>
+
+    <!-- TECHNICAL -->
+    <div class="path">
+      <div class="path-head">
+        <div class="path-dot purple"></div>
+        <div class="path-name">Purely technical</div>
+        <div class="path-when">Refactors, upgrades, migrations</div>
+      </div>
+      <div class="path-steps">
+        <div class="path-step merged" style="flex:2;">
+          <div class="path-step-num">Steps 1–2 · One conversation</div>
+          <div class="path-step-text">Write a technical brief (goal, constraints, success checks, rollout/rollback), then agree on approach — same chat, two checkpoints.</div>
+        </div>
+        <div class="path-step">
+          <div class="path-step-num">Step 3 · Plan</div>
+          <div class="path-step-text">Ordered list + rollback strategy.</div>
+        </div>
+        <div class="path-step">
+          <div class="path-step-num">Step 4 · Build</div>
+          <div class="path-step-text">Run, validate parity, canary if needed.</div>
+        </div>
+      </div>
+      <div class="path-note">Skip the PRD — the risk is technical correctness, not unclear requirements. Brief and design happen together, but think <em>what</em> before <em>how</em>.</div>
+    </div>
+
+    <!-- LARGE -->
+    <div class="path">
+      <div class="path-head">
+        <div class="path-dot orange"></div>
+        <div class="path-name">Large / High-risk</div>
+        <div class="path-when">Ambiguous, cross-cutting, user-facing</div>
+      </div>
+      <div class="path-steps">
+        <div class="path-step">
+          <div class="path-step-num">Step 1 · Understand</div>
+          <div class="path-step-text">Full PRD: goals, constraints, acceptance criteria. A well-refined task can serve as the base.</div>
+        </div>
+        <div class="path-step">
+          <div class="path-step-num">Step 2 · Design</div>
+          <div class="path-step-text">Written tech spec, reviewed by a fresh agent.</div>
+        </div>
+        <div class="path-step">
+          <div class="path-step-num">Step 3 · Plan</div>
+          <div class="path-step-text">Structured plan in Plan mode, reviewed before execution.</div>
+        </div>
+        <div class="path-step">
+          <div class="path-step-num">Step 4 · Build</div>
+          <div class="path-step-text">Agent execution, step-by-step validation.</div>
+        </div>
+      </div>
+      <div class="path-note">Every step is distinct. This is where the full process pays for itself.</div>
+    </div>
+
+  </div>
+
+  <!-- CONTEXT WINDOW -->
+  <div class="section-label">⚠ Watch out: context window degradation</div>
+  <div class="context-box">
+    <div class="context-head">
+      <div class="context-icon">!</div>
+      <div>
+        <div class="context-title">⚠ Watch out: context window degradation</div>
+        <div class="context-subtitle">Every model has a finite window — when it fills up, quality degrades silently</div>
+      </div>
+    </div>
+    <div class="context-body">
+      <div class="context-alert">
+        <strong>Signs the context is degrading:</strong> the agent repeats questions, forgets earlier decisions, or produces output that contradicts the agreed approach.
+      </div>
+      <div class="context-cols">
+        <div>
+          <div class="context-col-label">When to split across chats</div>
+          <div class="context-list">
+            <div class="context-item">Conversation is getting long and quality is dropping</div>
+            <div class="context-item">The plan has natural seams — backend vs. frontend, data layer vs. API</div>
+            <div class="context-item">A structured artifact exists — starting fresh is low-cost when it carries the context</div>
+          </div>
+        </div>
+        <div>
+          <div class="context-col-label">What to carry into a new chat</div>
+          <div class="context-list">
+            <div class="context-item">Current versions of key artifacts (PRD, tech spec, plan)</div>
+            <div class="context-item">Short status summary: what's done, what's in progress, any deviations</div>
+            <div class="context-item">Relevant code and error output — leave out unrelated history</div>
+          </div>
+        </div>
+      </div>
+      <div class="context-rule">
+        <strong>Rule of thumb:</strong> if the feature can be planned and built in a single session without quality loss, stay in one chat. If the work spans multiple components, plan for multiple sessions from the start and keep your artifacts updated as the source of truth.
+      </div>
+    </div>
+  </div>
+
+  <!-- GLOSSARY -->
+  <div class="section-label" style="margin-top:52px;">Glossary</div>
+  <div class="glossary">
+    <div class="glossary-head"><div class="section-label">Terms used in this workflow</div></div>
+    <div class="glossary-row">
+      <div class="glossary-term">PSDD</div>
+      <div class="glossary-def">Pragmatic Spec Driven Development — Infinum's workflow for building with AI, described in this document. <em>Pragmatic</em> because the depth of each step scales to the work.</div>
+    </div>
+    <div class="glossary-row">
+      <div class="glossary-term">PRD / FRD</div>
+      <div class="glossary-def">Product/Feature Requirements Doc. Captures goals, constraints, user stories, and acceptance criteria before design or code begins. Can be generated from scratch or based on an existing refined task. The "what" and "why", not the "how".</div>
+    </div>
+    <div class="glossary-row">
+      <div class="glossary-term">Tech brief</div>
+      <div class="glossary-def">Lightweight alternative to a PRD for purely technical work. Covers goal, constraints, success checks, and rollout/rollback plan.</div>
+    </div>
+    <div class="glossary-row">
+      <div class="glossary-term">Ask mode</div>
+      <div class="glossary-def">The AI explores ideas without making code changes. Use this for Steps 1 and 2.</div>
+    </div>
+    <div class="glossary-row">
+      <div class="glossary-term">Plan mode</div>
+      <div class="glossary-def">Generates a structured implementation plan from your context. No code runs — you review and approve first.</div>
+    </div>
+    <div class="glossary-row">
+      <div class="glossary-term">Build mode</div>
+      <div class="glossary-def">Also called Agent mode. The AI executes the approved plan step by step, making actual code changes.</div>
+    </div>
+    <div class="glossary-row">
+      <div class="glossary-term">Fresh agent</div>
+      <div class="glossary-def">A new chat with no prior context. Useful for spec reviews — catches assumptions the first conversation missed.</div>
+    </div>
+    <div class="glossary-row">
+      <div class="glossary-term">Context window</div>
+      <div class="glossary-def">The maximum text a model can "see" at once. When it fills up, earlier context is lost and quality degrades silently.</div>
+    </div>
+  </div>
+
+</div>
+
+<script>
+  function toggle(head) {
+    const body = head.nextElementSibling;
+    const tog  = head.querySelector('.step-toggle');
+    const num  = head.querySelector('.step-num');
+    const open = body.classList.toggle('open');
+    tog.textContent = open ? '−' : '+';
+    if (open) num.classList.add('active'); else num.classList.remove('active');
+  }
+</script>
+</body>
+</html>

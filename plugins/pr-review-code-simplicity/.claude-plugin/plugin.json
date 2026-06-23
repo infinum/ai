@@ -1,0 +1,10 @@
+{
+  "name": "pr-review-code-simplicity",
+  "version": "1.0.1",
+  "description": "Review pull requests through the six laws of software design from Code Simplicity by Max Kanat-Alexander. Structured findings focused on long-term maintenance cost, not style.",
+  "keywords": [
+    "pr-review",
+    "code-simplicity",
+    "review"
+  ]
+}

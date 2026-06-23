@@ -1,0 +1,10 @@
+{
+  "name": "mobile-deploy",
+  "version": "1.0.0",
+  "description": "Deploy a mobile app to selected targets via the app-deploy trigger CLI — resolves environments, changelog, and confirmations.",
+  "keywords": [
+    "deploy",
+    "mobile",
+    "ci"
+  ]
+}

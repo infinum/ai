@@ -1,0 +1,10 @@
+{
+  "name": "download-figma-screenshot",
+  "version": "1.0.1",
+  "description": "Download Figma frame screenshots to disk as PNG files. Works via local MCP server or Figma REST API.",
+  "keywords": [
+    "figma",
+    "screenshot",
+    "documentation"
+  ]
+}

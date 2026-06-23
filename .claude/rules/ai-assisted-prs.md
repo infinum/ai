@@ -1,0 +1,1 @@
+../../rules/ai-assisted-prs.md

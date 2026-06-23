@@ -1,0 +1,45 @@
+{
+  "name": "infinum-ai",
+  "version": "1.0.0",
+  "description": "Infinum AI Claude Code marketplace setup — adds the infinum-ai marketplace and Infinum house rules without overwriting your personal CLAUDE.md.",
+  "type": "module",
+  "bin": {
+    "infinum-ai": "./bin/install.js"
+  },
+  "scripts": {
+    "setup": "node bin/install.js",
+    "setup:local": "node bin/install.js --local",
+    "test": "node --test test/*.test.js",
+    "validate:plugins": "sh .githooks/pre-commit",
+    "probe:mcp-conflict": "sh scripts/probe-mcp-conflict-skip.sh",
+    "prepare": "git config core.hooksPath .githooks 2>/dev/null || true"
+  },
+  "license": "PolyForm-Noncommercial-1.0.0",
+  "engines": {
+    "node": "^24",
+    "pnpm": "^11.0.0"
+  },
+  "packageManager": "pnpm@11.0.8",
+  "dependencies": {
+    "@clack/prompts": "1.3.0"
+  },
+  "files": [
+    "bin/",
+    "rules/",
+    "plugins/",
+    ".claude-plugin/",
+    "README.md",
+    "CONTRIBUTING.md",
+    "LICENSE"
+  ],
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/infinum/ai"
+  },
+  "keywords": [
+    "claude-code",
+    "claude",
+    "ai",
+    "infinum"
+  ]
+}

@@ -1,0 +1,12 @@
+{
+  "name": "productive-debug",
+  "version": "1.0.2",
+  "description": "Investigate bug tasks from Productive end-to-end with MCP, parallel codebase exploration, and ranked hypotheses.",
+  "keywords": [
+    "productive",
+    "debug",
+    "bug",
+    "mcp",
+    "investigation"
+  ]
+}
