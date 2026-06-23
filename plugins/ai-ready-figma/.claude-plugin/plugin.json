@@ -1,0 +1,11 @@
+{
+  "name": "ai-ready-figma",
+  "version": "1.0.0",
+  "description": "Make Figma design systems and screen files AI-readable so MCP/Code-Connect code generation produces correct, on-brand code. Platform-neutral structure and naming for the component library (ai-ready-design-system) and the assembled screens/flows (ai-ready-screens). Pair with a platform binding from design-conventions.",
+  "keywords": [
+    "figma",
+    "design-system",
+    "mcp",
+    "code-connect"
+  ]
+}
