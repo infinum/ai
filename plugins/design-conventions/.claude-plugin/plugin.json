@@ -1,0 +1,11 @@
+{
+  "name": "design-conventions",
+  "version": "1.0.0",
+  "description": "Platform-binding conventions for ai-ready-figma design systems — the framework-specific casing, naming, state vocabulary, and token-to-theme mapping that AI code generation needs. Ships flutter-m3-conventions (Flutter Material 3) today; add a skill per platform as more are needed.",
+  "keywords": [
+    "flutter",
+    "material-3",
+    "design-tokens",
+    "conventions"
+  ]
+}

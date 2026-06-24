@@ -16,6 +16,8 @@
     { "name": "productive-debug", "source": "./plugins/productive-debug" },
     { "name": "stack-essentials", "source": "./plugins/stack-essentials" },
     { "name": "progress", "source": "./plugins/progress" },
-    { "name": "mobile-deploy", "source": "./plugins/mobile-deploy" }
+    { "name": "mobile-deploy", "source": "./plugins/mobile-deploy" },
+    { "name": "ai-ready-figma", "source": "./plugins/ai-ready-figma" },
+    { "name": "design-conventions", "source": "./plugins/design-conventions" }
   ]
 }
