@@ -50,6 +50,10 @@ Pull repo and registry signals (via `gh`, the registry API, and deps.dev):
 - **Responsiveness**: open-vs-closed issue/PR ratio, whether security issues get timely responses, release discipline (changelogs, semver adherence).
 - **Bus factor**: number of *active* contributors. A single-maintainer project is a sustainability and security risk (one burnout or one compromised account away from trouble).
 - **Backing**: is there an organization or foundation behind it (OpenJS, Apache, CNCF, a funded company) vs. a solo hobby project? Funding/sponsorship signals. Presence of `SECURITY.md`, `CONTRIBUTING`, and a governance model.
+- **Governance changes & risk signals**:
+    - Recent ownership / maintainer transfers, especially to newly created organizations.
+    - Sudden changes in the maintainer set (bulk additions of new maintainers, transfer to company).
+    - Suspicious activity patterns, like long periods of inactivity followed with bursts of releases.
 
 ## Step 5 — Security track record & posture
 
@@ -64,6 +68,15 @@ Pull repo and registry signals (via `gh`, the registry API, and deps.dev):
 - **Maturity & quality**: stable (`>=1.0`) vs. `0.x` experimental; ships types (or has maintained `@types`); has tests and CI; documentation quality.
 - **Operational footprint**: how many **transitive dependencies** it drags in (each is its own liability); install size / bundle-size impact (matters for frontend); runtime/framework version compatibility with this project (Node/Ruby/language version, framework version).
 - **Churn**: major-version frequency and breaking-change history — how much upgrade maintenance are you signing up for?
+- **Capability & permission footprint**
+    - What sensitive capabilities does the dependency require?
+    - Examples:
+        - Filesystem read/write access
+        - Netwokr access / outbound connections
+        - Shell or subprocess executions
+        - Dynamic code execution (e.g. eval, runtime compilation, etc)
+        - Privileged OS interactions (services, kernel, registry access, system configurations, etc)
+    - Flag packages whose functionality requires unusually broad or high-risk permissions.
 
 ## Step 7 — Score & verdict
 
@@ -89,9 +102,9 @@ If the verdict is **Adopt** or **Adopt with caution**, the closing action is: *"
 
   [1] Necessity & alternatives   ✅ / ⚠️ / ⛔   <can native/existing replace it?>
   [2] License & legal            ✅ / ⚠️ / ⛔   <license · obligations · relicensing risk>
-  [3] Maintenance & governance   ✅ / ⚠️ / ⛔   <cadence · bus factor · backing>
+  [3] Maintenance & governance   ✅ / ⚠️ / ⛔   <cadence · bus factor · backing · ownership risk>
   [4] Security track record      ✅ / ⚠️ / ⛔   <CVE history · posture · scorecard>
-  [5] Adoption & operational fit ✅ / ⚠️ / ⛔   <usage · maturity · transitive footprint>
+  [5] Adoption & operational fit ✅ / ⚠️ / ⛔   <usage · maturity · transitive footprint · permissions>
 
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 🚦 VERDICT: Adopt | Adopt with caution | Avoid (use <alternative>) | Don't add
