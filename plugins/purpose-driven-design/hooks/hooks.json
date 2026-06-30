@@ -1,0 +1,14 @@
+{
+  "SessionStart": [
+    {
+      "matcher": "",
+      "hooks": [
+        {
+          "type": "command",
+          "command": "cat ${CLAUDE_PLUGIN_ROOT}/instructions.md",
+          "timeout": 10
+        }
+      ]
+    }
+  ]
+}

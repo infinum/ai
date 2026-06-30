@@ -1,0 +1,36 @@
+{
+  "name": "purpose-driven-design",
+  "version": "1.20.2",
+  "description": "Act as an Infinum Purpose Driven Design (PDD) practitioner \u2014 drawing on the PDD philosophy, principles, 6-phase process, and full toolkit. Skills: discovery workshops, interview guides, archetypes, rainbow & competitive analysis.",
+  "author": {
+    "name": "Infinum"
+  },
+  "keywords": [
+    "pdd",
+    "ux",
+    "research",
+    "infinum",
+    "archetypes",
+    "competitive-analysis",
+    "rainbow-analysis",
+    "discovery-workshop",
+    "workshop-planning",
+    "methodology",
+    "pdd-process",
+    "pdd-toolkit",
+    "design-philosophy",
+    "infinum-brand",
+    "branding",
+    "risk",
+    "risk-radar",
+    "project-brief",
+    "brief",
+    "participant-summary",
+    "synthesis",
+    "schedule",
+    "timeline",
+    "gantt",
+    "estimate",
+    "estimation"
+  ]
+}

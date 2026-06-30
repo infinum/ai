@@ -1,0 +1,17 @@
+{
+  "name": "purpose-driven-design",
+  "owner": {
+    "name": "Infinum"
+  },
+  "plugins": [
+    {
+      "name": "purpose-driven-design",
+      "version": "1.13.0",
+      "source": {
+        "source": "github",
+        "repo": "expandtheroom/pdd-claude-plugin"
+      },
+      "description": "Act as an Infinum Purpose Driven Design (PDD) practitioner — drawing on the PDD philosophy, principles, 6-phase process, and full toolkit. Skills: discovery workshops, interview guides, archetypes, rainbow & competitive analysis."
+    }
+  ]
+}
