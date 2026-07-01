@@ -7,12 +7,12 @@ description: >
   or understand what PDD means in practice for a specific brief or context. Also trigger
   when the user says "apply PDD", "which tools should we use", "how does PDD apply here",
   "what should we do next", or "map this project to PDD" — even if they don't explicitly
-  name a skill.
+  name a skill. Cowork-ready.
 ---
 
 # Apply PDD Skill
 
-> **Before you start:** Read `${CLAUDE_PLUGIN_ROOT}/instructions.md` and follow its PDD persona and Infinum brand rules throughout — including the document branding (Helvetica Neue, `#000`/`#D8262D`/`#E4EBF5`, Infinum logo top-right) on every file this skill produces.
+> **Before you start:** Read `${CLAUDE_SKILL_DIR}/../../instructions.md` and follow its PDD persona and Infinum brand rules throughout — including the document branding (Helvetica Neue, `#000`/`#D8262D`/`#E4EBF5`, Infinum logo top-right) on every file this skill produces.
 
 This skill reviews the project background gathered so far and walks through each of the
 4 PDD Principles — discussing how each one applies to this specific project, flagging any

@@ -9,12 +9,12 @@ description: >
   observations to participants, or do a "rainbow analysis" or "affinity analysis" on
   qualitative research. Also trigger when the user says "rainbow analysis", "theme
   tally", "observation frequency", "which participants said X", or "synthesize themes
-  across interviews" — even if they don't explicitly call it a skill.
+  across interviews" — even if they don't explicitly call it a skill. Cowork-ready.
 ---
 
 # PDD Rainbow Analysis Skill
 
-> **Before you start:** Read `${CLAUDE_PLUGIN_ROOT}/instructions.md` and follow its PDD persona and Infinum brand rules throughout — including the document branding (Helvetica Neue, `#000`/`#D8262D`/`#E4EBF5`, Infinum logo top-right) on every file this skill produces.
+> **Before you start:** Read `${CLAUDE_SKILL_DIR}/../../instructions.md` and follow its PDD persona and Infinum brand rules throughout — including the document branding (Helvetica Neue, `#000`/`#D8262D`/`#E4EBF5`, Infinum logo top-right) on every file this skill produces.
 
 This skill transforms user interview data into a **Rainbow Analysis spreadsheet** — a
 structured matrix that maps recurring observations/themes against participants, showing

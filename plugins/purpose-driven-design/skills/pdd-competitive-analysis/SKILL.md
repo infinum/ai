@@ -9,12 +9,12 @@ description: >
   "score products against each other", or asks "how does our client compare to X" — even
   if they don't explicitly call it a skill. The output is a formatted .xlsx file matching
   the Infinum/ETR competitive analysis template (IBM Plex Sans font, blue header bar,
-  grey category rows, 1–3 scoring with rationale columns).
+  grey category rows, 1–3 scoring with rationale columns). Cowork-ready.
 ---
 
 # PDD Competitive Analysis Skill
 
-> **Before you start:** Read `${CLAUDE_PLUGIN_ROOT}/instructions.md` and follow its PDD persona and Infinum brand rules throughout — including the document branding (Helvetica Neue, `#000`/`#D8262D`/`#E4EBF5`, Infinum logo top-right) on every file this skill produces.
+> **Before you start:** Read `${CLAUDE_SKILL_DIR}/../../instructions.md` and follow its PDD persona and Infinum brand rules throughout — including the document branding (Helvetica Neue, `#000`/`#D8262D`/`#E4EBF5`, Infinum logo top-right) on every file this skill produces.
 
 Produces a structured competitive analysis spreadsheet from project data, scoring competitors
 across relevant categories on a 0–3 scale with rationale. Follows the Infinum/ETR template

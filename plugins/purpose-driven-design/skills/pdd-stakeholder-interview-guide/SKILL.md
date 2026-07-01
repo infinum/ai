@@ -10,12 +10,12 @@ description: >
   marketing director]" — even if they don't explicitly call it a skill. The output is a
   formatted .docx matching the Infinum/ETR stakeholder interview style — participant list
   at the top, shared intro script, then a tailored per-person question set for each
-  interviewee organized into subsections by topic.
+  interviewee organized into subsections by topic. Not Cowork-ready — the .docx generator runs on node, which isn't in the Cowork base image.
 ---
 
 # PDD Stakeholder Interview Guide Skill
 
-> **Before you start:** Read `${CLAUDE_PLUGIN_ROOT}/instructions.md` and follow its PDD persona and Infinum brand rules throughout — including the document branding (Helvetica Neue, `#000`/`#D8262D`/`#E4EBF5`, Infinum logo top-right) on every file this skill produces.
+> **Before you start:** Read `${CLAUDE_SKILL_DIR}/../../instructions.md` and follow its PDD persona and Infinum brand rules throughout — including the document branding (Helvetica Neue, `#000`/`#D8262D`/`#E4EBF5`, Infinum logo top-right) on every file this skill produces.
 
 Produces a structured, print-ready Stakeholder Interview Guide following Infinum/ETR conventions.
 The guide has one tailored question set per interviewee, organized into topic subsections,

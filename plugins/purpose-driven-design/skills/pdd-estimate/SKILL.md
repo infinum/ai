@@ -9,12 +9,12 @@ description: >
   hours estimate, fill out the estimate template/sheet, price an RFP, or figure out how long a
   build will take. Also trigger when the user says "estimate", "estimate sheet", "scope this",
   "how many hours", "price this RFP", or "fill out the estimate" — even if they don't call it a
-  skill. Output is a filled .xlsx with all formulas intact (a local file; nothing is written to Drive).
+  skill. Output is a filled .xlsx with all formulas intact (a local file; nothing is written to Drive). Cowork-ready.
 ---
 
 # PDD Estimate Skill
 
-> **Before you start:** Read `${CLAUDE_PLUGIN_ROOT}/instructions.md` and follow its PDD persona and ways of working. Note: this skill's output is the **standard estimate template**, which has its own format — so the generic Infinum *document* branding (fonts/colours/logo) does **not** apply here. Keep the template's structure and formulas intact.
+> **Before you start:** Read `${CLAUDE_SKILL_DIR}/../../instructions.md` and follow its PDD persona and ways of working. Note: this skill's output is the **standard estimate template**, which has its own format — so the generic Infinum *document* branding (fonts/colours/logo) does **not** apply here. Keep the template's structure and formulas intact.
 
 Builds an estimate on the team's **2026-format estimate template**, grounded in the project's
 real scope and benchmarked against past estimates. This is PDD work: estimate from evidence

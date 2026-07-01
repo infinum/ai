@@ -11,12 +11,12 @@ description: >
   workshop", "workshop plan", "workshop agenda", "kickoff workshop", "facilitation board",
   "which exercises should we run", or "plan a session with the client" — even if they don't
   explicitly call it a skill. Output is a formatted .docx run-of-show plus a FigJam board
-  scaffold (one section per activity).
+  scaffold (one section per activity). Cowork-ready — the .docx run-of-show works via Cowork's built-in docx skill; the optional FigJam board needs a Figma connector.
 ---
 
 # PDD Discovery Workshop Planner
 
-> **Before you start:** Read `${CLAUDE_PLUGIN_ROOT}/instructions.md` and follow its PDD persona and Infinum brand rules throughout — including the document branding (Helvetica Neue, `#000`/`#D8262D`/`#E4EBF5`, Infinum logo top-right) on every file this skill produces.
+> **Before you start:** Read `${CLAUDE_SKILL_DIR}/../../instructions.md` and follow its PDD persona and Infinum brand rules throughout — including the document branding (Helvetica Neue, `#000`/`#D8262D`/`#E4EBF5`, Infinum logo top-right) on every file this skill produces.
 
 This skill plans a discovery workshop — the session run at the **start** of a project with the
 client to capture project goals, scope, and stakeholder insight. Our sessions are usually
