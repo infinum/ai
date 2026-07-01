@@ -11,7 +11,7 @@ All Infinum/ETR interview guides follow a consistent document structure and visu
 [Client Name] | [Month Year]
 ```
 
-Include the ETR / Infinum logo placeholder (omit in Markdown; included in PDF output).
+Include the Infinum logo top-right (omit in Markdown fallback; included in the .docx output).
 Add the horizontal rule divider below the header.
 
 ---
@@ -114,10 +114,10 @@ Please try to think out loud as much as possible. Any questions before we get st
 
 ---
 
-## PDF Formatting Notes (when producing PDF output)
+## Document Formatting Notes (.docx output)
 
 - Font: Helvetica Neue
 - Red (#D8262D) accent line under header (matching Infinum brand)
-- ETR / Infinum logo top-right
+- Infinum logo top-right
 - Bold section headings, normal weight body text
 - White background, generous line spacing

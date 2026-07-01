@@ -2,16 +2,15 @@
 name: pdd-discovery-workshop
 description: >
   Use this skill to plan a discovery workshop for a client project. Reads the project
-  information (goals, scope, stakeholders, time available) and recommends a workshop plan —
-  a warm-up plus 1–2 longer exercises (sessions are usually 1–2 hours) chosen from the Infinum/ETR discovery activity library
-  and sequenced to fit the time. Triggers whenever a user wants to: plan or design a
-  discovery workshop, build a workshop agenda or run-of-show, choose workshop activities or
-  exercises, prepare a kick-off / alignment / ideation session with a client, or set up a
-  FigJam facilitation board for a workshop. Also trigger when the user says "discovery
-  workshop", "workshop plan", "workshop agenda", "kickoff workshop", "facilitation board",
-  "which exercises should we run", or "plan a session with the client" — even if they don't
-  explicitly call it a skill. Output is a formatted .docx run-of-show plus a FigJam board
-  scaffold (one section per activity). Cowork-ready — the .docx run-of-show works via Cowork's built-in docx skill; the optional FigJam board needs a Figma connector.
+  information (goals, scope, stakeholders, time available) and recommends a plan — a warm-up
+  plus 1–2 longer exercises (sessions are usually 1–2 hours) from the Infinum/ETR activity
+  library, sequenced to fit the time. Triggers whenever a user wants to: plan or design a
+  discovery workshop, build a workshop agenda or run-of-show, choose workshop activities,
+  prepare a kick-off / alignment / ideation session with a client, or set up a FigJam
+  facilitation board. Also trigger when the user says "discovery workshop", "workshop plan",
+  "workshop agenda", "kickoff workshop", "facilitation board", "which exercises should we run",
+  or "plan a session with the client" — even if they don't call it a skill. Output is a
+  formatted .docx run-of-show plus a FigJam board scaffold (one section per activity).
 ---
 
 # PDD Discovery Workshop Planner

@@ -8,8 +8,8 @@ description: >
   research sessions. Also trigger when the user says "interview guide", "interview script",
   "research plan", "screener", "usability test plan", "user testing plan", or "write questions
   for user interviews" — even if they don't explicitly call it a skill. The output is a
-  formatted PDF document matching the Infinum/ETR interview guide style (structured sections,
-  IBM Plex Sans, blue header accent). Not Cowork-ready — the .docx/PDF generator runs on node, which isn't in the Cowork base image.
+  formatted .docx on the Infinum brand (structured sections, red accent, Infinum logo in the
+  page header). Runs on the bundled python-docx generator, so it works in Cowork's base image.
 ---
 
 # PDD User Interview Guide Skill
@@ -65,8 +65,9 @@ Wait for answers before drafting.
 
 ## Phase 2 — Generate the Guide
 
-Once context is confirmed, produce the full guide as a **PDF** using the scripts below.
-Read `references/format-reference.md` before generating to ensure correct structure and style.
+Once context is confirmed, assemble the full guide as Markdown, then render it to **.docx** with
+the bundled generator in Phase 3. Read `references/format-reference.md` before drafting to ensure
+correct structure and style.
 Draw questions from `references/question-library.md` — adapt them to the project, don't copy verbatim.
 
 ### Document Structure (in order)
@@ -151,19 +152,29 @@ Draw questions from `references/question-library.md` — adapt them to the proje
 
 ### Generate the .docx
 
-Write the guide content to `/tmp/interview_guide_content.md`, then run:
+The bundled `scripts/generate_guide.py` (python-docx) renders a Markdown file into the branded
+Infinum .docx. Write the guide content to a Markdown file using these conventions:
+
+- `# Title | Client | Month Year` → title block, red rule, and grey subtitle
+- `## Section` → H2 section heading (also **restarts question numbering**)
+- `### Subsection` → H3 sub-section heading
+- `1.` numbered questions (restart at each `##`); `a.` lettered sub-items (probes)
+- `- ` bullets; `*italic*` → italic grey note; `**bold**` renders at normal weight
+
+Ensure python-docx is available, then run the script from this skill's directory:
 
 ```bash
-node /tmp/pdd-user-interview-guide/scripts/generate_guide.js \
-  --content /tmp/interview_guide_content.md \
+pip install python-docx --break-system-packages -q
+python3 "${CLAUDE_SKILL_DIR}/scripts/generate_guide.py" \
+  --content interview_guide_content.md \
   --output /mnt/user-data/outputs/user_interview_guide.docx
 ```
 
-The generator embeds the real **Infinum logo** (`assets/logo-color.png`, bundled at the plugin
-root) in the top-right page header. It auto-locates the asset when run from inside the skill; if
-you run the copied script from a location where it can't find it, pass the path explicitly with
-`--logo /path/to/assets/logo-color.png`. If the asset can't be found it falls back to the
-"∞ INFINUM" wordmark.
+The generator embeds the **Infinum logo** (`assets/logo-color.png`, bundled at the plugin root) in
+the top-right page header, auto-locating it relative to the script. Pass `--logo /path/to/logo-color.png`
+to override; if the asset can't be found it falls back to the "INFINUM" wordmark. It applies the
+Infinum brand throughout (Helvetica Neue, red `#D8262D` title rule, bold headings, normal-weight
+questions, lettered probes).
 
 Then validate:
 
@@ -171,15 +182,6 @@ Then validate:
 python3 /mnt/skills/public/docx/scripts/office/validate.py \
   /mnt/user-data/outputs/user_interview_guide.docx
 ```
-
-The script produces a Word document on the Infinum brand:
-- **Infinum logo** (`assets/logo-color.png`) embedded top-right on every page, with grey rule
-- Large bold title + red (#D8262D) horizontal rule below
-- Client name / date subtitle
-- H2 section headings (bold, 15pt)
-- H3 sub-section headings (grey, underlined rule)
-- *Italic* inline conditional notes (questions are not bolded)
-- Proper bullet, numbered, and lettered (a/b/c) list indentation
 
 Then present the file using `present_files`.
 
@@ -217,4 +219,4 @@ Regenerate if needed.
 | `SKILL.md` | This file — workflow instructions |
 | `references/question-library.md` | Master bank of interview questions by section type |
 | `references/format-reference.md` | Document structure, style, and formatting conventions |
-| `scripts/generate_guide.js` | Converts Markdown content to styled .docx (Infinum/ETR template) |
+| `scripts/generate_guide.py` | python-docx generator: Markdown → styled Infinum .docx |

@@ -101,13 +101,15 @@ In addition to per-metric scores, prepare:
   currently strong? These are the highest-value items to surface.
 
 ### Output: run the generation script
-Once scoring is complete, prepare `/tmp/ca_data.json` in the format described in
-`references/data_schema.md`, then call:
+Once scoring is complete, ensure openpyxl is available
+(`pip install openpyxl --break-system-packages -q`), write the data to `ca_data.json` in the
+format described in `references/data_schema.md`, then run the script from its location in this
+skill:
 
 ```bash
-python3 /tmp/pdd-competitive-analysis/scripts/generate_sheet.py \
-  --output /mnt/user-data/outputs/competitive_analysis.xlsx \
-  --data /tmp/ca_data.json
+python3 "<this skill dir>/scripts/generate_sheet.py" \
+  --output "competitive_analysis.xlsx" \
+  --data ca_data.json
 ```
 
 The script produces a **two-sheet workbook**:
@@ -139,4 +141,3 @@ Regenerate if needed.
 | `scripts/generate_sheet.py` | Builds the two-sheet .xlsx from a JSON data payload |
 | `references/categories.md` | Full library of category + metric options by domain |
 | `references/data_schema.md` | JSON structure expected by generate_sheet.py (includes summary + opportunities fields) |
-| `assets/template.xlsx` | Original Infinum/ETR template (style reference only) |

@@ -10,7 +10,7 @@ description: >
   marketing director]" — even if they don't explicitly call it a skill. The output is a
   formatted .docx matching the Infinum/ETR stakeholder interview style — participant list
   at the top, shared intro script, then a tailored per-person question set for each
-  interviewee organized into subsections by topic. Not Cowork-ready — the .docx generator runs on node, which isn't in the Cowork base image.
+  interviewee organized into subsections by topic. Runs on the bundled python-docx generator, so it works in Cowork's base image.
 ---
 
 # PDD Stakeholder Interview Guide Skill
@@ -159,17 +159,30 @@ This signals preparation and typically yields the most candid answers.
 
 ### Generate the .docx
 
-Write guide content to `/tmp/stakeholder_guide_content.md`, then run:
+The bundled `scripts/generate_guide.py` (python-docx) renders a Markdown file into the branded
+Infinum .docx. Write the guide content to a Markdown file using these conventions:
+
+- `# Title | Client | Month Year` → title block, red rule, and grey subtitle
+- Participant list at the top, then the shared intro script
+- `## Interviewee Name — Role` → one H2 section per interviewee (also **restarts question numbering**)
+- `### Subsection` → H3 topic label within an interviewee's set
+- `1.` numbered questions (restart at each `##`); `a.` lettered sub-items (probes)
+- `- ` bullets; `*italic*` → italic grey note; `**bold**` renders at normal weight
+
+Ensure python-docx is available, then run the script from this skill's directory:
 
 ```bash
-node /tmp/pdd-user-interview-guide/scripts/generate_guide.js \
-  --content /tmp/stakeholder_guide_content.md \
+pip install python-docx --break-system-packages -q
+python3 "${CLAUDE_SKILL_DIR}/scripts/generate_guide.py" \
+  --content stakeholder_guide_content.md \
   --output /mnt/user-data/outputs/stakeholder_interview_guide.docx
 ```
 
-The generator embeds the real **Infinum logo** (`assets/logo-color.png`, bundled at the plugin
-root) in the top-right page header. It auto-locates the asset when run from inside the skill; if
-you run the copied script from a location where it can't find it, pass `--logo /path/to/assets/logo-color.png`.
+The generator embeds the **Infinum logo** (`assets/logo-color.png`, bundled at the plugin root) in
+the top-right page header, auto-locating it relative to the script (pass `--logo /path/to/logo-color.png`
+to override; it falls back to the "INFINUM" wordmark if the asset is missing). It applies the
+Infinum brand throughout — Helvetica Neue, red `#D8262D` title rule, bold headings, normal-weight
+questions, lettered probes.
 
 Then validate:
 
@@ -177,13 +190,6 @@ Then validate:
 python3 /mnt/skills/public/docx/scripts/office/validate.py \
   /mnt/user-data/outputs/stakeholder_interview_guide.docx
 ```
-
-The shared JS generator produces the same Infinum brand styling as the user interview guide:
-- **Infinum logo** (`assets/logo-color.png`) embedded top-right on every page
-- Large bold title + red rule
-- H2 participant sections, H3 subsection labels
-- Questions in normal weight (not bolded); italic conditional notes
-- Numbered questions with lettered sub-items
 
 Then present the file using `present_files`.
 
@@ -210,7 +216,7 @@ After presenting the guide, ask:
 | `SKILL.md` | This file — workflow instructions |
 | `references/question-library.md` | Master question bank by role type and section |
 | `references/format-reference.md` | Document structure, style, and formatting conventions |
-| `scripts/generate_guide.js` | Symlink / copy of the shared docx generator from `pdd-user-interview-guide` |
+| `scripts/generate_guide.py` | python-docx generator: Markdown → styled Infinum .docx |
 
-**Note:** This skill shares the same `.js` generator as `pdd-user-interview-guide`. If that skill
-is installed, the generator is already available at `/tmp/pdd-user-interview-guide/scripts/generate_guide.js`.
+**Note:** This skill bundles its own copy of `generate_guide.py` (identical to the one in
+`pdd-user-interview-guide`), so it runs standalone — no dependency on other skills.
