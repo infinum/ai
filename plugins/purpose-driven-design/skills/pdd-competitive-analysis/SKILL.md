@@ -129,6 +129,11 @@ After presenting the file, always ask:
 > "Does this look right? Let me know if you'd like to adjust any scores, categories,
 > add or remove competitors, or update any rationale."
 
+Include this **starting-point note** (per the plugin's output policy):
+
+> **A note on this output:** This is a shared starting point, not a finished deliverable. Per *Keep It Human*, review it and refine it **together with the team** — the best results come from collaboration and human judgment, not from a first pass. Check every line against what you know before using or sharing it.
+
+
 Regenerate if needed.
 
 ---

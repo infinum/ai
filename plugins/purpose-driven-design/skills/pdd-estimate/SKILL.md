@@ -5,11 +5,11 @@ description: >
   It reads the project brief or RFP, benchmarks against past estimates in the team's Estimates
   drive, proposes a feature list with draft hours per department (Discovery, Content/SEO, UX,
   Design, Dev, PM), and fills the official estimate spreadsheet — keeping all of its built-in
-  formulas. Triggers whenever a user wants to: estimate a project, scope hours, build a cost or
+  formulas. Estimates are in hours only; it never outputs dollar amounts. Triggers whenever a user wants to: estimate a project, scope hours, build an
   hours estimate, fill out the estimate template/sheet, price an RFP, or figure out how long a
   build will take. Also trigger when the user says "estimate", "estimate sheet", "scope this",
   "how many hours", "price this RFP", or "fill out the estimate" — even if they don't call it a
-  skill. Output is a filled .xlsx with all formulas intact (a local file; nothing is written to Drive). Cowork-ready.
+  skill. Output is a filled .xlsx (hours only, no dollar amounts) with all formulas intact (a local file; nothing is written to Drive). Cowork-ready.
 ---
 
 # PDD Estimate Skill
@@ -45,29 +45,17 @@ archetypes, stakeholder notes). To estimate well you need:
 | **Known constraints** | Tech stack/CMS, integrations, platforms, languages, accessibility targets. |
 | **Timeline / team** | Drives meeting cadence (project weeks) and PM load. |
 | **Phases** | Whether this is one estimate or phased (Discovery → Design → Build). |
-| **Proposed budget (if any)** | If the client gave a budget, you must work to it — see *Rate & budget* below. |
 
 If the RFP lives in Drive, read it with `read_file_content`. If key items are missing, ask
 them **all at once**, then proceed — you have process knowledge; the user owns the scope.
 
-### Rate & budget
-The estimate is built in **hours**. Do **not** assume an hourly rate — there is no default
-rate. Only convert hours to a cost if the user (or the project context) gives you the rate to
-use for this engagement.
-
-- If you have an hourly rate, the script computes and reports the **estimated cost** (and writes
-  a rate/cost line into the sheet's Assumptions). With no rate, it produces hours only.
-- **If the client provided a proposed budget**, you must work with it. Ask for the applicable
-  hourly rate if you don't have one, convert the budget to a target hours ceiling
-  (`budget ÷ rate`), and aim the scope at that. After drafting, compare the estimated cost to
-  the budget:
-  - **Within budget** — good; note the headroom.
-  - **Over budget** — do **not** silently shrink hours or pad to fit. Surface the gap and
-    propose concrete trade-offs for the user to choose: cut or defer features (e.g. to a
-    Phase 2), reduce a complexity factor, trim meeting cadence, or flag that the scope
-    genuinely needs more than the budget allows. Let the user decide before you build.
-  - Record the rate used, estimated cost, and (if given) the budget and variance in the
-    Assumptions so the trade-off is transparent.
+### Hours only — no dollar amounts
+This skill produces estimates in **hours only**. It does **not** apply an hourly rate or emit any
+dollar figure — no cost, rate, or budget — in the sheet, the Assumptions area, or the chat. If the
+client gave a budget or you need a cost, that conversion happens **outside this skill**; here, keep
+everything in hours. If scope needs to shrink to fit a constraint, surface concrete trade-offs
+(cut/defer features, reduce a complexity factor, trim meeting cadence) in **hours** and let the
+user decide before you build.
 
 ---
 
@@ -91,11 +79,10 @@ building any file**:
 | Feature / Deliverable | Disc | Content/SEO | UX | Design | Dev | PM |
 |---|---|---|---|---|---|---|
 
-Below the table, show: the rough section totals, the **estimated cost** if you have an hourly
-rate to apply, how it compares to the benchmark ranges (naming the comparables) and to the
-**client's budget** if one was given, the **assumptions** you estimated against, and any open
-questions for the client. If the draft is over budget, present the trade-off options (see *Rate
-& budget*) here and let the user choose before building. Also propose the top-level levers:
+Below the table, show: the rough section totals (in **hours**), how they compare to the benchmark
+ranges (naming the comparables), the **assumptions** you estimated against, and any open questions
+for the client. If the scope looks too large for the timeline or team, present hours trade-off
+options here and let the user choose before building. Also propose the top-level levers:
 Discovery fixed items (kick-off/workshop/docs), project weeks (meeting cadence), complexity
 factors for any risky sections, and scope-growth %. Then ask:
 
@@ -122,17 +109,16 @@ changed — see *Refreshing the template* below.)
    they render bold and shaded. Empty department cells are left **blank**, not 0. You can also
    bold a key feature with `{"bold": true}`. The spec also takes
    `discovery_fixed`, `complexity`, `client_status_meetings`, `internal_standups`,
-   `client_training_hours`, `pm_pct`, `scope_growth_pct`, `assumptions`, and — for costing —
-   `hourly_rate` (optional — only set it if you have a rate for this engagement; no rate is
-   assumed) and `budget` (the client's proposed budget, if any).
+   `client_training_hours`, `pm_pct`, `scope_growth_pct`, and `assumptions`. There are no rate,
+   cost, or budget fields — the estimate is hours only.
 3. **Run the populate script** using its absolute path inside this skill (the bundled template
    resolves automatically; pass `--output` only):
    ```bash
    python3 "<this skill dir>/scripts/populate_estimate.py" --spec spec.json --output "Estimate - [Project].xlsx"
    ```
    It writes only input cells (leaving every total a live formula), forces recalc-on-open, and
-   prints a Python-computed preview of all section totals, the grand total, and the cost. Report
-   the grand total and cost to the user — the file itself recalculates when opened.
+   prints a Python-computed preview of all section totals and the grand total, in hours. Report
+   the grand total (hours) to the user — the file itself recalculates when opened.
 4. **Sanity-check** the preview against the Phase-1 benchmark ranges; flag any big deviation.
 
 > **Refreshing the template (rare).** If the master template in Drive has changed, download it
@@ -164,7 +150,8 @@ Present the files with this **starting-point warning verbatim** (per the plugin'
 > past projects and the scope as I understood it; review every line against the team's read of
 > the work and its velocity. Check the assumptions, confirm the open questions with the client,
 > and adjust the complexity and meeting factors to match reality. The sheet's formulas update
-> as you edit the inputs.
+> as you edit the inputs. Per *Keep It Human*, this is a shared starting point to review and
+> refine **together with the team** — not a finished estimate.
 
 Then offer to adjust hours, add/remove features, re-balance departments, change complexity or
 meeting cadence, or produce a phased version.
@@ -177,7 +164,7 @@ meeting cadence, or produce a phased version.
 - [ ] Draft hours were shown and approved **before** the file was built.
 - [ ] Only input cells were written; all totals remain formulas (grand total in `Summary!F2`).
 - [ ] The Python preview total was reported and checked against benchmark ranges.
-- [ ] If an hourly rate was available, estimated cost was computed; if a budget was given, the estimate was reconciled to it (or trade-offs were surfaced and chosen).
+- [ ] The estimate is in hours only — no dollar amounts anywhere (sheet, Assumptions, or chat).
 - [ ] Assumptions and open questions are listed in the sheet and the message.
 - [ ] The filled .xlsx was delivered locally; nothing was written to Drive; the original template was untouched.
 - [ ] The starting-point warning is included.

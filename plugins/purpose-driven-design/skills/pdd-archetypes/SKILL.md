@@ -161,7 +161,7 @@ Each section:
 
 Once the board is created, share the link with the user and include this message verbatim:
 
-> **A note on this output:** These archetype cards are a starting point, not a finished deliverable. The content has been synthesized from your interview data and should be treated as a first draft — expect to revise the narratives, refine the bullet points, and adjust the mindset bar values as your team discusses and pressure-tests each archetype. The cards are fully editable in FigJam, so feel free to reword, reorder, add images, or restructure as needed. The goal is to spark alignment, not to be the final word.
+> **A note on this output:** These archetype cards are a starting point, not a finished deliverable. The content has been synthesized from your interview data and should be treated as a first draft — expect to revise the narratives, refine the bullet points, and adjust the mindset bar values as your team discusses and pressure-tests each archetype. The cards are fully editable in FigJam, so feel free to reword, reorder, add images, or restructure as needed. The goal is to spark alignment, not to be the final word. Per *Keep It Human*, review and refine these **together with the team** — the strongest archetypes come from collaboration, not a first draft.
 
 ---
 

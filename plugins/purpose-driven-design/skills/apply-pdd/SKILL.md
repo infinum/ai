@@ -101,6 +101,10 @@ End the recommendations with:
 
 > "Want me to run any of these now? Just say which one and I'll get started."
 
+Frame this analysis as a shared starting point, not a verdict: per *Keep It Human*, it's meant to
+spark discussion and be reviewed and refined **together with the team**, whose judgment and
+context should shape the final direction.
+
 ---
 
 ## Tone and Approach

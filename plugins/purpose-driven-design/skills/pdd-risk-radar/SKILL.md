@@ -132,7 +132,8 @@ plugin's output policy):
 > **A note on this assessment:** This is an analytical starting point, not a verdict. The risks
 > and severities are my read of the context you shared — review them against what you know about
 > the team, client, and work, add anything I couldn't see, and recalibrate. Use it to start the
-> conversation, not to end it.
+> conversation, not to end it. Per *Keep It Human*, review and recalibrate it **together with the
+> team** — a shared starting point, not a finished assessment.
 
 Then offer next steps: turn it into a maintainable **Risk Tracker spreadsheet** or a
 **branded report**, fold the top risks into the scope or planning conversation,

@@ -178,9 +178,10 @@ python3 "${CLAUDE_SKILL_DIR}/scripts/generate_guide.py" \
   --output /mnt/user-data/outputs/stakeholder_interview_guide.docx
 ```
 
-The generator embeds the **Infinum logo** (`assets/logo-color.png`, bundled at the plugin root) in
-the top-right page header, auto-locating it relative to the script (pass `--logo /path/to/logo-color.png`
-to override; it falls back to the "INFINUM" wordmark if the asset is missing). It applies the
+The generator has the **Infinum logo** embedded directly inside it (base64), so it renders in the
+top-right page header even when the script runs detached from the plugin (e.g. copied elsewhere) —
+no dependency on the `assets/` folder at runtime. Pass `--logo /path/to/logo-color.png` to use a
+different logo. It applies the
 Infinum brand throughout — Helvetica Neue, red `#D8262D` title rule, bold headings, normal-weight
 questions, lettered probes.
 
@@ -206,6 +207,11 @@ After presenting the guide, ask:
 > "Does this look right? Let me know if you'd like to adjust the question focus for any
 > participant, add or remove people, change the session length, or add any project-specific
 > context I should weave in."
+
+Include this **starting-point note** (per the plugin's output policy):
+
+> **A note on this output:** This is a shared starting point, not a finished deliverable. Per *Keep It Human*, review it and refine it **together with the team** — the best results come from collaboration and human judgment, not from a first pass. Check every line against what you know before using or sharing it.
+
 
 ---
 

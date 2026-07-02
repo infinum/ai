@@ -192,7 +192,8 @@ Present the file(s) with `present_files` and include this **starting-point warni
 > shared — review them against your read of the room, the client relationship, and how the
 > conversation is likely to go. Expect to swap activities, adjust timings, and refine the
 > prompts. Workshops always run long, so protect your highest-value exercise. Everything is
-> editable.
+> editable. Per *Keep It Human*, treat this as a shared starting point to review and refine
+> **together with the team** — not a finished plan.
 
 Then ask:
 
