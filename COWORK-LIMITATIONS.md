@@ -4,14 +4,14 @@
 
 Skills and plugins that work in the Claude Code terminal app can silently break in Claude's other surfaces — notably Cowork mode and the Claude desktop app — for two reasons that compound each other:
 
-1. **Sandbox isolation.** Cowork runs the agent's shell inside an isolated Linux VM with a strict egress allowlist, so anything implicitly relying on "the agent and the user share a machine" stops working: local MCP servers on `localhost`, local databases, Docker, local LLMs (Ollama), files outside an explicitly-shared folder, port-forwarded services, custom CLI tools.
+1. **Sandbox isolation.** Cowork runs the agent's shell inside an isolated Linux VM with a default-restrictive egress allowlist (admin-configurable — see [What the Cowork sandbox actually blocks](#what-the-cowork-sandbox-actually-blocks)), so anything implicitly relying on "the agent and the user share a machine" stops working: local MCP servers on `localhost`, local databases, Docker, local LLMs (Ollama), files outside an explicitly-shared folder, port-forwarded services, custom CLI tools.
 2. **A narrower plugin surface.** Cowork supports a subset of the Claude Code plugin model. Skills, slash commands, subagents, bundled MCP servers (`.mcp.json`) **and hooks** run in Cowork (hooks were previously described here as unsupported — that was wrong; see [Hooks run in Cowork](#hooks-run-in-cowork--correction-to-earlier-guidance) below); `.lsp.json`, `monitors/`, `bin/` PATH injection and other shell-side extension points either don't run or have no analogue. A plugin authored for the terminal app may technically install in Cowork but only have a fraction of its surface area active.
 
-There is also a parallel extension mechanism that is _not_ a plugin: **custom connectors**, which are remote-MCP-server registrations attached to a personal account (Pro/Max) or an organization (Team/Enterprise). Connectors live outside the plugin system and behave differently — they're the right tool for some jobs and the wrong one for others. We cover the comparison explicitly below.
+There is also a parallel extension mechanism that is _not_ a plugin: **custom connectors**, which are remote-MCP-server registrations attached to a personal account (any plan) or an organization (Team/Enterprise). Connectors live outside the plugin system and behave differently — they're the right tool for some jobs and the wrong one for others. We cover the comparison explicitly below.
 
 None of this is a bug to be fixed by tweaking a skill — it's a deliberate isolation model and a deliberately narrower plugin surface, both with real trade-offs. Plugins we publish to the marketplace need to be written (or at minimum labeled) with this in mind, otherwise users will hit confusing failures.
 
-All of this might change in the future, as Cowork is a research preview and both the sandbox and plugin surface are likely to evolve. Until then, this document is meant to be a reference for how the current state of things works, what the practical implications are for our plugins, and what to watch for in future updates.
+All of this will keep changing. Cowork is no longer labeled a research preview — it's [available on all paid plans (Pro, Max, Team, Enterprise)](https://support.claude.com/en/articles/13345190-get-started-with-claude-cowork) — but both the sandbox and the plugin surface still evolve quickly. This document is a reference for how the current state works, the practical implications for our plugins, and what to watch for.
 
 ## Where our skills actually run
 
@@ -27,7 +27,7 @@ The second gap is in what a plugin can _contain_ in each environment. Claude Cod
 
 ## Plugin component support: Claude Code vs Cowork
 
-Claude Code's plugin spec (`code.claude.com/docs/en/plugins`) defines these top-level directories inside a plugin:
+Claude Code's [plugin spec](https://code.claude.com/docs/en/plugins) (complete technical detail in the [plugins reference](https://code.claude.com/docs/en/plugins-reference)) defines these top-level directories inside a plugin:
 
 | Directory / file             | Purpose                                                               |
 | ---------------------------- | --------------------------------------------------------------------- |
@@ -35,14 +35,14 @@ Claude Code's plugin spec (`code.claude.com/docs/en/plugins`) defines these top-
 | `skills/`                    | Model-invoked agent skills (`<name>/SKILL.md`)                        |
 | `commands/`                  | Explicit slash commands (legacy flat-file form of skills)             |
 | `agents/`                    | Custom subagent definitions                                           |
-| `hooks/hooks.json`           | Event handlers (PreToolUse, PostToolUse, etc.) running shell commands |
+| `hooks/hooks.json`           | [Event handlers](https://code.claude.com/docs/en/hooks) (PreToolUse, PostToolUse, etc.) running shell commands |
 | `.mcp.json`                  | MCP server registrations bundled with the plugin                      |
 | `.lsp.json`                  | Language Server Protocol configurations for code intelligence         |
 | `monitors/monitors.json`     | Background watchers piping stdout into the agent as notifications     |
 | `bin/`                       | Executables added to the Bash tool's `$PATH` while plugin is enabled  |
-| `settings.json`              | Default settings applied when the plugin is enabled                   |
+| `settings.json`              | Default settings applied when the plugin is enabled (currently only the `agent` and `subagentStatusLine` keys) |
 
-Cowork, per the official "Customize Cowork with plugins" announcement and the in-product plugin directory, is currently described as supporting **skills, slash commands, subagents, and connectors** — explicitly file-based. There is no mention of hooks, LSP, monitors, `bin/` PATH injection, or shell-mounted executables, and there's no obvious place for them to land given the sandbox model. **(Correction, 2026-07:** the *blog announcement* omits hooks, but Anthropic's [_Use plugins in Claude Cowork_](https://support.claude.com/en/articles/13837440-use-plugins-in-claude-cowork) Help Center article explicitly states hooks **run in Cowork** — see [Hooks run in Cowork](#hooks-run-in-cowork--correction-to-earlier-guidance) below. LSP, monitors, and `bin/` remain unmentioned and are treated as unsupported.)
+Cowork, per the official [_Customize Cowork with plugins_ announcement](https://claude.com/blog/cowork-plugins) and the in-product plugin directory, is described as supporting **skills, slash commands, subagents, and connectors** — explicitly file-based. Hooks are absent from the blog post but **do** run in Cowork per the [_Use plugins in Claude Cowork_](https://support.claude.com/en/articles/13837440-use-plugins-in-claude-cowork) Help Center article — see [Hooks run in Cowork](#hooks-run-in-cowork--correction-to-earlier-guidance) below. LSP, monitors, and `bin/` are unmentioned anywhere and treated as unsupported.
 
 The practical state of plugin component support, as best as I've been able to verify:
 
@@ -52,7 +52,7 @@ The practical state of plugin component support, as best as I've been able to ve
 | Slash commands (`commands/`)            | Yes                  | Yes                                                                                                                                         | Listed as supported in Cowork; legacy form of skills.                                                                                                                                                                                                                                          |
 | Subagents (`agents/`)                   | Yes                  | Yes (per announcement)                                                                                                                      | Cowork advertises sub-agent support, but the marketplace plugins we've inspected lean _heavily_ on skills — only dedicated agent-style plugins (e.g. Anthropic's `pitch-agent`) actually ship `agents/`. Worth treating as "supported but rarely used" until we see more in-the-wild examples. |
 | Bundled MCP (`.mcp.json`)               | Yes                  | Yes for **remote** servers; **stdio (local-subprocess) servers are not viable** because the sandbox can't launch the user's local binaries. | This is the single biggest difference in practice.                                                                                                                                                                                                                                             |
-| Hooks (`hooks/`)                        | Yes                  | **Yes** — runs in Cowork; grayed out in plain chat (corrected — see below)                                                                                                                         | Corrected 2026-07 — hooks **do** run in Cowork (Help Center: "hooks and sub-agents run only in Cowork"). A hook's *value* still depends on what it does: network egress and local binaries fail, but a `SessionStart` hook that injects a bundled file into context works. See the correction section below.                                                                                                                                                    |
+| Hooks (`hooks/`)                        | Yes                  | **Yes** — grayed out in plain chat ([corrected](#hooks-run-in-cowork--correction-to-earlier-guidance) 2026-07)                                                                                                                         | A hook's *value* depends on what it does: network egress and local binaries still fail; a `SessionStart` hook injecting a bundled file works.                                                                                                                                                    |
 | LSP (`.lsp.json`)                       | Yes                  | No                                                                                                                                          | Cowork is not running a code-intelligence loop against the user's editor.                                                                                                                                                                                                                      |
 | Monitors (`monitors/`)                  | Yes                  | No                                                                                                                                          | Background `tail -F`-style watchers don't make sense without the user's filesystem.                                                                                                                                                                                                            |
 | `bin/` PATH injection                   | Yes                  | No                                                                                                                                          | Sandbox image has no notion of plugin-supplied user binaries.                                                                                                                                                                                                                                  |
@@ -89,7 +89,7 @@ Cowork does **not** read the user-global `~/.claude/CLAUDE.md` that the Claude C
 
 - **Global instructions** — _Settings → Cowork_ in Claude Desktop ("standing instructions that apply to every Cowork session").
 - **Folder instructions** — project-specific context attached to a connected folder.
-- **Project** files, instructions, and memory.
+- **Project** files, instructions, and memory (memory persists within projects but is not retained across standalone Cowork sessions).
 - A **CLAUDE.md located inside a connected folder** — not `~/.claude`.
 
 Evidence:
@@ -136,7 +136,7 @@ Worth cross-referencing two of Anthropic's reference marketplaces, because they 
 
 **`anthropics/financial-services`** is more elaborate. Its `plugins/vertical-plugins/financial-analysis` directory has `.claude-plugin/`, `.mcp.json`, `commands/`, `hooks/`, _and_ `skills/`. Its `plugins/agent-plugins/pitch-agent` has both `agents/` and `skills/`. The README is explicit that some of these are also "Managed Agent templates" deployed via separate cookbooks. So the financial-services repo is using the full Claude Code plugin surface — but it's labeled as a reference for FSI builders, not as a pure Cowork distribution, and the agent-plugins are partly intended for the Managed Agents product rather than Cowork in-product.
 
-The takeaway for us: if we want plugins that work cleanly in Cowork today, **target the shape of `knowledge-work-plugins`** — skills, MCP wiring, optional commands. Reserve `hooks/`, `monitors/`, `bin/`, and shell-driven automation for terminal-only plugins, and label them as such.
+The takeaway for us: if we want plugins that work cleanly in Cowork today, **target the shape of `knowledge-work-plugins`** — skills, MCP wiring, optional commands. Reserve `monitors/`, `bin/`, and shell-driven automation for terminal-only plugins, and label them as such. (`hooks/` do run in Cowork — just keep the hook body Cowork-safe.)
 
 ## What the Cowork sandbox actually blocks
 
@@ -146,7 +146,9 @@ For a skill running inside the Cowork shell, here is the practical picture I've 
 
 `host.docker.internal` _does_ resolve to the host, but every connection is rejected by an egress proxy returning `403 — blocked-by-allowlist`. Same outcome.
 
-Even general internet egress is blocked: outbound `curl https://example.com`, `https://github.com`, and tunneling services (ngrok, Cloudflare Tunnel) all return `403` from the proxy. There is no user-controllable setting to add destinations to this allowlist.
+Under the **default** egress configuration, general internet egress is blocked too: outbound `curl https://example.com`, `https://github.com`, and tunneling services (ngrok, Cloudflare Tunnel) all return `403` from the proxy.
+
+**Correction (2026-07): the allowlist is now configurable.** Earlier versions of this document said there was no user-controllable setting to add destinations — there is one today. An **Allow network egress** control (on Team/Enterprise under _Organization settings → Capabilities → Code execution_) offers three modes: **None**, **Package managers only** (plus an "Additional allowed domains" list), and **All domains** (minus Anthropic's blocklist); the [_Get started with Claude Cowork_](https://support.claude.com/en/articles/13345190-get-started-with-claude-cowork) article now says network access "follows your configured egress settings." Our `403` observations above were made under the default. Practical caveat: enforcement of the additional-domains list has open bugs ([claude-code #30112](https://github.com/anthropics/claude-code/issues/30112), [#51400](https://github.com/anthropics/claude-code/issues/51400)) — treat an allowlisted domain as working only after testing it in a live session.
 
 Crucially, the agent itself does reach the outside world through different, sanctioned channels — registered MCP connectors, the built-in `WebFetch`/`WebSearch` tools, the Control-Your-Mac connector, and so on. These are not available to skills' shell code; they're agent-level capabilities orchestrated by Claude itself.
 
@@ -174,7 +176,7 @@ Finally, **document the skill as terminal-only**. For some workflows (a skill th
 
 Plugins are not the only way to extend Claude. Alongside the plugin system there is a separate concept — **custom connectors** — that confuses easily because the two overlap in capability but differ in scope, lifecycle, and where they live.
 
-A custom connector is a registration for a **remote MCP server** attached to either a Claude personal account (Pro/Max, under _Customize → Connectors_) or a Claude organization (Team/Enterprise, under _Organization settings → Connectors_, addable only by an Owner or Primary Owner). The registration is essentially three pieces of information: a remote MCP server URL, an optional OAuth client ID and client secret in Advanced settings, and an opt-in toggle for each user inside the org who wants to actually use it. Once enabled by the Owner, individual users authenticate against it themselves, so the connector inherits _their_ permissions in the underlying system rather than running on a shared service account.
+A custom connector is a registration for a **remote MCP server** attached to either a Claude personal account ([available on all plans, including Free](https://support.claude.com/en/articles/11175166-get-started-with-custom-connectors-using-remote-mcp) — previously described here as Pro/Max-only, which is outdated — under _Customize → Connectors_) or a Claude organization (Team/Enterprise, under _Organization settings → Connectors_, addable only by an Owner or Primary Owner). The registration is essentially three pieces of information: a remote MCP server URL, an optional OAuth client ID and client secret in Advanced settings, and an opt-in toggle for each user inside the org who wants to actually use it. Once enabled by the Owner, individual users authenticate against it themselves, so the connector inherits _their_ permissions in the underlying system rather than running on a shared service account.
 
 This is exactly the mechanism we've used for Productive. The connector entry points at `https://mcp.productive.io/mcp`, exposes 16 tools (`create_resource`, `delete_resource`, `describe_report`, `describe_resource`, `get_supported_currencies`, `load_resource`, `load_skills`, `perform_action`, and eight more), and was registered once at the org level. From any individual user's perspective the steps were: open the connector listing, click Connect, complete the OAuth handshake against Productive, and the tools become available in their sessions.
 
@@ -196,7 +198,7 @@ One small but real caveat for plugins-as-MCP-wrappers in Cowork: a plugin's `.mc
 
 Concrete recommendations as we add or revise skills in the marketplace:
 
-Audit each plugin against two questions before tagging it `1.0.0`. First: does it assume `localhost` reachability, files outside the explicit workspace, or local binaries not in a typical sandbox image? Second: does it rely on Claude Code plugin components Cowork doesn't run today — `hooks/`, `monitors/`, `.lsp.json`, `bin/` PATH injection? If yes to either, it has limited portability and we should know which environments it actually targets.
+Audit each plugin against two questions before tagging it `1.0.0`. First: does it assume `localhost` reachability, files outside the explicit workspace, or local binaries not in a typical sandbox image? Second: does it rely on Claude Code plugin components Cowork doesn't run today — `monitors/`, `.lsp.json`, `bin/` PATH injection? (Hooks run in Cowork; judge what the hook body does, not its presence.) If yes to either, it has limited portability and we should know which environments it actually targets.
 
 Where there's a hosted equivalent, prefer it for the primary path and keep the local-resource path as a fallback. This is the difference between "works wherever Claude works" and "works on three of our laptops."
 
@@ -222,20 +224,21 @@ This shape — _works in terminal, partially works in Cowork via a hosted/regist
 
 ## What to watch for
 
-Cowork is currently labeled a research preview, and both the sandbox model and the plugin surface are likely to evolve. Realistic things to keep an eye on:
+Both the sandbox model and the plugin surface keep evolving. Two watched-for items have already landed since this document was first written: **hooks run in Cowork** (see the correction above) and **egress allowlisting is now an org-level setting** (see [What the Cowork sandbox actually blocks](#what-the-cowork-sandbox-actually-blocks)). Still worth watching:
 
-A user- or org-level setting to allowlist additional hosts/ports, or an opt-in "trusted local session" mode that drops the sandbox. First-class support for stdio-launched MCP servers in Cowork (which would cover most local-tool cases without per-port allowlisting). Cowork picking up the rest of the Claude Code plugin component set — hooks, monitors, LSP — in some form, even if scoped down. Better tooling on the publishing side: a per-environment capability declaration in `plugin.json`, a portability linter, or a first-class compatibility matrix from Anthropic. Org-wide plugin marketplace installation in Cowork (the announcement explicitly flagged that "plugins are currently saved locally to your machine" with org sharing coming).
+Per-port/`localhost` allowlisting, or an opt-in "trusted local session" mode that drops the sandbox. First-class support for stdio-launched MCP servers in Cowork (which would cover most local-tool cases). Cowork picking up monitors and LSP in some form, even if scoped down. Better tooling on the publishing side: a per-environment capability declaration in `plugin.json`, a portability linter, or a first-class compatibility matrix from Anthropic. Org-wide plugin marketplace installation in Cowork (the [announcement](https://claude.com/blog/cowork-plugins) explicitly flagged that "plugins are currently saved locally to your machine" with org sharing coming).
 
-Until any of those land, the rule of thumb that's emerged is: **if a plugin's success depends on the agent being on the user's machine network, or on plugin components other than skills/commands/subagents/MCP, design it for the terminal app, ship the MCP registration so it degrades gracefully elsewhere, and label it accordingly. If the deliverable is purely "give the agent these tools," prefer a custom connector to a plugin.**
+Until any of those land, the rule of thumb that's emerged is: **if a plugin's success depends on the agent being on the user's machine network, or on plugin components other than skills/commands/subagents/hooks/MCP, design it for the terminal app, ship the MCP registration so it degrades gracefully elsewhere, and label it accordingly. If the deliverable is purely "give the agent these tools," prefer a custom connector to a plugin.**
 
 ## References
 
 - _Customize Cowork with plugins_ — Anthropic blog post: <https://claude.com/blog/cowork-plugins>
-- _Use plugins in Claude Cowork_ — Help Center: <https://support.claude.com/en/articles/13837440-use-plugins-in-claude-cowork>
-- _Create plugins_ (Claude Code) — full plugin spec: <https://code.claude.com/docs/en/plugins>
-- _Get started with custom connectors using remote MCP_ — Help Center: <https://support.claude.com/en/articles/11175166-get-started-with-custom-connectors-using-remote-mcp>
+- _Use plugins in Claude Cowork_ — Help Center (confirms **hooks and sub-agents run only in Cowork**): <https://support.claude.com/en/articles/13837440-use-plugins-in-claude-cowork>
+- _Create plugins_ (Claude Code): <https://code.claude.com/docs/en/plugins> · full spec: [Plugins reference](https://code.claude.com/docs/en/plugins-reference) · [Hooks](https://code.claude.com/docs/en/hooks)
+- _Get started with Claude Cowork_ — Help Center (folder-scoped file access; Global/folder instructions; no `~/.claude`; configurable egress; plan availability): <https://support.claude.com/en/articles/13345190-get-started-with-claude-cowork>
+- _Get started with custom connectors using remote MCP_ — Help Center (all plans incl. Free; org-level Owner-only): <https://support.claude.com/en/articles/11175166-get-started-with-custom-connectors-using-remote-mcp>
+- Figma MCP server tools matrix (remote vs desktop; `use_figma` is remote-only): <https://developers.figma.com/docs/figma-mcp-server/tools-and-prompts/>
 - `anthropics/knowledge-work-plugins` — the de-facto Cowork plugin shape: <https://github.com/anthropics/knowledge-work-plugins>
 - `anthropics/financial-services` — fuller plugin surface including hooks, commands, agents: <https://github.com/anthropics/financial-services>
-- _Use plugins in Claude Cowork_ — Help Center (confirms **hooks and sub-agents run only in Cowork**): <https://support.claude.com/en/articles/13837440-use-plugins-in-claude-cowork>
-- _Get started with Claude Cowork_ — Help Center (folder-scoped file access; Global/folder instructions; no `~/.claude`): <https://support.claude.com/en/articles/13345190-get-started-with-claude-cowork>
 - _Expose configurable memory and CLAUDE.md paths in Cowork mode_ — claude-code issue #44098 (evidence Cowork doesn't read `~/.claude`): <https://github.com/anthropics/claude-code/issues/44098>
+- Cowork egress-allowlist enforcement bugs — claude-code issues [#30112](https://github.com/anthropics/claude-code/issues/30112), [#51400](https://github.com/anthropics/claude-code/issues/51400)
