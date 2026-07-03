@@ -13,7 +13,9 @@ description: >
   layer, not a conceptual primer. Platform-neutral: casing, state vocabulary,
   and token→theme mapping are resolved by a platform binding skill (e.g.
   flutter-m3-conventions) or the project CLAUDE.md — see the Platform Binding
-  section.
+  section. Not Cowork-ready — the build/audit steps drive Figma through
+  `use_figma` writes to the local Dev Mode MCP bridge, which the sandbox can't
+  reach; the naming and architecture guidance itself still reads fine anywhere.
 ---
 
 # AI-Ready Design System (Infinum)

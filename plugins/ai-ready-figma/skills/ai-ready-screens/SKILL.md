@@ -6,7 +6,10 @@ description: >
   correct screen-level code. Triggers on: screens file, wireframes, user flow,
   prototype connections, prototype reactions, frame naming, screen states,
   flow handoff, MCP navigation. Pairs with ai-ready-design-system (which covers
-  the component library, not the assembled screens).
+  the component library, not the assembled screens). Not Cowork-ready — the
+  build/audit steps wire Figma through `use_figma` writes to the local Dev Mode
+  MCP bridge, which the sandbox can't reach; the naming and flow guidance itself
+  still reads fine anywhere.
 ---
 
 # AI-Ready Screens (Infinum)

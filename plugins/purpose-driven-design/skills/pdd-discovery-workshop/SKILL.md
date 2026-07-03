@@ -11,6 +11,8 @@ description: >
   "workshop agenda", "kickoff workshop", "facilitation board", "which exercises should we run",
   or "plan a session with the client" — even if they don't call it a skill. Output is a
   formatted .docx run-of-show plus a FigJam board scaffold (one section per activity).
+  Cowork-ready — the .docx run-of-show uses Cowork's built-in docx toolchain; the FigJam
+  board step needs the Figma bridge but falls back to a Markdown scaffold when it's unavailable.
 ---
 
 # PDD Discovery Workshop Planner
