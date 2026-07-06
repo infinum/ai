@@ -266,6 +266,11 @@ Present the file to the user and include a brief summary:
 
 > "Here's the Rainbow Analysis — **[N] observations** across **[N] participants**, sorted by frequency. The most common theme appeared in [N] out of [N] participants. Let me know if you'd like to adjust any theme wording, add/remove observations, or change the sort order."
 
+
+Include this **starting-point note** (per the plugin's output policy):
+
+> **A note on this output:** This is a shared starting point, not a finished deliverable. Per *Keep It Human*, review it and refine it **together with the team** — the best results come from collaboration and human judgment, not from a first pass. Check every line against what you know before using or sharing it.
+
 If you added a Participant Summary tab, mention it too (e.g. "I also included a **Participant Summary** tab mapping each participant across the key dimensions").
 
 ---

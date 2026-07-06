@@ -121,7 +121,8 @@ output policy):
 > **A note on this brief:** This summarizes the project as captured in the materials available
 > so far. Items marked *To confirm with client* are genuine gaps — get them answered rather than
 > assuming. Sections marked *in progress* will firm up as discovery continues. Review and correct
-> anything before sharing it as the team's source of truth.
+> anything before sharing it as the team's source of truth. Per *Keep It Human*, this is a shared
+> starting point to review and refine **together with the team** — not a finished brief.
 
 Then offer next steps: produce a **branded .docx** one-pager, fold the open questions into a
 stakeholder interview guide, or update the brief once discovery wraps.

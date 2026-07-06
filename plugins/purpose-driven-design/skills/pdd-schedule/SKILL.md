@@ -99,7 +99,8 @@ Present the `.xlsx` with `present_files` and include this **starting-point note*
 > **A note on this schedule:** These dates are a working plan based on the SOW and what you
 > shared — confirm them against the team's capacity and the client's review turnaround before
 > committing. Milestones (deliveries and feedback-due dates) are best-effort; adjust as the
-> timeline firms up.
+> timeline firms up. Per *Keep It Human*, this is a shared starting point to review and refine
+> **together with the team** — not a finished, committed schedule.
 
 Then offer to adjust dates/phases or regenerate after changes.
 
