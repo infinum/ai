@@ -72,7 +72,8 @@ Include this **starting-point note** (per the plugin's output policy):
 
 > **A note on this summary:** This reflects only what the interviews actually surfaced — cells
 > marked *Not discussed* are genuine gaps, not assumptions. Review it against your own read of
-> the sessions before using it to synthesize archetypes or themes.
+> the sessions before using it to synthesize archetypes or themes. Per *Keep It Human*, treat it
+> as a shared starting point to review and build on **together with the team** — not a finished artifact.
 
 Then offer the natural next steps: identify **archetypes** (`pdd-archetypes`) or run a
 **rainbow analysis** (`pdd-rainbow-analysis`) from this summary.

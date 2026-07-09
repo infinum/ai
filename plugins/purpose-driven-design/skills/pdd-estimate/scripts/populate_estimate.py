@@ -33,17 +33,12 @@ Spec JSON schema (all keys optional except project_name + features):
   "client_training_hours": 0,
   "pm_pct": 0.10,
   "scope_growth_pct": 0.0,
-  "hourly_rate": 200,        # optional: $/hr for the project; no rate is assumed if omitted
-  "budget": 90000,           # optional: client's proposed budget in dollars
   "assumptions": ["...", "..."]
 }
 
-Rate/budget: the estimate is built in hours. If an `hourly_rate` is provided, the script
-also computes an estimated cost (hours x rate) and, if a budget is given, the budget-
-equivalent hours and the variance — and records a rate/cost line in the sheet's Assumptions.
-If no rate is provided, only hours are produced (no cost). The script does NOT silently
-resize the estimate to hit a budget; fitting scope to budget is a judgement call made with
-the user before the spec is built (see SKILL.md).
+HOURS ONLY: this skill never computes or emits dollar amounts — no hourly rates, costs, or
+budgets, in the Assumptions area or anywhere else. Every figure it produces is in hours. Any
+conversion from hours to cost happens outside this skill.
 """
 import argparse, json, os, sys
 import openpyxl
@@ -249,7 +244,6 @@ def preview(template, spec):
     scope = spec.get("scope_growth_pct", coeff.get("SCOPE", 0.0)) * (disc + cont + ux + des + dev + pm + client_mtg + qa)
     grand = disc + cont + ux + des + dev + pm + client_mtg + internal_mtg + qa + scope
 
-    rate = spec.get("hourly_rate")  # optional; no rate is assumed
     out = {
         "Discovery": round(disc, 1), "Content & SEO": round(cont, 1), "UX": round(ux, 1),
         "Design": round(des, 1), "Development": round(dev, 1), "PM": round(pm, 1),
@@ -258,20 +252,6 @@ def preview(template, spec):
         "ESTIMATE TOTAL (hours)": round(grand, 1),
         "feature_subtotals": {k: round(v, 1) for k, v in sub.items()},
     }
-    budget = spec.get("budget")
-    if rate:
-        est_cost = grand * rate
-        out["hourly_rate"] = rate
-        out["ESTIMATED COST ($)"] = round(est_cost, 2)
-        if budget:
-            out["client_budget ($)"] = budget
-            out["budget_hours_at_rate"] = round(budget / rate, 1)
-            out["cost_vs_budget ($)"] = round(est_cost - budget, 2)
-            out["status_vs_budget"] = ("OVER budget" if est_cost > budget
-                                        else "under budget" if est_cost < budget else "on budget")
-    elif budget:
-        out["client_budget ($)"] = budget
-        out["note"] = "Provide an hourly_rate to compare the estimate against the budget."
     return out
 
 
@@ -286,23 +266,11 @@ def main():
         sys.exit(f"Template not found: {args.template}")
     spec = json.load(open(args.spec))
 
-    # Compute totals first, then record a rate/cost line in the sheet's Assumptions (if a rate is set).
-    pre = preview(args.template, spec)
-    hrs = pre["ESTIMATE TOTAL (hours)"]; rate = spec.get("hourly_rate")
-    rate_lines = []
-    if rate:
-        cost = pre["ESTIMATED COST ($)"]
-        rate_lines.append(f"Estimated at ${rate:,.0f}/hr: ~{hrs:,.1f} hrs ≈ ${cost:,.0f}.")
-        if spec.get("budget"):
-            b = spec["budget"]; bh = pre["budget_hours_at_rate"]
-            rate_lines.append(
-                f"Client's proposed budget: ${b:,.0f} (≈ {bh:,.1f} hrs at ${rate:,.0f}/hr) — "
-                f"this estimate is {pre['status_vs_budget']} by ${abs(pre['cost_vs_budget ($)']):,.0f}."
-            )
-    spec["assumptions"] = rate_lines + spec.get("assumptions", [])
+    # Hours only — never compute or emit dollar amounts; drop any stray rate/budget keys.
+    spec.pop("hourly_rate", None); spec.pop("budget", None)
     summary = populate(args.template, spec, args.output)
     print(f"Saved: {args.output}\n")
-    print("Computed preview (file recalculates on open):")
+    print("Computed preview in HOURS (file recalculates on open):")
     print(json.dumps(summary, indent=2))
 
 
