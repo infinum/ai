@@ -18,11 +18,13 @@
 
 // ── ADOPT: change these six values to adopt the harness for your org ─────────
 
-// GitHub "owner/repo" slug — marketplace source, update checks, clone URL.
-export const GITHUB_REPO = "infinum/ai";
+// Repository "owner/repo" slug — marketplace source, update checks, clone URL.
+// The value is consumed as `github:<slug>` today (see INSTALL_CMD); the name is
+// vendor-neutral so an org on another host (e.g. Bitbucket) reads sensibly.
+export const REPOSITORY_NAME = "infinum/ai";
 
 // Claude Code marketplace name. Must match the npm package `name`, because the
-// install command is `--allow-build=<MARKETPLACE_NAME> github:<GITHUB_REPO>`.
+// install command is `--allow-build=<MARKETPLACE_NAME> github:<REPOSITORY_NAME>`.
 export const MARKETPLACE_NAME = "infinum-ai";
 
 // Subdirectory the installer owns under the Claude config dir: ~/.claude/<name>/.
@@ -43,4 +45,4 @@ export const ORG_NAME = "Infinum";
 export const SKIP_UPDATE_ENV = `${ENV_PREFIX}_STACK_SKIP_UPDATE_CHECK`;
 
 // One-shot install/update command shown in help text and update banners.
-export const INSTALL_CMD = `pnpm dlx --allow-build=${MARKETPLACE_NAME} github:${GITHUB_REPO}`;
+export const INSTALL_CMD = `pnpm dlx --allow-build=${MARKETPLACE_NAME} github:${REPOSITORY_NAME}`;
