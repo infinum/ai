@@ -14,7 +14,7 @@
     "probe:mcp-conflict": "sh scripts/probe-mcp-conflict-skip.sh",
     "prepare": "git config core.hooksPath .githooks 2>/dev/null || true"
   },
-  "license": "PolyForm-Noncommercial-1.0.0",
+  "license": "CC-BY-NC-4.0",
   "engines": {
     "node": "^24",
     "pnpm": "^11.0.0"

@@ -65,6 +65,36 @@ For PSDD-specific terms (PRD/FRD, Technical brief, Ask mode, Plan mode, Build mo
 
 ## License
 
-Licensed under the [PolyForm Noncommercial License 1.0.0](LICENSE) — free for noncommercial use; commercial use requires a separate license from Infinum, which holds the copyright.
+This project is **source-available, not open source.** It is licensed under the [Creative Commons Attribution-NonCommercial 4.0 International License (CC BY-NC 4.0)](LICENSE) — full text in [LICENSE](LICENSE) and at <https://creativecommons.org/licenses/by-nc/4.0/>. The license permits **noncommercial use only** and covers the entire repository, both its source code and its documentation.
+
+### What this means in practice
+
+You are free to:
+
+- read, use, copy, modify, and share this project;
+- use it for personal, educational, research, and other **noncommercial** purposes;
+- use it within charitable, educational, public-research, public-safety or health, environmental-protection, and government organizations,
+
+as long as you give **appropriate credit** (attribution) and indicate any changes you made.
+
+You may **not** use this project, or anything based on it, for any **commercial** purpose. A commercial purpose is, broadly, use primarily intended for or directed toward commercial advantage — including using this tooling or documentation to deliver services to your own clients or customers.
+
+### Commercial use
+
+Infinum offers AI transformation as a service. If you want to use this tooling or documentation commercially — in your own products, in client work, or in your internal business operations — you need a separate commercial license from Infinum, which holds the copyright. To discuss commercial licensing, contact **[commercial licensing contact — e.g. legal@infinum.com]**.
+
+### What's included, what's not
+
+This repository contains the parts of our AI tooling and way-of-working documentation that we are comfortable sharing publicly. Client-specific material, credentials, internal-only processes, and other sensitive content have been removed and are kept in a separate private repository.
+
+### Trademarks
+
+The name "Infinum", the Infinum logo, and other Infinum brand elements are trademarks of Infinum d.o.o. They are **not** licensed under CC BY-NC 4.0 or any other license in this repository, and nothing here grants you any right to use them.
+
+### No warranty
+
+As stated in the license, this project is provided "as is", without warranties or conditions of any kind, to the fullest extent the law allows; Infinum will not be liable for any damages arising out of the license or the use of the project.
+
+### Contributions
 
 Contributions are accepted by default only from the Infinum group (Infinum and its subsidiaries/affiliates); outside contributions are declined by default and require triage. See [Contribution policy and licensing](CONTRIBUTING.md#contribution-policy-and-licensing).
