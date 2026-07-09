@@ -2,7 +2,7 @@
 // =============================================================================
 // stack-essentials — SessionStart hook
 //
-// Notifies the user when any installed source (the public infinum/ai base, or
+// Notifies the user when any installed source (the public base repo, or
 // a private overlay added via `--extend <owner/repo>`) has advanced past their
 // last installer run. The notification is all this hook does; re-running the
 // installer is how the update is picked up. Silent when up-to-date or offline.
@@ -13,7 +13,7 @@
 // overlays have no remote to compare against.
 //
 // Mechanism:
-//   1. Read ~/.claude/infinum/.manifest.json. v2 manifests carry a `sources`
+//   1. Read ~/.claude/<config dir>/.manifest.json. v2 manifests carry a `sources`
 //      map ({ <marketplace>: { upstream, upstreamSha } }); each source with a
 //      non-null `upstream` is a target. Old v1 manifests fall back to the flat
 //      `rulesUpstreamSha` (public base only).
@@ -39,8 +39,14 @@ const execFileAsync = promisify(execFile);
 const CACHE_TTL_MS = 24 * 60 * 60 * 1000;
 const LS_REMOTE_TIMEOUT_MS = 1500;
 const TARGET_REF = "refs/heads/main";
-const BASE_ID = "infinum-ai";
-const BASE_UPSTREAM = "infinum/ai";
+// ── BRAND (keep in sync with bin/lib/brand.js) ──────────────────────────────
+// This hook ships as an installed plugin and can't import bin/lib/brand.js at
+// runtime, so it carries its own copy of the identity tokens. When adopting the
+// harness for a new org, update these to match brand.js.
+const BASE_ID = "infinum-ai"; // marketplace name — brand.js MARKETPLACE_NAME
+const BASE_UPSTREAM = "infinum/ai"; // owner/repo — brand.js GITHUB_REPO
+const CONFIG_DIR_NAME = "infinum"; // ~/.claude/<dir> — brand.js CONFIG_DIR_NAME
+const SKIP_UPDATE_ENV = "INFINUM_STACK_SKIP_UPDATE_CHECK"; // brand.js SKIP_UPDATE_ENV
 
 // ---- pure logic (unit-tested in test/update-check.test.js) ---------------
 
@@ -81,8 +87,8 @@ export function buildBanner(staleTargets) {
 		.filter((t) => t.id !== BASE_ID)
 		.map((t) => `--extend ${t.upstream}`)
 		.join(" ");
-	const cmd = `pnpm dlx --allow-build=infinum-ai github:infinum/ai${extendArgs ? ` ${extendArgs}` : ""}`;
-	return `[infinum/ai] A newer version is available for: ${names}. Re-run to apply:\n  ${cmd}`;
+	const cmd = `pnpm dlx --allow-build=${BASE_ID} github:${BASE_UPSTREAM}${extendArgs ? ` ${extendArgs}` : ""}`;
+	return `[${BASE_UPSTREAM}] A newer version is available for: ${names}. Re-run to apply:\n  ${cmd}`;
 }
 
 // ---- IO ------------------------------------------------------------------
@@ -135,11 +141,11 @@ function printBanner(message) {
 }
 
 async function main() {
-	if (process.env.INFINUM_STACK_SKIP_UPDATE_CHECK === "1") return;
+	if (process.env[SKIP_UPDATE_ENV] === "1") return;
 
 	const claudeDir = getClaudeDir();
-	const manifestPath = join(claudeDir, "infinum", ".manifest.json");
-	const cachePath = join(claudeDir, "infinum", ".update-check.json");
+	const manifestPath = join(claudeDir, CONFIG_DIR_NAME, ".manifest.json");
+	const cachePath = join(claudeDir, CONFIG_DIR_NAME, ".update-check.json");
 
 	const targets = gatherUpstreamTargets(await readJson(manifestPath));
 	if (targets.length === 0) return;
