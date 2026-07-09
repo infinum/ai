@@ -1,11 +1,11 @@
 #!/usr/bin/env node
 // =============================================================================
-// infinum/ai — Claude Code installer
+// Claude Code installer — org/repo identity lives in bin/lib/brand.js
 //
 // What this does:
-//   1. Adds the infinum-ai marketplace (the "base" source), plus any private
+//   1. Adds the base marketplace (the "base" source), plus any private
 //      extension marketplaces passed via --extend (or remembered from a prior run)
-//   2. Installs Infinum house rules into ~/.claude/infinum/   (we own this dir)
+//   2. Installs the house rules into ~/.claude/<config dir>/   (we own this dir)
 //   3. Selects opt-in rule bundles in <source>/rules/<bundle>/
 //   4. Installs marketplace plugins (per source)
 //   5. For installed plugins that opt in, mirrors their .mcp.json into
@@ -22,7 +22,7 @@
 //                        clears the remembered set (base-only).
 //   --local, -l         Point the base marketplace at this checkout (dev only).
 //
-// The manifest (~/.claude/infinum/.manifest.json) records only installer-owned
+// The manifest (~/.claude/<config dir>/.manifest.json) records only installer-owned
 // state — rules/bundles we wrote, the cross-platform MCP mirror entries, and
 // per-source bookkeeping. It never tracks which plugins are installed (that's
 // Claude Code's state, read live when needed).
@@ -63,20 +63,28 @@ import {
 	removeBundle,
 } from "./lib/bundles.js";
 import { registerPluginMcp, unregisterPluginMcp } from "./lib/mcp.js";
+import {
+	CONFIG_DIR_NAME,
+	DISPLAY_NAME,
+	GITHUB_REPO,
+	INSTALL_CMD,
+	MARKETPLACE_NAME,
+	ORG_NAME,
+} from "./lib/brand.js";
 import { classifyExtendToken, resolveExtendSet, upcastManifest } from "./lib/sources.js";
 
 const REPO_ROOT = resolve(dirname(fileURLToPath(import.meta.url)), "..");
 const CLAUDE_DIR = process.env.CLAUDE_CONFIG_DIR
 	? resolve(process.env.CLAUDE_CONFIG_DIR)
 	: join(homedir(), ".claude");
-const INFINUM_DIR = join(CLAUDE_DIR, "infinum");
-const MANIFEST_PATH = join(INFINUM_DIR, ".manifest.json");
-const UPDATE_CHECK_PATH = join(INFINUM_DIR, ".update-check.json");
+const CONFIG_DIR = join(CLAUDE_DIR, CONFIG_DIR_NAME);
+const MANIFEST_PATH = join(CONFIG_DIR, ".manifest.json");
+const UPDATE_CHECK_PATH = join(CONFIG_DIR, ".update-check.json");
 const USER_CLAUDE_MD = join(CLAUDE_DIR, "CLAUDE.md");
-const INDEX_IMPORT_PATH = join(INFINUM_DIR, "index.md");
-const IMPORT_LINE = `@${INDEX_IMPORT_PATH}  # managed by infinum/ai`;
-const BASE_MARKETPLACE_NAME = "infinum-ai";
-const BASE_UPSTREAM = "infinum/ai";
+const INDEX_IMPORT_PATH = join(CONFIG_DIR, "index.md");
+const IMPORT_LINE = `@${INDEX_IMPORT_PATH}  # managed by ${GITHUB_REPO}`;
+const BASE_MARKETPLACE_NAME = MARKETPLACE_NAME;
+const BASE_UPSTREAM = GITHUB_REPO;
 
 // Plugins installed unconditionally — they ship cross-cutting plumbing
 // (e.g. the stale-rules notification hook) that every user should get
@@ -166,7 +174,7 @@ const WHOAMI_STUB = `# Who you're working with
 > Replace this with your name and role so Claude can calibrate
 > its responses. Example:
 >
-> "Senior backend engineer at Infinum, focused on payments.
+> "Senior backend engineer at ${ORG_NAME}, focused on payments.
 > Comfortable with Go and Postgres; new to the iOS codebase."
 `;
 
@@ -207,7 +215,7 @@ async function readMarketplaceName(repoRoot) {
 }
 
 // ---- Source descriptors --------------------------------------------------
-// A "source" is a marketplace the installer pulls from: the base (infinum/ai)
+// A "source" is a marketplace the installer pulls from: the base repo
 // plus zero or more private overlays. Each carries everything the per-source
 // pipeline needs.
 
@@ -233,7 +241,7 @@ async function buildExtendSource(token) {
 		// Shallow-clone the overlay repo to a temp dir to read its rules +
 		// marketplace name. Plugins still install from the registered (by-name)
 		// marketplace so they track GitHub; the clone is only for the rules tree.
-		const tmp = await mkdtemp(join(tmpdir(), "infinum-extend-"));
+		const tmp = await mkdtemp(join(tmpdir(), `${CONFIG_DIR_NAME}-extend-`));
 		const clone = spawnSync(
 			"git",
 			["clone", "--depth", "1", `https://github.com/${token}`, tmp],
@@ -471,29 +479,29 @@ async function readManifest() {
 	}
 }
 
-// Copy one source's top-level rules into ~/.claude/infinum/. Cleanup is scoped
+// Copy one source's top-level rules into ~/.claude/<config dir>/. Cleanup is scoped
 // to THIS source's previously-recorded rules — so a base-only run never
 // touches an overlay's rules (and vice-versa). Returns { ruleFiles, ruleHashes }.
 async function installTopLevelRules(source, prevSource) {
-	await mkdir(INFINUM_DIR, { recursive: true });
+	await mkdir(CONFIG_DIR, { recursive: true });
 
 	const ruleFiles = await listRuleFiles(source.rulesDir);
 	const ruleHashes = {};
 	for (const name of ruleFiles) {
 		const buf = await readFile(join(source.rulesDir, name));
-		await writeFile(join(INFINUM_DIR, name), buf);
+		await writeFile(join(CONFIG_DIR, name), buf);
 		ruleHashes[name] = sha256(buf);
 	}
 
 	for (const name of Object.keys(prevSource?.rules ?? {})) {
 		if (!(name in ruleHashes)) {
-			const stalePath = join(INFINUM_DIR, name);
+			const stalePath = join(CONFIG_DIR, name);
 			if (existsSync(stalePath)) await unlink(stalePath);
 		}
 	}
 
 	if (source.isBase) {
-		const whoamiPath = join(INFINUM_DIR, "whoami.md");
+		const whoamiPath = join(CONFIG_DIR, "whoami.md");
 		if (!existsSync(whoamiPath)) {
 			await writeFile(whoamiPath, WHOAMI_STUB);
 			log.success("Created whoami.md (edit it to introduce yourself)");
@@ -557,11 +565,11 @@ async function installBundlesPerSource(sources, prevManifest, selectedNames) {
 		for (const name of selectedNames) {
 			const bundle = bundles.find((b) => b.name === name);
 			if (!bundle) continue; // this source doesn't ship that bundle
-			installed[name] = await installBundle(bundle.dir, join(INFINUM_DIR, name));
+			installed[name] = await installBundle(bundle.dir, join(CONFIG_DIR, name));
 		}
 		for (const name of Object.keys(prevBundles)) {
 			if (!(name in installed)) {
-				await removeBundle(INFINUM_DIR, name, prevBundles[name]);
+				await removeBundle(CONFIG_DIR, name, prevBundles[name]);
 			}
 		}
 		out[source.id] = installed;
@@ -583,11 +591,11 @@ async function cleanupDroppedSources(prevManifest, keepIds) {
 	for (const [id, entry] of Object.entries(prevManifest?.sources ?? {})) {
 		if (keepIds.has(id)) continue;
 		for (const name of Object.keys(entry.rules ?? {})) {
-			const p = join(INFINUM_DIR, name);
+			const p = join(CONFIG_DIR, name);
 			if (existsSync(p)) await unlink(p);
 		}
 		for (const bundle of Object.keys(entry.bundles ?? {})) {
-			await removeBundle(INFINUM_DIR, bundle, entry.bundles[bundle]);
+			await removeBundle(CONFIG_DIR, bundle, entry.bundles[bundle]);
 		}
 		log.info(`Dropped source: ${id} (rules removed)`);
 	}
@@ -596,20 +604,20 @@ async function cleanupDroppedSources(prevManifest, keepIds) {
 // Rebuild index.md from a sources map: whoami + every source's rule files +
 // bundle files. Shared by the install pipeline and --remove.
 async function writeIndexFromSources(sourcesMap) {
-	const indexLines = [`@${join(INFINUM_DIR, "whoami.md")}`];
+	const indexLines = [`@${join(CONFIG_DIR, "whoami.md")}`];
 	for (const entry of Object.values(sourcesMap)) {
 		for (const name of Object.keys(entry.rules ?? {}).sort()) {
-			indexLines.push(`@${join(INFINUM_DIR, name)}`);
+			indexLines.push(`@${join(CONFIG_DIR, name)}`);
 		}
 	}
 	for (const entry of Object.values(sourcesMap)) {
 		for (const bundle of Object.keys(entry.bundles ?? {}).sort()) {
 			for (const file of Object.keys(entry.bundles[bundle]).sort()) {
-				indexLines.push(`@${join(INFINUM_DIR, bundle, file)}`);
+				indexLines.push(`@${join(CONFIG_DIR, bundle, file)}`);
 			}
 		}
 	}
-	await writeFile(join(INFINUM_DIR, "index.md"), `${indexLines.join("\n")}\n`);
+	await writeFile(join(CONFIG_DIR, "index.md"), `${indexLines.join("\n")}\n`);
 	log.success("Regenerated index.md");
 }
 
@@ -879,13 +887,13 @@ async function removeSource(id, manifest) {
 		delete manifest.mcpRegistrations[key];
 	}
 
-	// 3. Remove its rules + bundles from ~/.claude/infinum/.
+	// 3. Remove its rules + bundles from ~/.claude/<config dir>/.
 	for (const name of Object.keys(entry?.rules ?? {})) {
-		const p = join(INFINUM_DIR, name);
+		const p = join(CONFIG_DIR, name);
 		if (existsSync(p)) await unlink(p);
 	}
 	for (const bundle of Object.keys(entry?.bundles ?? {})) {
-		await removeBundle(INFINUM_DIR, bundle, entry.bundles[bundle]);
+		await removeBundle(CONFIG_DIR, bundle, entry.bundles[bundle]);
 	}
 
 	// 4. Deregister the marketplace; 5. drop it from the manifest.
@@ -908,7 +916,7 @@ async function runRemove(tokens, prevManifest) {
 	for (const token of tokens) {
 		if (token === BASE_MARKETPLACE_NAME) {
 			log.warn(
-				`Refusing to remove the base (${BASE_MARKETPLACE_NAME}). To fully uninstall: delete the import line from ${USER_CLAUDE_MD}, rm -rf ${INFINUM_DIR}, and run \`claude plugin marketplace remove ${BASE_MARKETPLACE_NAME}\`.`,
+				`Refusing to remove the base (${BASE_MARKETPLACE_NAME}). To fully uninstall: delete the import line from ${USER_CLAUDE_MD}, rm -rf ${CONFIG_DIR}, and run \`claude plugin marketplace remove ${BASE_MARKETPLACE_NAME}\`.`,
 			);
 			continue;
 		}
@@ -989,15 +997,15 @@ function printSummary() {
 	outro(
 		[
 			"Done. What's next:",
-			`  • Personalize: edit ${join(INFINUM_DIR, "whoami.md")}`,
+			`  • Personalize: edit ${join(CONFIG_DIR, "whoami.md")}`,
 			"  • Browse plugins: open Claude Code and run /plugin",
 			"",
 			"Updating later:",
-			"  pnpm dlx --allow-build=infinum-ai github:infinum/ai",
+			`  ${INSTALL_CMD}`,
 			"",
 			"Uninstall:",
 			`  Remove "${IMPORT_LINE}" from ${USER_CLAUDE_MD}`,
-			`  rm -rf ${INFINUM_DIR}`,
+			`  rm -rf ${CONFIG_DIR}`,
 			`  claude plugin marketplace remove ${BASE_MARKETPLACE_NAME}`,
 		].join("\n"),
 	);
@@ -1013,10 +1021,10 @@ async function printHelp() {
 	const optPlugins = plugins.filter((p) => !AUTO_INSTALL_PLUGINS.has(p.name));
 	const fmt = (name, desc) => `  ${name}${desc ? `  — ${desc}` : ""}`;
 	const out = [
-		"Infinum AI — Claude Code installer",
+		`${DISPLAY_NAME} — Claude Code installer`,
 		"",
 		"USAGE",
-		"  pnpm dlx --allow-build=infinum-ai github:infinum/ai [options]",
+		`  ${INSTALL_CMD} [options]`,
 		"  node bin/install.js [options]              # from a clone",
 		"",
 		"OPTIONS",
@@ -1056,8 +1064,8 @@ async function main() {
 
 	intro(
 		LOCAL_MODE
-			? `Infinum AI — Claude Code setup (LOCAL mode: ${REPO_ROOT})`
-			: "Infinum AI — Claude Code setup",
+			? `${DISPLAY_NAME} — Claude Code setup (LOCAL mode: ${REPO_ROOT})`
+			: `${DISPLAY_NAME} — Claude Code setup`,
 	);
 
 	const tmpDirs = [];

@@ -3,7 +3,7 @@
 // Top-level rules/*.md are auto-installed (handled in install.js).
 // Subfolders like rules/<bundle>/ are bundles users opt into via a TTY prompt.
 // Each bundle's optional README.md first non-heading line is shown as the
-// hint in the prompt; bundle files install to ~/.claude/infinum/<bundle>/.
+// hint in the prompt; bundle files install to ~/.claude/<config dir>/<bundle>/.
 
 import { createHash } from "node:crypto";
 import { existsSync } from "node:fs";
@@ -71,8 +71,8 @@ export async function installBundle(bundleDir, destDir) {
 }
 
 // Remove files from a previously-installed bundle and rmdir if empty.
-export async function removeBundle(infinumDir, bundleName, prevFiles) {
-	const dir = join(infinumDir, bundleName);
+export async function removeBundle(configDir, bundleName, prevFiles) {
+	const dir = join(configDir, bundleName);
 	for (const fileName of Object.keys(prevFiles || {})) {
 		const filePath = join(dir, fileName);
 		if (existsSync(filePath)) await unlink(filePath);
@@ -86,7 +86,7 @@ export async function removeBundle(infinumDir, bundleName, prevFiles) {
 
 // Prompt for bundle selection (TTY only). Returns names selected.
 // Non-TTY and cancel: preserves prior selection — a non-interactive
-// re-run (e.g. `npx -y github:infinum/ai`) must not silently strip
+// re-run (e.g. a non-interactive `pnpm dlx` install) must not silently strip
 // bundles the user previously opted into.
 export async function promptBundleSelection(bundles, prevBundleNames = []) {
 	if (!process.stdin.isTTY) {

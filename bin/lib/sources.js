@@ -5,8 +5,10 @@
 // test/sources.test.js. The orchestration (cloning, marketplace add,
 // per-source install/cleanup) stays in bin/install.js.
 
-const BASE_ID = "infinum-ai";
-const BASE_UPSTREAM = "infinum/ai";
+import { GITHUB_REPO, MARKETPLACE_NAME } from "./brand.js";
+
+const BASE_ID = MARKETPLACE_NAME;
+const BASE_UPSTREAM = GITHUB_REPO;
 
 // Upcast a manifest read from disk to the source-scoped v2 shape.
 //   - null            -> null          (no prior install)
