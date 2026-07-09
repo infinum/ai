@@ -81,7 +81,7 @@ You may **not** use this project, or anything based on it, for any **commercial*
 
 ### Commercial use
 
-Infinum offers AI transformation as a service. If you want to use this tooling or documentation commercially — in your own products, in client work, or in your internal business operations — you need a separate commercial license from Infinum, which holds the copyright. To discuss commercial licensing, contact **[commercial licensing contact — e.g. legal@infinum.com]**.
+Infinum offers AI transformation as a service. If you want to use this tooling or documentation commercially — in your own products, in client work, or in your internal business operations — you need a separate commercial license from Infinum, which holds the copyright. To discuss commercial licensing, contact **hello@infinum.com**.
 
 ### What's included, what's not
 
