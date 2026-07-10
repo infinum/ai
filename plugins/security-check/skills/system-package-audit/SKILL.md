@@ -1,16 +1,22 @@
 ---
-name: package-security-check
-description: Comprehensive security audit of a package before updating. Checks GitHub source, registry metadata, postinstall scripts, known vulnerabilities, maintainer changes, and supply chain risks. Use when the user wants to audit a dependency before upgrading or mentions /package-security-check. Not Cowork-ready — requires local package managers (`brew`/`npm`/`pip`/etc.) and registry egress.
+name: system-package-audit
+description: Supply-chain security audit of a system/OS package or globally-installed CLI tool (Homebrew, apt, and global npm/pip/cargo/gem installs) before you install or upgrade it — checks known CVEs, maintainer/ownership changes, install scripts, source-vs-registry integrity, the version diff, and typosquatting. Use before installing or upgrading a system package or global tool, or when the user mentions /security-check:system-package-audit. For a project's lockfile dependencies use dependency-adoption-review (before adding one) or vulnerability-report-triage (for reported vulns). Not Cowork-ready — requires local package managers (`brew`/`npm`/`pip`/etc.) and registry egress.
 ---
 
-# Package Security Check
+# System Package Audit
 
-Comprehensive security audit of a package before updating, supporting multiple package managers and protecting against
-supply chain attacks.
+Supply-chain security audit of a **system/OS package or globally-installed CLI tool** before you install or upgrade it —
+across Homebrew, apt, and global `npm`/`pip`/`cargo`/`gem` installs — protecting against supply chain attacks.
+
+**Scope:** this skill audits packages installed *on the machine* (system packages and global tools), **not** a project's
+lockfile dependencies. For project dependencies, use the sibling skills in this `security-check` plugin:
+
+- **`/security-check:dependency-adoption-review`** — vet a library *before adding it* to a project (license, maintenance, bus factor, alternatives).
+- **`/security-check:vulnerability-report-triage`** — triage reported vulnerabilities (Dependabot / Revisor) in a project's dependencies.
 
 ## Usage
-/package-security-check <manager>:<package>
-/package-security-check <package>  (auto-detect)
+/security-check:system-package-audit <manager>:<package>
+/security-check:system-package-audit <package>  (auto-detect)
 
 ## Supported Package Managers
 - `brew` - Homebrew

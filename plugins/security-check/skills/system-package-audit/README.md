@@ -1,22 +1,24 @@
-# package-security-check
+# system-package-audit
 
-Comprehensive security audit of a package before updating it. Compares installed vs. latest version, fetches data from GitHub and the package registry, and runs 7 different checks to flag supply chain attacks, malicious code, and known vulnerabilities.
+Supply-chain security audit of a **system/OS package or globally-installed CLI tool** before you install or upgrade it. Compares installed vs. latest version, fetches data from GitHub and the package registry, and runs layered checks to flag supply chain attacks, malicious code, and known vulnerabilities.
+
+> **Scope:** this skill is for packages installed *on the machine* — Homebrew/apt packages and global `npm`/`pip`/`cargo`/`gem` installs — **not** a project's lockfile dependencies. For project dependencies, use the sibling skills in the `security-check` plugin: **`/security-check:dependency-adoption-review`** (vet a library before adding it) and **`/security-check:vulnerability-report-triage`** (triage reported Dependabot/Revisor vulnerabilities).
 
 ## Usage
 
 ```
-/package-security-check <package>
-/package-security-check <manager>:<package>
+/security-check:system-package-audit <package>
+/security-check:system-package-audit <manager>:<package>
 ```
 
 **Examples:**
 
 ```
-/package-security-check lodash
-/package-security-check npm:lodash
-/package-security-check brew:git
-/package-security-check pip:requests
-/package-security-check cargo:serde
+/security-check:system-package-audit ripgrep
+/security-check:system-package-audit brew:git
+/security-check:system-package-audit npm:typescript      # global tool
+/security-check:system-package-audit pip:poetry
+/security-check:system-package-audit cargo:cargo-edit
 ```
 
 If no manager is specified, the skill auto-detects it based on what's installed on your system.
@@ -118,11 +120,15 @@ The skill runs **7 layered security checks** before declaring an update safe:
 
 ## When to use
 
-- Before updating a dependency in a production project
-- When a package update feels risky and you want a quick sanity check
-- As part of a security review before merging a dependency bump PR
-- After news of a supply chain attack — audit packages you have installed
+- Before installing a new system/OS package or global CLI tool (`brew install`, `npm i -g`, `pip install`, `cargo install`, `gem install`, `apt install`)
+- Before upgrading an installed tool when the update feels risky and you want a quick sanity check
+- After news of a supply chain attack — audit the tools you already have installed
 - Periodically as part of a security hygiene routine
+
+For project (lockfile) dependencies, reach for the sibling skills instead:
+
+- **`/security-check:dependency-adoption-review`** — before adding a new library to a project
+- **`/security-check:vulnerability-report-triage`** — when Dependabot/Revisor reports vulnerabilities in a project's dependencies
 
 ## Requirements
 
