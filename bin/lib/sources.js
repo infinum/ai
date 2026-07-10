@@ -5,10 +5,10 @@
 // test/sources.test.js. The orchestration (cloning, marketplace add,
 // per-source install/cleanup) stays in bin/install.js.
 
-import { GITHUB_REPO, MARKETPLACE_NAME } from "./brand.js";
+import { MARKETPLACE_NAME, REPOSITORY_NAME } from "./brand.js";
 
 const BASE_ID = MARKETPLACE_NAME;
-const BASE_UPSTREAM = GITHUB_REPO;
+const BASE_UPSTREAM = REPOSITORY_NAME;
 
 // Upcast a manifest read from disk to the source-scoped v2 shape.
 //   - null            -> null          (no prior install)

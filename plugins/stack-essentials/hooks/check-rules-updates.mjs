@@ -44,7 +44,7 @@ const TARGET_REF = "refs/heads/main";
 // runtime, so it carries its own copy of the identity tokens. When adopting the
 // harness for a new org, update these to match brand.js.
 const BASE_ID = "infinum-ai"; // marketplace name — brand.js MARKETPLACE_NAME
-const BASE_UPSTREAM = "infinum/ai"; // owner/repo — brand.js GITHUB_REPO
+const BASE_UPSTREAM = "infinum/ai"; // owner/repo — brand.js REPOSITORY_NAME
 const CONFIG_DIR_NAME = "infinum"; // ~/.claude/<dir> — brand.js CONFIG_DIR_NAME
 const SKIP_UPDATE_ENV = "INFINUM_STACK_SKIP_UPDATE_CHECK"; // brand.js SKIP_UPDATE_ENV
 

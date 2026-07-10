@@ -66,10 +66,10 @@ import { registerPluginMcp, unregisterPluginMcp } from "./lib/mcp.js";
 import {
 	CONFIG_DIR_NAME,
 	DISPLAY_NAME,
-	GITHUB_REPO,
 	INSTALL_CMD,
 	MARKETPLACE_NAME,
 	ORG_NAME,
+	REPOSITORY_NAME,
 } from "./lib/brand.js";
 import { classifyExtendToken, resolveExtendSet, upcastManifest } from "./lib/sources.js";
 
@@ -82,9 +82,9 @@ const MANIFEST_PATH = join(CONFIG_DIR, ".manifest.json");
 const UPDATE_CHECK_PATH = join(CONFIG_DIR, ".update-check.json");
 const USER_CLAUDE_MD = join(CLAUDE_DIR, "CLAUDE.md");
 const INDEX_IMPORT_PATH = join(CONFIG_DIR, "index.md");
-const IMPORT_LINE = `@${INDEX_IMPORT_PATH}  # managed by ${GITHUB_REPO}`;
+const IMPORT_LINE = `@${INDEX_IMPORT_PATH}  # managed by ${REPOSITORY_NAME}`;
 const BASE_MARKETPLACE_NAME = MARKETPLACE_NAME;
-const BASE_UPSTREAM = GITHUB_REPO;
+const BASE_UPSTREAM = REPOSITORY_NAME;
 
 // Plugins installed unconditionally — they ship cross-cutting plumbing
 // (e.g. the stale-rules notification hook) that every user should get
