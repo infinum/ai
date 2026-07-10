@@ -34,7 +34,7 @@ Enumerate every directory directly under `plugins/`. Each directory is one plugi
 - `plugins/<name>/skills/*/SKILL.md` — for the frontmatter description and the body (heuristic evidence)
 - `plugins/<name>/commands/*.md` — if present
 - `plugins/<name>/agents/*.md` — if present
-- `plugins/<name>/hooks/` — existence is itself a signal
+- `plugins/<name>/hooks/` — read the hook(s); they **do** run in Cowork, so classify by what each hook actually does (Step 2), not by mere presence
 - `plugins/<name>/monitors/` — existence is itself a signal
 - `plugins/<name>/.lsp.json` — existence is itself a signal
 - `plugins/<name>/.mcp.json` — inspect the transport
@@ -50,11 +50,12 @@ Apply the checklist below in order. A plugin is **Not Cowork-ready** if **any** 
 
 A plugin is Not Cowork-ready if it contains any of:
 
-- A `hooks/` directory (Cowork doesn't run plugin hooks).
 - A `monitors/` directory.
 - A `.lsp.json` file.
 - A `bin/` directory (no PATH injection in the sandbox).
 - A `.mcp.json` whose server entries use **stdio transport** — i.e. an entry with a `command` field (and typically `args`) rather than a `url`. Stdio MCP requires spawning a local subprocess on the user's machine, which the sandbox cannot do. HTTP/SSE MCP entries (with a `url`) are fine.
+
+> **Hooks are NOT a disqualifier — correction (2026-07).** Earlier versions of this skill listed a `hooks/` directory as an automatic "Not Cowork-ready" signal. **That was wrong.** Plugin hooks **run in Cowork** — Anthropic's *Use plugins in Claude Cowork* Help Center article states: *"hooks and sub-agents run only in Cowork, so they appear grayed out in chat"* (i.e. they run in Cowork and the Claude Code terminal, just not in plain web/desktop chat). So `hooks/` presence alone does not make a plugin Not Cowork-ready. Judge what the hook *does* against the behavioral rules below: a `SessionStart` hook that `cat`s a bundled file into context is Cowork-fine; a hook that shells out to a local binary, hits `localhost`, or reaches a blocked network host is not. See [`COWORK-LIMITATIONS.md`](../../../COWORK-LIMITATIONS.md) (§ *Hooks run in Cowork* and the rules-to-Cowork-via-hook trick) for the evidence and links. Caveat: the docs say "hooks" generally; the `SessionStart` event specifically is pending our own empirical confirmation in a live Cowork session.
 
 #### Behavioral rules (scan the SKILL.md and any commands/agents)
 

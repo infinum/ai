@@ -6,7 +6,7 @@ For the user-facing harness overview, see [README.md](README.md); for the PSDD w
 
 ## Contribution policy and licensing
 
-This repository is published under the [PolyForm Noncommercial License 1.0.0](LICENSE). That license governs what **downstream users** may do with the code (noncommercial use only). It does **not** bind Infinum: as the copyright holder and licensor, Infinum retains the right to use, relicense, and commercially license the work and every contribution to it. The rules below exist to keep that IP chain clean.
+This repository is published under the [Creative Commons Attribution-NonCommercial 4.0 International License (CC BY-NC 4.0)](LICENSE). That license governs what **downstream users** may do with the work (noncommercial use only, with attribution). It does **not** bind Infinum: as the copyright holder and licensor, Infinum retains the right to use, relicense, and commercially license the work and every contribution to it. The rules below exist to keep that IP chain clean.
 
 **Who may contribute.** By default, contributions are accepted only from employees of **the Infinum group** — Infinum and its subsidiaries and affiliates, currently including **ETR**, **Your Majesty**, and **AMR**, plus any subsidiary or affiliate Infinum adds in the future. Work an Infinum-group employee produces in the course of their employment is owned by their employer, so these contributions are Infinum's intellectual property.
 
@@ -15,7 +15,7 @@ This repository is published under the [PolyForm Noncommercial License 1.0.0](LI
 **Outside contributions are not accepted by default.** Pull requests and patches from anyone outside the Infinum group are **declined by default** and require explicit maintainer triage before they can be considered. This is the current policy and may change. If you are not an Infinum-group employee:
 
 - Prefer opening an **issue** that describes the change, rather than a PR.
-- If you do open a PR, expect it to be triaged — most will be closed with thanks. We do **not** merge third-party code without a deliberate review of provenance and licensing, because accepting outside contributions under the Noncommercial license would encumber Infinum's ability to license the work commercially.
+- If you do open a PR, expect it to be triaged — most will be closed with thanks. We do **not** merge third-party code without a deliberate review of provenance and licensing, because accepting outside contributions under this noncommercial license (CC BY-NC 4.0) would encumber Infinum's ability to license the work commercially.
 
 **For maintainers triaging an outside PR:** confirm the contributor's provenance and the licensing of every changed line before merging. Absent that confirmation, close the PR — do not merge.
 

@@ -5,7 +5,7 @@
 Skills and plugins that work in the Claude Code terminal app can silently break in Claude's other surfaces — notably Cowork mode and the Claude desktop app — for two reasons that compound each other:
 
 1. **Sandbox isolation.** Cowork runs the agent's shell inside an isolated Linux VM with a strict egress allowlist, so anything implicitly relying on "the agent and the user share a machine" stops working: local MCP servers on `localhost`, local databases, Docker, local LLMs (Ollama), files outside an explicitly-shared folder, port-forwarded services, custom CLI tools.
-2. **A narrower plugin surface.** Cowork supports a subset of the Claude Code plugin model. Skills, slash commands, subagents and bundled MCP servers (`.mcp.json`) are advertised; `hooks/`, `.lsp.json`, `monitors/`, `bin/` PATH injection and other shell-side extension points either don't run or have no analogue. A plugin authored for the terminal app may technically install in Cowork but only have a fraction of its surface area active.
+2. **A narrower plugin surface.** Cowork supports a subset of the Claude Code plugin model. Skills, slash commands, subagents, bundled MCP servers (`.mcp.json`) **and hooks** run in Cowork (hooks were previously described here as unsupported — that was wrong; see [Hooks run in Cowork](#hooks-run-in-cowork--correction-to-earlier-guidance) below); `.lsp.json`, `monitors/`, `bin/` PATH injection and other shell-side extension points either don't run or have no analogue. A plugin authored for the terminal app may technically install in Cowork but only have a fraction of its surface area active.
 
 There is also a parallel extension mechanism that is _not_ a plugin: **custom connectors**, which are remote-MCP-server registrations attached to a personal account (Pro/Max) or an organization (Team/Enterprise). Connectors live outside the plugin system and behave differently — they're the right tool for some jobs and the wrong one for others. We cover the comparison explicitly below.
 
@@ -42,7 +42,7 @@ Claude Code's plugin spec (`code.claude.com/docs/en/plugins`) defines these top-
 | `bin/`                       | Executables added to the Bash tool's `$PATH` while plugin is enabled  |
 | `settings.json`              | Default settings applied when the plugin is enabled                   |
 
-Cowork, per the official "Customize Cowork with plugins" announcement and the in-product plugin directory, is currently described as supporting **skills, slash commands, subagents, and connectors** — explicitly file-based. There is no mention of hooks, LSP, monitors, `bin/` PATH injection, or shell-mounted executables, and there's no obvious place for them to land given the sandbox model.
+Cowork, per the official "Customize Cowork with plugins" announcement and the in-product plugin directory, is currently described as supporting **skills, slash commands, subagents, and connectors** — explicitly file-based. There is no mention of hooks, LSP, monitors, `bin/` PATH injection, or shell-mounted executables, and there's no obvious place for them to land given the sandbox model. **(Correction, 2026-07:** the *blog announcement* omits hooks, but Anthropic's [_Use plugins in Claude Cowork_](https://support.claude.com/en/articles/13837440-use-plugins-in-claude-cowork) Help Center article explicitly states hooks **run in Cowork** — see [Hooks run in Cowork](#hooks-run-in-cowork--correction-to-earlier-guidance) below. LSP, monitors, and `bin/` remain unmentioned and are treated as unsupported.)
 
 The practical state of plugin component support, as best as I've been able to verify:
 
@@ -52,13 +52,81 @@ The practical state of plugin component support, as best as I've been able to ve
 | Slash commands (`commands/`)            | Yes                  | Yes                                                                                                                                         | Listed as supported in Cowork; legacy form of skills.                                                                                                                                                                                                                                          |
 | Subagents (`agents/`)                   | Yes                  | Yes (per announcement)                                                                                                                      | Cowork advertises sub-agent support, but the marketplace plugins we've inspected lean _heavily_ on skills — only dedicated agent-style plugins (e.g. Anthropic's `pitch-agent`) actually ship `agents/`. Worth treating as "supported but rarely used" until we see more in-the-wild examples. |
 | Bundled MCP (`.mcp.json`)               | Yes                  | Yes for **remote** servers; **stdio (local-subprocess) servers are not viable** because the sandbox can't launch the user's local binaries. | This is the single biggest difference in practice.                                                                                                                                                                                                                                             |
-| Hooks (`hooks/`)                        | Yes                  | No / not documented                                                                                                                         | Hooks fire shell commands on tool events. In a sandbox with no user filesystem and no user binaries, the value is limited even if they ran.                                                                                                                                                    |
+| Hooks (`hooks/`)                        | Yes                  | **Yes** — runs in Cowork; grayed out in plain chat (corrected — see below)                                                                                                                         | Corrected 2026-07 — hooks **do** run in Cowork (Help Center: "hooks and sub-agents run only in Cowork"). A hook's *value* still depends on what it does: network egress and local binaries fail, but a `SessionStart` hook that injects a bundled file into context works. See the correction section below.                                                                                                                                                    |
 | LSP (`.lsp.json`)                       | Yes                  | No                                                                                                                                          | Cowork is not running a code-intelligence loop against the user's editor.                                                                                                                                                                                                                      |
 | Monitors (`monitors/`)                  | Yes                  | No                                                                                                                                          | Background `tail -F`-style watchers don't make sense without the user's filesystem.                                                                                                                                                                                                            |
 | `bin/` PATH injection                   | Yes                  | No                                                                                                                                          | Sandbox image has no notion of plugin-supplied user binaries.                                                                                                                                                                                                                                  |
 | `settings.json` (agent activation etc.) | Yes                  | Unclear; not advertised                                                                                                                     | Likely no Cowork analogue for "activate this subagent as the main thread".                                                                                                                                                                                                                     |
 
 The shape of the gap: a plugin can install fine in both environments and still behave very differently because the active surface area is smaller in Cowork.
+
+## Hooks run in Cowork — correction to earlier guidance
+
+> **Earlier versions of this document — and the `cowork-readiness-check` skill — claimed hooks do not run in Cowork. That was wrong.** It was an inference from the blog announcement's silence plus the sandbox model, written up as fact. Leaving the correction in the doc's usual retraction style so the mistake is visible, not quietly overwritten.
+
+Anthropic's Help Center article **[_Use plugins in Claude Cowork_](https://support.claude.com/en/articles/13837440-use-plugins-in-claude-cowork)** states directly:
+
+> "The skills bundled in a plugin work across all three [web chat, Claude Desktop chat, and Cowork], while **hooks and sub-agents run only in Cowork**, so they appear grayed out in chat."
+
+So the accurate picture across the three Claude.ai/Desktop surfaces — plus the Claude Code terminal, where hooks have always run — is:
+
+| Surface | Skills | Hooks |
+|---|---|---|
+| Claude Code terminal | ✅ | ✅ |
+| Cowork | ✅ | ✅ |
+| Plain web / Desktop chat (non-Cowork) | ✅ | ❌ grayed out |
+
+Practical consequences:
+
+- A `hooks/` directory is **not**, by itself, a reason a plugin is "Not Cowork-ready." What matters is what the hook *does*: a hook that shells out to a local binary, hits `localhost`, or reaches a host the egress proxy blocks still fails; a hook that only reads a bundled file and prints it is fine.
+- The `cowork-readiness-check` skill's hard rule to the contrary has been corrected.
+
+**Caveat (pending our own verification).** The article speaks of "hooks" as a category. We have **not** independently confirmed that the **`SessionStart`** event specifically fires inside a live Cowork session. Treat "SessionStart works in Cowork" as *documented-by-implication, not yet empirically verified by us* until we smoke-test it.
+
+## Global instructions in Cowork: why `~/.claude` rules don't reach it — and the hook "trick" that does
+
+Cowork does **not** read the user-global `~/.claude/CLAUDE.md` that the Claude Code terminal (and this repo's installer-shipped [`rules/`](rules/)) rely on. Cowork runs in an isolated VM whose filesystem is scoped to explicitly-connected folders, and its persistent-instruction surfaces are its own:
+
+- **Global instructions** — _Settings → Cowork_ in Claude Desktop ("standing instructions that apply to every Cowork session").
+- **Folder instructions** — project-specific context attached to a connected folder.
+- **Project** files, instructions, and memory.
+- A **CLAUDE.md located inside a connected folder** — not `~/.claude`.
+
+Evidence:
+
+- **[_Get started with Claude Cowork_](https://support.claude.com/en/articles/13345190-get-started-with-claude-cowork)**: "Claude can only read and write files in folders you've connected." The documented persistent-instruction mechanisms are Global instructions, folder instructions, and project memory — with no mention of `~/.claude` or a user-global `CLAUDE.md`.
+- **[claude-code issue #44098](https://github.com/anthropics/claude-code/issues/44098)** ("Expose configurable memory and CLAUDE.md paths in Cowork mode"): "Cowork mode inherits Claude Code's auto-memory system and CLAUDE.md loading, but neither path is user-configurable within Cowork's UI"; auto-memory "writes to a hardcoded local VM path"; "Cowork's sandboxed VM environment doesn't surface environment variables or a `settings.json` for user configuration." The documented CLAUDE.md workaround is a **local** CLAUDE.md in a *connected* folder acting as a "bootstrapping shim" — confirming Cowork's CLAUDE.md loading is folder-scoped, not `~/.claude`-scoped.
+
+**Implication for this repo:** the [`rules/`](rules/) mechanism (the installer writes to `~/.claude/infinum/` and imports it from `~/.claude/CLAUDE.md`) loads in the **Claude Code terminal only**. It does **not** reach Cowork. A rule bundle is therefore the wrong vehicle for anything that must be present in a Cowork session.
+
+### The trick: ship always-on, rule-like instructions to Cowork via a `SessionStart` hook
+
+Because **hooks run in Cowork** but `~/.claude` rules don't, the portable way to get "always-on" instructions into a Cowork session is to **ship them as a file inside the plugin and inject them with a `SessionStart` hook**:
+
+```jsonc
+// plugins/<plugin>/hooks/hooks.json
+{
+  "hooks": {
+    "SessionStart": [
+      {
+        "matcher": "*",
+        "hooks": [
+          { "type": "command", "command": "cat \"${CLAUDE_PLUGIN_ROOT}/instructions.md\"", "timeout": 10 }
+        ]
+      }
+    ]
+  }
+}
+```
+
+The hook's stdout is injected into the session context at start, so `instructions.md` behaves like an always-on rule — but delivered through a surface Cowork honors (the plugin and its hooks), not through `~/.claude`. `${CLAUDE_PLUGIN_ROOT}` **does** expand inside `hooks.json` (unlike in `SKILL.md`, where it doesn't — see [CONTRIBUTING.md — Template variables](CONTRIBUTING.md)), so the path resolves in both the terminal and the Cowork VM where the plugin is installed. The [`purpose-driven-design`](plugins/purpose-driven-design/) plugin uses exactly this pattern to deliver its practitioner persona.
+
+Trade-offs and rules of thumb:
+
+- **Scope.** The hook fires only when the plugin is *enabled*, and only in Cowork + the terminal — **not** in plain web/desktop chat (hooks are grayed out there). For chat coverage too, have the skills load the same file at invocation; skills run on all three surfaces.
+- **Single source of truth.** Keep the instructions in the one plugin file. Don't also copy them into `rules/` — that creates drift and only helps the terminal.
+- **Keep the hook Cowork-safe.** `cat` of a bundled file is fine; do **not** fetch from the network or invoke local binaries in a hook you want to work in Cowork (the egress proxy and missing binaries will make it fail).
+- **Pending verification.** Confirm `SessionStart` actually fires in a live Cowork session (see the caveat above) before relying on this for a Cowork-critical persona.
 
 ## What Anthropic's own marketplaces actually ship
 
@@ -166,3 +234,6 @@ Until any of those land, the rule of thumb that's emerged is: **if a plugin's su
 - _Get started with custom connectors using remote MCP_ — Help Center: <https://support.claude.com/en/articles/11175166-get-started-with-custom-connectors-using-remote-mcp>
 - `anthropics/knowledge-work-plugins` — the de-facto Cowork plugin shape: <https://github.com/anthropics/knowledge-work-plugins>
 - `anthropics/financial-services` — fuller plugin surface including hooks, commands, agents: <https://github.com/anthropics/financial-services>
+- _Use plugins in Claude Cowork_ — Help Center (confirms **hooks and sub-agents run only in Cowork**): <https://support.claude.com/en/articles/13837440-use-plugins-in-claude-cowork>
+- _Get started with Claude Cowork_ — Help Center (folder-scoped file access; Global/folder instructions; no `~/.claude`): <https://support.claude.com/en/articles/13345190-get-started-with-claude-cowork>
+- _Expose configurable memory and CLAUDE.md paths in Cowork mode_ — claude-code issue #44098 (evidence Cowork doesn't read `~/.claude`): <https://github.com/anthropics/claude-code/issues/44098>

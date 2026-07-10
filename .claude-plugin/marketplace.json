@@ -18,6 +18,7 @@
     { "name": "progress", "source": "./plugins/progress" },
     { "name": "mobile-deploy", "source": "./plugins/mobile-deploy" },
     { "name": "ai-ready-figma", "source": "./plugins/ai-ready-figma" },
-    { "name": "design-conventions", "source": "./plugins/design-conventions" }
+    { "name": "design-conventions", "source": "./plugins/design-conventions" },
+    { "name": "purpose-driven-design", "source": "./plugins/purpose-driven-design" }
   ]
 }
