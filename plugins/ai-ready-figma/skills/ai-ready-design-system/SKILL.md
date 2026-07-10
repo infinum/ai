@@ -13,13 +13,21 @@ description: >
   layer, not a conceptual primer. Platform-neutral: casing, state vocabulary,
   and token→theme mapping are resolved by a platform binding skill (e.g.
   flutter-m3-conventions) or the project CLAUDE.md — see the Platform Binding
-  section.
+  section. Cowork-ready with the Figma remote MCP connector enabled — the
+  build/audit steps run through `use_figma` (write-to-canvas), a remote-server
+  tool reached over the agent's MCP transport rather than the local Dev Mode
+  bridge; pending live verification. The naming and architecture guidance itself
+  reads fine anywhere.
 ---
 
 # AI-Ready Design System (Infinum)
 
 Platform-invariant rules for structuring and naming a Figma design system so AI
 tools (Claude, MCP, Copilot, Cursor) and developers read it correctly.
+
+> **Cowork:** the build/audit writes go through `use_figma` (write-to-canvas), a
+> **remote** Figma MCP tool — so in Cowork this needs the Figma remote MCP
+> connector enabled; the local Dev Mode desktop server doesn't expose `use_figma`.
 
 ## Core principle
 

@@ -10,7 +10,7 @@ description: >
   marketing director]" — even if they don't explicitly call it a skill. The output is a
   formatted .docx matching the Infinum/ETR stakeholder interview style — participant list
   at the top, shared intro script, then a tailored per-person question set for each
-  interviewee organized into subsections by topic. Runs on the bundled python-docx generator, so it works in Cowork's base image.
+  interviewee organized into subsections by topic. Cowork-ready — the .docx is produced by the bundled python-docx generator, which runs on Cowork's built-in office toolchain.
 ---
 
 # PDD Stakeholder Interview Guide Skill

@@ -7,7 +7,7 @@ description: >
   and provides the full Flutter ColorScheme / TextTheme mapping required for
   Figma → Flutter code generation. Use ALONGSIDE ai-ready-design-system
   whenever the project targets Flutter or Material 3. Triggers on: Flutter, M3,
-  Material 3, ColorScheme, TextTheme, Dart, mobile design system.
+  Material 3, ColorScheme, TextTheme, Dart, mobile design system. Cowork-ready.
 ---
 
 # Flutter M3 Conventions (Infinum platform binding)

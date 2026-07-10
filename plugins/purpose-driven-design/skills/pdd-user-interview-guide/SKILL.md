@@ -9,7 +9,7 @@ description: >
   "research plan", "screener", "usability test plan", "user testing plan", or "write questions
   for user interviews" — even if they don't explicitly call it a skill. The output is a
   formatted .docx on the Infinum brand (structured sections, red accent, Infinum logo in the
-  page header). Runs on the bundled python-docx generator, so it works in Cowork's base image.
+  page header). Cowork-ready — the .docx is produced by the bundled python-docx generator, which runs on Cowork's built-in office toolchain.
 ---
 
 # PDD User Interview Guide Skill

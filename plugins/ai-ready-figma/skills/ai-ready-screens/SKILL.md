@@ -6,7 +6,11 @@ description: >
   correct screen-level code. Triggers on: screens file, wireframes, user flow,
   prototype connections, prototype reactions, frame naming, screen states,
   flow handoff, MCP navigation. Pairs with ai-ready-design-system (which covers
-  the component library, not the assembled screens).
+  the component library, not the assembled screens). Cowork-ready with the Figma
+  remote MCP connector enabled — the build/audit steps run through `use_figma`
+  (write-to-canvas), a remote-server tool reached over the agent's MCP transport
+  rather than the local Dev Mode bridge; pending live verification. The naming
+  and flow guidance itself reads fine anywhere.
 ---
 
 # AI-Ready Screens (Infinum)
@@ -14,6 +18,11 @@ description: >
 Platform-neutral rules for structuring a **screens / user-flow file** so AI tools
 (Claude, MCP, Copilot, Cursor) can locate screens, read flows as a graph, and
 generate correct screen-level code.
+
+> **Cowork:** the build/audit writes (e.g. `setReactionsAsync`) go through
+> `use_figma` (write-to-canvas), a **remote** Figma MCP tool — so in Cowork this
+> needs the Figma remote MCP connector enabled; the local Dev Mode desktop server
+> doesn't expose `use_figma`.
 
 ## Core principle
 

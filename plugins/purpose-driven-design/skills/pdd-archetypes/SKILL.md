@@ -2,7 +2,7 @@
 name: pdd-archetypes
 description: >
   Use this skill to create Purpose-Driven Design (PDD) Archetype documents from user interview data.
-  Trigger whenever a user wants to: synthesize interview data into archetypes or personas, generate archetype documents with goals/frustrations/needs/habits/quotes/demographics, or analyze user research to identify audience segments. Also trigger when the user says "archetypes", "PDD archetypes", "persona documents", or "synthesize interviews into archetypes" — even if they don't call it a skill. (To build a participant summary spreadsheet, use the pdd-interview-summary skill.) Not Cowork-ready — its only output is a FigJam board built through the Figma Plugin API (local Dev Mode bridge), which the sandbox can't reach.
+  Trigger whenever a user wants to: synthesize interview data into archetypes or personas, generate archetype documents with goals/frustrations/needs/habits/quotes/demographics, or analyze user research to identify audience segments. Also trigger when the user says "archetypes", "PDD archetypes", "persona documents", or "synthesize interviews into archetypes" — even if they don't call it a skill. (To build a participant summary spreadsheet, use the pdd-interview-summary skill.) Cowork-ready with the Figma remote MCP connector enabled — it builds the FigJam board via `create_new_file` + `use_figma`, both remote-server (write-to-canvas) tools reached over the agent's MCP transport rather than the local Dev Mode bridge; pending live verification.
 ---
 
 # PDD Archetypes Skill
@@ -10,6 +10,10 @@ description: >
 > **Before you start:** Read `${CLAUDE_SKILL_DIR}/../../instructions.md` and follow its PDD persona and Infinum brand rules throughout — including the document branding (Helvetica Neue, `#000`/`#D8262D`/`#E4EBF5`, Infinum logo top-right) on every file this skill produces.
 
 This skill transforms raw user interview data into polished Purpose-Driven Design (PDD) Archetype documents — **Archetype cards on a FigJam board**. It works best from a synthesized **Participant Summary**; if you don't have one, build it first with the `pdd-interview-summary` skill.
+
+> **Cowork:** the FigJam board is created via `create_new_file` + `use_figma`, which
+> are **remote** Figma MCP tools — so in Cowork this needs the Figma remote MCP
+> connector enabled; the local Dev Mode desktop server doesn't expose them.
 
 ---
 
