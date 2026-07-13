@@ -16,7 +16,7 @@ description: >
 
 # PDD Project Brief
 
-> **Before you start:** Read `${CLAUDE_SKILL_DIR}/../../instructions.md` and follow its PDD persona and ways of working. This skill's deliverable is a plain-Markdown brief (a working summary), so the generic Infinum *document* branding (fonts/colours/logo) does not apply — if the user later wants a branded one-pager, offer to produce a .docx version.
+> **Before you start:** Read `${CLAUDE_PLUGIN_ROOT}/instructions.md` and follow its PDD persona and ways of working. This skill's deliverable is a plain-Markdown brief (a working summary), so the generic Infinum *document* branding (fonts/colours/logo) does not apply — if the user later wants a branded one-pager, offer to produce a .docx version.
 
 Produces a clear, honest snapshot of where a project stands. This is **DISCOVER**-phase
 synthesis: it consolidates what's been learned so the team shares one source of truth, and it

@@ -14,7 +14,7 @@ description: >
 
 # PDD Estimate Skill
 
-> **Before you start:** Read `${CLAUDE_SKILL_DIR}/../../instructions.md` and follow its PDD persona and ways of working. Note: this skill's output is the **standard estimate template**, which has its own format — so the generic Infinum *document* branding (fonts/colours/logo) does **not** apply here. Keep the template's structure and formulas intact.
+> **Before you start:** Read `${CLAUDE_PLUGIN_ROOT}/instructions.md` and follow its PDD persona and ways of working. Note: this skill's output is the **standard estimate template**, which has its own format — so the generic Infinum *document* branding (fonts/colours/logo) does **not** apply here. Keep the template's structure and formulas intact.
 
 Builds an estimate on the team's **2026-format estimate template**, grounded in the project's
 real scope and benchmarked against past estimates. This is PDD work: estimate from evidence
