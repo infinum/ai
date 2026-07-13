@@ -14,7 +14,7 @@ description: >
 
 # PDD User Interview Guide Skill
 
-> **Before you start:** Read `${CLAUDE_SKILL_DIR}/../../instructions.md` and follow its PDD persona and Infinum brand rules throughout — including the document branding (Helvetica Neue, `#000`/`#D8262D`/`#E4EBF5`, Infinum logo top-right) on every file this skill produces.
+> **Before you start:** Read `${CLAUDE_PLUGIN_ROOT}/instructions.md` and follow its PDD persona and Infinum brand rules throughout — including the document branding (Helvetica Neue, `#000`/`#D8262D`/`#E4EBF5`, Infinum logo top-right) on every file this skill produces.
 
 Produces a structured, print-ready User Interview Guide (or combined User Interview /
 Usability Test Guide) following the Infinum/ETR document conventions used across past
@@ -165,7 +165,7 @@ Ensure python-docx is available, then run the script from this skill's directory
 
 ```bash
 pip install python-docx --break-system-packages -q
-python3 "${CLAUDE_SKILL_DIR}/scripts/generate_guide.py" \
+python3 "${CLAUDE_PLUGIN_ROOT}/skills/pdd-user-interview-guide/scripts/generate_guide.py" \
   --content interview_guide_content.md \
   --output /mnt/user-data/outputs/user_interview_guide.docx
 ```

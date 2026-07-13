@@ -14,7 +14,7 @@ description: >
 
 # PDD Interview Summary
 
-> **Before you start:** Read `${CLAUDE_SKILL_DIR}/../../instructions.md` and follow its PDD persona and ways of working. The deliverable here is a working data spreadsheet — keep it clean and scannable; apply Infinum styling lightly (Helvetica/Arial, a `#D8262D` or `#E4EBF5` header fill) but don't over-format.
+> **Before you start:** Read `${CLAUDE_PLUGIN_ROOT}/instructions.md` and follow its PDD persona and ways of working. The deliverable here is a working data spreadsheet — keep it clean and scannable; apply Infinum styling lightly (Helvetica/Arial, a `#D8262D` or `#E4EBF5` header fill) but don't over-format.
 
 Builds a **Participant Summary** — a one-row-per-participant `.xlsx` that maps everyone across
 the key interview dimensions. It's the synthesis reference the team uses *before* clustering

@@ -14,7 +14,7 @@ description: >
 
 # PDD Schedule
 
-> **Before you start:** Read `${CLAUDE_SKILL_DIR}/../../instructions.md` and follow its PDD persona and ways of working. The output reproduces the ETR/Infinum **Project Schedule** tab exactly (it's built by copying the bundled template), so its fonts and colours are already on-brand — don't re-apply the generic document styling.
+> **Before you start:** Read `${CLAUDE_PLUGIN_ROOT}/instructions.md` and follow its PDD persona and ways of working. The output reproduces the ETR/Infinum **Project Schedule** tab exactly (it's built by copying the bundled template), so its fonts and colours are already on-brand — don't re-apply the generic document styling.
 
 Builds a **Project Schedule** — a dated Gantt of phases, tasks and milestones — in the exact
 style of the ETR/Infinum Project Schedule tab. It's built from the bundled template

@@ -15,7 +15,7 @@ description: >
 
 # PDD Stakeholder Interview Guide Skill
 
-> **Before you start:** Read `${CLAUDE_SKILL_DIR}/../../instructions.md` and follow its PDD persona and Infinum brand rules throughout — including the document branding (Helvetica Neue, `#000`/`#D8262D`/`#E4EBF5`, Infinum logo top-right) on every file this skill produces.
+> **Before you start:** Read `${CLAUDE_PLUGIN_ROOT}/instructions.md` and follow its PDD persona and Infinum brand rules throughout — including the document branding (Helvetica Neue, `#000`/`#D8262D`/`#E4EBF5`, Infinum logo top-right) on every file this skill produces.
 
 Produces a structured, print-ready Stakeholder Interview Guide following Infinum/ETR conventions.
 The guide has one tailored question set per interviewee, organized into topic subsections,
@@ -173,7 +173,7 @@ Ensure python-docx is available, then run the script from this skill's directory
 
 ```bash
 pip install python-docx --break-system-packages -q
-python3 "${CLAUDE_SKILL_DIR}/scripts/generate_guide.py" \
+python3 "${CLAUDE_PLUGIN_ROOT}/skills/pdd-stakeholder-interview-guide/scripts/generate_guide.py" \
   --content stakeholder_guide_content.md \
   --output /mnt/user-data/outputs/stakeholder_interview_guide.docx
 ```

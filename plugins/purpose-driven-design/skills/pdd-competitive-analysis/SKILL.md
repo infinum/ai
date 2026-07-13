@@ -14,7 +14,7 @@ description: >
 
 # PDD Competitive Analysis Skill
 
-> **Before you start:** Read `${CLAUDE_SKILL_DIR}/../../instructions.md` and follow its PDD persona and Infinum brand rules throughout — including the document branding (Helvetica Neue, `#000`/`#D8262D`/`#E4EBF5`, Infinum logo top-right) on every file this skill produces.
+> **Before you start:** Read `${CLAUDE_PLUGIN_ROOT}/instructions.md` and follow its PDD persona and Infinum brand rules throughout — including the document branding (Helvetica Neue, `#000`/`#D8262D`/`#E4EBF5`, Infinum logo top-right) on every file this skill produces.
 
 Produces a structured competitive analysis spreadsheet from project data, scoring competitors
 across relevant categories on a 0–3 scale with rationale. Follows the Infinum/ETR template
