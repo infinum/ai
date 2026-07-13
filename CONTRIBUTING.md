@@ -168,19 +168,35 @@ References: [Plugins reference](https://docs.claude.com/en/docs/claude-code/plug
 
 ### Template variables — which file expands which
 
-Claude Code substitutes different template variables in different files. **Mixing them up is the most common gotcha.** Concrete rules:
+Claude Code substitutes template variables in plugin files, but **which variable expands where is the most common gotcha** — and the official docs split the answer across two pages, so both are linked here. Two families matter:
 
-| Variable | Where it's expanded | Where it's NOT |
-|---|---|---|
-| `${CLAUDE_PLUGIN_ROOT}` | In `.mcp.json` (at MCP config read time) and in hook commands declared in `hooks/hooks.json` / `plugin.json` (per the [Hooks reference](https://docs.claude.com/en/docs/claude-code/hooks)). Both substitute to the absolute install path. | **Not** in `SKILL.md`, slash commands, agents. In skill Bash blocks it expands to an empty string. |
-| `${CLAUDE_SKILL_DIR}` | In `SKILL.md` content (substituted at skill render time, with the absolute skill directory path) | Not in `.mcp.json`. |
-| `${CLAUDE_SESSION_ID}`, `${CLAUDE_EFFORT}` | In `SKILL.md` content | Same as above |
+**Skill-content substitutions** — documented on the [Skills reference → *Available string substitutions*](https://code.claude.com/docs/en/skills#available-string-substitutions). These expand in the **body** of `SKILL.md`:
 
-So:
-- To reference plugin-relative files from `.mcp.json` or a hook command, use `${CLAUDE_PLUGIN_ROOT}` (see [`stack-essentials/hooks/hooks.json`](plugins/stack-essentials/hooks/hooks.json) for a working example, or Anthropic's official Discord plugin for the `.mcp.json` form).
-- To reference plugin-relative bin scripts from a skill's Bash block, use `${CLAUDE_SKILL_DIR}/../../bin/...` — you have to walk up out of `skills/<name>/` yourself because there's no `${CLAUDE_PLUGIN_ROOT}` expansion for skills. (Yes, we wish there was.)
+| Variable | Expands to |
+|---|---|
+| `${CLAUDE_SKILL_DIR}` | The directory holding this skill's `SKILL.md`. For a plugin skill that is the skill's **own** subdirectory (`plugins/<plugin>/skills/<skill>/`), **not** the plugin root. Use it for files bundled *with the skill*: `${CLAUDE_SKILL_DIR}/scripts/foo.py`. |
+| `${CLAUDE_SESSION_ID}` | Current session ID. |
+| `${CLAUDE_EFFORT}` | Current effort level (`low`…`max`; ultracode reports `xhigh`). |
+| `$ARGUMENTS`, `$0`, `$name` | Skill arguments — see the reference. |
 
-Reference: [Skills — Available string substitutions](https://docs.claude.com/en/docs/claude-code/skills).
+**Plugin path variables** — documented on the [Plugins reference → *Environment variables*](https://code.claude.com/docs/en/plugins-reference#environment-variables). Per that page these three "are substituted inline anywhere they appear in **skill content, agent content, hook commands, monitor commands, and MCP or LSP server configs**" and are also exported as env vars to hook / MCP / LSP subprocesses:
+
+| Variable | Expands to |
+|---|---|
+| `${CLAUDE_PLUGIN_ROOT}` | The plugin's install **root** (`plugins/<plugin>/`). Use it for files bundled at the *plugin* level, e.g. `${CLAUDE_PLUGIN_ROOT}/instructions.md`. The path changes on every version bump — never hard-code it. |
+| `${CLAUDE_PLUGIN_DATA}` | Persistent per-plugin state dir that survives updates (installed deps, caches). |
+| `${CLAUDE_PROJECT_DIR}` | Project root (same value hooks receive). Requires Claude Code ≥ 2.1.196. |
+
+Practical rules for this repo:
+
+- **In a `SKILL.md` body, reference skill-bundled files with `${CLAUDE_SKILL_DIR}`** (e.g. `${CLAUDE_SKILL_DIR}/scripts/generate_guide.py`). Never invent placeholders like `<this skill dir>` — they are not substituted and fail when the command is run verbatim.
+- **To reach a *plugin-level* file from a skill body** (e.g. a shared `instructions.md` at the plugin root), either walk up — `${CLAUDE_SKILL_DIR}/../../instructions.md` — which resolves on every surface and version, or use `${CLAUDE_PLUGIN_ROOT}/instructions.md`, which the Plugins reference says now expands in skill content (see the caveat below before relying on it).
+- **In `.mcp.json`, `hooks/hooks.json`, `plugin.json`, and monitor commands, use `${CLAUDE_PLUGIN_ROOT}`** — `${CLAUDE_SKILL_DIR}` is not defined there. See [`stack-essentials/hooks/hooks.json`](plugins/stack-essentials/hooks/hooks.json) for a working hook example, or Anthropic's official Discord plugin for the `.mcp.json` form.
+- **In `SKILL.md` *frontmatter* (`allowed-tools` patterns, frontmatter hook commands), do NOT use `${CLAUDE_SKILL_DIR}`** — it is a known bug that it is passed through literally / resolves to empty there ([claude-code#55382](https://github.com/anthropics/claude-code/issues/55382), [#36135](https://github.com/anthropics/claude-code/issues/36135)). `${CLAUDE_PLUGIN_ROOT}` works in those frontmatter fields, so use `${CLAUDE_PLUGIN_ROOT}/skills/<skill>/...` when you must reference a bundled path from frontmatter.
+
+> **Caveat — the two doc pages disagree and behavior has drifted across versions.** The Skills page's substitution list does **not** include `${CLAUDE_PLUGIN_ROOT}`, and older Claude Code versions did not expand it in `SKILL.md` (a bare `${CLAUDE_PLUGIN_ROOT}` could come through empty — the origin of the frontmatter bugs above). The Plugins reference page now states it *does* expand in skill content. We have **not** independently confirmed whether [Claude Cowork](COWORK-LIMITATIONS.md) substitutes either variable in a `SKILL.md` body the same way the terminal does — treat cross-surface parity as *pending verification*, like the other Cowork caveats in [`COWORK-LIMITATIONS.md`](COWORK-LIMITATIONS.md). When a path must resolve identically on every surface and version, prefer `${CLAUDE_SKILL_DIR}` inside skills and reach the plugin root with `${CLAUDE_SKILL_DIR}/../..`.
+
+References: [Skills — Available string substitutions](https://code.claude.com/docs/en/skills#available-string-substitutions) · [Plugins reference — Environment variables](https://code.claude.com/docs/en/plugins-reference#environment-variables).
 
 ### plugin.json schema — only declared fields
 
