@@ -85,7 +85,7 @@ Wait for approval or edits. Revise and re-show if needed. Only build once the us
    `milestone: true` on delivery and feedback-due dates — see `references/schedule-structure.md`).
 3. Run the build script (uses the bundled template automatically):
    ```bash
-   python3 "<this skill dir>/scripts/build_schedule.py" --config config.json --output "Project Schedule - [Project].xlsx"
+   python3 "${CLAUDE_SKILL_DIR}/scripts/build_schedule.py" --config config.json --output "Project Schedule - [Project].xlsx"
    ```
    It keeps only the Project Schedule sheet, regenerates the week/day/date header from the start
    date, writes the colour-coded phases, tasks and milestones, and shades each task's Gantt bar.

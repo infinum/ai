@@ -114,7 +114,7 @@ changed — see *Refreshing the template* below.)
 3. **Run the populate script** using its absolute path inside this skill (the bundled template
    resolves automatically; pass `--output` only):
    ```bash
-   python3 "<this skill dir>/scripts/populate_estimate.py" --spec spec.json --output "Estimate - [Project].xlsx"
+   python3 "${CLAUDE_SKILL_DIR}/scripts/populate_estimate.py" --spec spec.json --output "Estimate - [Project].xlsx"
    ```
    It writes only input cells (leaving every total a live formula), forces recalc-on-open, and
    prints a Python-computed preview of all section totals and the grand total, in hours. Report

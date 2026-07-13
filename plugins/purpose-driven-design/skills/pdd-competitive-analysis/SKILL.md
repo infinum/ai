@@ -107,7 +107,7 @@ format described in `references/data_schema.md`, then run the script from its lo
 skill:
 
 ```bash
-python3 "<this skill dir>/scripts/generate_sheet.py" \
+python3 "${CLAUDE_SKILL_DIR}/scripts/generate_sheet.py" \
   --output "competitive_analysis.xlsx" \
   --data ca_data.json
 ```
