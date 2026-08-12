@@ -1,0 +1,157 @@
+schemaVersion: "2"
+kind: mixin
+name: infinum-ai
+displayName: Infinum AI Harness — Plugins & Rules
+description: >-
+  Registers the infinum-ai plugin marketplace, installs the sandbox-viable
+  Infinum skill plugins (stack-essentials, create-prd,
+  pr-review-code-simplicity, productive-debug), and installs the Infinum house
+  rules into ~/.claude/infinum/ with an import line in ~/.claude/CLAUDE.md.
+  Uses the `claude plugin` CLI — the non-interactive form of /plugin — not the
+  pnpm installer. Best-effort: warns and continues if GitHub is unreachable.
+requires:
+  agent: claude
+
+# `claude plugin marketplace add infinum/ai` clones over git smart-HTTP —
+# github.com only. infinum/ai is a public repo, so no credentials are
+# needed (sandboxes have no default GitHub credential). See README for why
+# api.github.com/codeload.github.com/registry.npmjs.org aren't needed.
+permissions:
+  network:
+    allow:
+      - github.com
+
+setup:
+  install:
+    # Agent user, not root (v1's default) — avoids a chown repair step like
+    # claude-no-attribution's, since nothing here needs root.
+    - user: "1000"
+      description: Register the infinum-ai marketplace, install the Infinum plugins, and install the house rules into ~/.claude/infinum/.
+      command: |
+        set -u
+
+        CLAUDE_DIR="${CLAUDE_CONFIG_DIR:-/home/agent/.claude}"
+        # Pin it so later `claude` calls agree with this script even if
+        # $HOME differs from /home/agent.
+        export CLAUDE_CONFIG_DIR="$CLAUDE_DIR"
+        CONFIG_DIR="$CLAUDE_DIR/infinum"
+        REPO="infinum/ai"
+        MARKET="infinum-ai"
+        PLUGINS="stack-essentials create-prd pr-review-code-simplicity productive-debug"
+
+        warn() { echo "infinum-ai kit: $*" >&2; }
+
+        # 1. The base kit is responsible for the binary. If it is missing there
+        #    is nothing to drive, so warn and leave the sandbox untouched.
+        if ! command -v claude >/dev/null 2>&1; then
+          warn "WARN: 'claude' not found on PATH; skipping plugin and rules setup."
+          exit 0
+        fi
+
+        # 2. Register the marketplace. Idempotent: a second run reports
+        #    "already on disk" and exits 0. This also leaves a full clone of the
+        #    repo at $CLAUDE_DIR/plugins/marketplaces/$MARKET, read by step 4.
+        if ! claude plugin marketplace add "$REPO"; then
+          warn "WARN: could not add the '$MARKET' marketplace."
+          warn "      $REPO is public, so this is most likely network policy blocking github.com."
+          warn "      Check with: sbx policy log"
+          warn "      Then retry in here: claude plugin marketplace add $REPO"
+          # Steps 3-5 all depend on the marketplace, so stop — still exit 0.
+          exit 0
+        fi
+
+        # 3. Install the plugins. Also idempotent ("already installed", exit 0).
+        #    One bad name must not cost the user the other three.
+        for p in $PLUGINS; do
+          claude plugin install "$p@$MARKET" || \
+            warn "WARN: plugin '$p' did not install; retry with: claude plugin install $p@$MARKET"
+        done
+
+        # 4. Copy rules from the clone step 2 made — nothing to drift, no
+        #    second fetch. Skip README.md (contributor docs); the flat glob
+        #    never descends into rules/<bundle>/ (those need a TTY prompt anyway).
+        mkdir -p "$CONFIG_DIR"
+        rules_found=0
+        for f in "$CLAUDE_DIR/plugins/marketplaces/$MARKET"/rules/*.md; do
+          [ -f "$f" ] || continue
+          [ "$(basename "$f")" = "README.md" ] && continue
+          cp "$f" "$CONFIG_DIR/" && rules_found=1
+        done
+        [ "$rules_found" = 1 ] || warn "WARN: no house rules found in the marketplace clone."
+
+        # 5a. whoami.md is user-owned forever: create once, never overwrite.
+        #     Must not ship under files/, which is re-placed on every container start.
+        if [ ! -f "$CONFIG_DIR/whoami.md" ]; then
+          cat > "$CONFIG_DIR/whoami.md" <<'WHOAMI'
+        # Who you're working with
+
+        > Replace this with your name and role so Claude can calibrate
+        > its responses. Example:
+        >
+        > "Senior backend engineer at Infinum, focused on payments.
+        > Comfortable with Go and Postgres; new to the iOS codebase."
+        WHOAMI
+        fi
+
+        # 5b. index.md, regenerated in the installer's order: whoami first, then
+        #     every rule alphabetically. It must never import itself.
+        {
+          echo "@$CONFIG_DIR/whoami.md"
+          for f in "$CONFIG_DIR"/*.md; do
+            [ -f "$f" ] || continue
+            case "$(basename "$f")" in
+              whoami.md | index.md) continue ;;
+            esac
+            echo "@$f"
+          done
+        } > "$CONFIG_DIR/index.md"
+
+        # 5c. One import line in CLAUDE.md, appended only when absent. Add a
+        #     newline first if the file lacks a trailing one, or the line gets
+        #     glued onto the user's last line.
+        mkdir -p "$CLAUDE_DIR"
+        touch "$CLAUDE_DIR/CLAUDE.md"
+        if [ -s "$CLAUDE_DIR/CLAUDE.md" ] && [ "$(tail -c 1 "$CLAUDE_DIR/CLAUDE.md" | wc -l)" -eq 0 ]; then
+          printf '\n' >> "$CLAUDE_DIR/CLAUDE.md"
+        fi
+        grep -qF "@$CONFIG_DIR/index.md" "$CLAUDE_DIR/CLAUDE.md" || \
+          printf '%s\n' "@$CONFIG_DIR/index.md  # managed by $REPO" >> "$CLAUDE_DIR/CLAUDE.md"
+
+        exit 0
+
+agentInstructions:
+  content: |
+    ## Infinum AI Harness installed
+
+    The `infinum-ai` plugin marketplace (`infinum/ai`) is registered and these
+    plugins are installed at user scope:
+
+    - `stack-essentials` — SessionStart update-banner hook; its check gates on
+      `~/.claude/infinum/.manifest.json`, which this kit never writes, so the
+      banner never fires here.
+    - `create-prd` — generate a Product Requirements Document.
+    - `pr-review-code-simplicity` — review a PR through the six laws of software
+      design.
+    - `productive-debug` — investigate a Productive bug task end-to-end.
+
+    Nine other plugins exist in the marketplace but are **not** installed, for
+    two different reasons. Six need local tooling or egress this sandbox does
+    not have: `ui-validation`, `download-figma-screenshot`, `mobile-deploy`,
+    `claude-setup-audit`, `security-check`, `progress`. Three are design-side
+    plugins out of scope for a Java backend sandbox, not blocked by any
+    sandbox limitation: `ai-ready-figma`, `design-conventions`,
+    `purpose-driven-design` (`ai-ready-figma` also needs the Figma remote MCP
+    connector enabled). Install one anyway with
+    `claude plugin install <name>@infinum-ai`, or browse with `/plugin`.
+
+    House rules are installed at `~/.claude/infinum/`, chained from `index.md`,
+    which `~/.claude/CLAUDE.md` imports.
+
+    `~/.claude/infinum/whoami.md` may still be the unedited stub. If it is, it
+    tells you nothing real about the user — do not treat its placeholder example
+    as fact.
+
+    `infinum/ai` is public. If none of the above is present, the install could
+    not reach it — most likely network policy blocking `github.com` (check
+    with `sbx policy log`). Retry in here with
+    `claude plugin marketplace add infinum/ai`.

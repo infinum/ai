@@ -1,0 +1,32 @@
+schemaVersion: "2"
+kind: mixin
+name: maven-central
+displayName: Maven Central — Network Policy
+description: >-
+  Allows egress to the Maven Central repository so Maven, Gradle, sbt and
+  other JVM build tools can resolve and download dependencies. Policy only —
+  this kit installs nothing and runs no commands.
+
+# Both hosts serve identical content and neither redirects to a third-party
+# CDN, so these two are sufficient. See README for hosts deliberately left
+# out (Gradle Plugin Portal, Sonatype search/staging, etc).
+permissions:
+  network:
+    allow:
+      - repo.maven.apache.org  # canonical host: Maven's `central`, Gradle's mavenCentral()
+      - repo1.maven.org        # legacy hostname: sbt, Coursier, Leiningen, older configs
+
+agentInstructions:
+  content: |
+    ## Maven Central reachable
+
+    This sandbox allows egress to `repo.maven.apache.org` and
+    `repo1.maven.org`, so Maven, Gradle, sbt and Coursier can resolve and
+    download dependencies from Maven Central.
+
+    Other JVM repositories are **not** allowed by default — the Gradle Plugin
+    Portal (`plugins.gradle.org`), Sonatype snapshot/staging repos, Maven
+    Central *search* (`central.sonatype.com`, `search.maven.org`), and any
+    private/company repository will be blocked by network policy. If a build
+    fails with an HTTP 403 whose body mentions "Blocked by network policy",
+    that host needs adding to the sandbox policy — not a build-file change.
