@@ -1,0 +1,108 @@
+schemaVersion: "2"
+kind: mixin
+name: sonarcloud
+displayName: SonarQube Cloud — Code Quality MCP
+description: >-
+  Registers SonarSource's SonarQube MCP server
+  (https://github.com/SonarSource/sonarqube-mcp-server) with Claude Code at
+  user scope, running the official sonarsource/sonarqube-mcp Docker image
+  against SonarQube Cloud. Lets the agent query code quality issues,
+  security hotspots, quality gates, coverage, and duplications for a
+  project instead of guessing from a stale local scan. Requires
+  SONARQUBE_TOKEN and SONARQUBE_ORG to be set in the sandbox environment;
+  SonarQube Server (self-hosted) is out of scope — see README.
+requires:
+  agent: claude
+
+# registry-1.docker.io / auth.docker.io / production.cloudflare.docker.com:
+# pulling sonarsource/sonarqube-mcp from Docker Hub (same trio the "trivy"
+# kit in sbx-kits-contrib documents for Docker Hub pulls). sonarcloud.io:
+# the MCP server's own outbound calls to the SonarQube Cloud API. A
+# self-hosted SonarQube Server needs its own host added — see README.
+permissions:
+  network:
+    allow:
+      - registry-1.docker.io
+      - auth.docker.io
+      - production.cloudflare.docker.com
+      - sonarcloud.io
+
+setup:
+  install:
+    - user: "1000"
+      description: Register the sonarqube MCP server (Docker, SonarQube Cloud) with Claude Code at user scope.
+      command: |
+        set -u
+
+        CLAUDE_DIR="${CLAUDE_CONFIG_DIR:-/home/agent/.claude}"
+        export CLAUDE_CONFIG_DIR="$CLAUDE_DIR"
+        NAME=sonarqube
+
+        warn() { echo "sonarcloud kit: $*" >&2; }
+
+        if ! command -v claude >/dev/null 2>&1; then
+          warn "WARN: 'claude' not found on PATH; skipping MCP registration."
+          exit 0
+        fi
+
+        if ! command -v docker >/dev/null 2>&1; then
+          warn "WARN: 'docker' not found on PATH; the sonarqube MCP server runs via Docker."
+          warn "      Skipping registration — see README for the standalone-JAR alternative."
+          exit 0
+        fi
+
+        # SONARQUBE_TOKEN/SONARQUBE_ORG are expected in the sandbox
+        # environment at creation time (same convention as CONTEXT7_API_KEY
+        # in the context7 kit) — this script never hardcodes a secret.
+        if [ -z "${SONARQUBE_TOKEN:-}" ] || [ -z "${SONARQUBE_ORG:-}" ]; then
+          warn "WARN: SONARQUBE_TOKEN and/or SONARQUBE_ORG not set; skipping MCP registration."
+          warn "      Set both in the sandbox environment and recreate, or register manually — see README."
+          exit 0
+        fi
+
+        out=$(claude mcp add "$NAME" -s user \
+          --env SONARQUBE_TOKEN="${SONARQUBE_TOKEN}" \
+          --env SONARQUBE_ORG="${SONARQUBE_ORG}" \
+          -- docker run --init --pull=always -i --rm \
+            -e SONARQUBE_TOKEN -e SONARQUBE_ORG sonarsource/sonarqube-mcp 2>&1)
+        status=$?
+
+        # `claude mcp add` exits 1 with "already exists" on a re-run — that's
+        # not a failure, just nothing left to do. It does NOT update an
+        # already-registered entry's env vars, so rotating the token later
+        # needs a manual `claude mcp remove sonarqube -s user` first.
+        if [ "$status" -eq 0 ]; then
+          echo "$out"
+        elif echo "$out" | grep -q "already exists"; then
+          echo "sonarcloud kit: MCP server '$NAME' already configured in user scope."
+        else
+          warn "WARN: could not register the '$NAME' MCP server."
+          warn "      $out"
+          warn "      Retry manually: claude mcp add $NAME -s user --env SONARQUBE_TOKEN=\$SONARQUBE_TOKEN --env SONARQUBE_ORG=\$SONARQUBE_ORG -- docker run --init --pull=always -i --rm -e SONARQUBE_TOKEN -e SONARQUBE_ORG sonarsource/sonarqube-mcp"
+        fi
+        exit 0
+
+agentInstructions:
+  content: |
+    ## SonarQube Cloud MCP available
+
+    The `sonarqube` MCP server is registered at user scope, running
+    SonarSource's official `sonarsource/sonarqube-mcp` Docker image against
+    **SonarQube Cloud** (`sonarcloud.io`). Use it instead of guessing from a
+    stale local scan when you need a project's actual code quality issues,
+    security hotspots, quality gate status, coverage, or duplications — call
+    its tools under the `sonarqube` namespace (e.g. search issues, get a
+    quality gate's status, list security hotspots, fetch measures).
+
+    Registration requires `SONARQUBE_TOKEN` (a SonarQube Cloud token) and
+    `SONARQUBE_ORG` (the organization key) to have been present in the
+    sandbox environment when this kit's install step ran. If either was
+    missing, registration was skipped.
+
+    This is SonarQube **Cloud** only — it does not talk to a self-hosted
+    SonarQube Server instance.
+
+    Check registration with `claude mcp list` or `claude mcp get sonarqube`.
+    If it's missing, either the token/org weren't set, `claude` or `docker`
+    weren't on PATH during setup, or Docker Hub / sonarcloud.io egress is
+    blocked — see README.

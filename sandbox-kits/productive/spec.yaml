@@ -1,0 +1,92 @@
+schemaVersion: "2"
+kind: mixin
+name: productive
+displayName: Productive — Project Management MCP
+description: >-
+  Registers Productive's remote MCP server (https://mcp.productive.io/mcp)
+  with Claude Code at user scope and allows egress to mcp.productive.io and
+  app.productive.io. Lets the agent read and update Productive projects,
+  tasks, time entries, CRM deals, and invoices. Requires the Productive
+  Ultimate plan with AI features enabled. Authorization is OAuth 2.0,
+  per-user, and interactive — this kit only registers the server; completing
+  the login is a manual step documented in README.md.
+requires:
+  agent: claude
+
+# Two hosts: mcp.productive.io serves the MCP endpoint itself; app.productive.io
+# is where `claude mcp login` sends the user to sign in and authorize the
+# connection (OAuth authorize/consent page). Both are needed for the server to
+# ever reach a connected state. See README for the sandbox test-environment
+# endpoint (mcp-sandbox.productive.io) this kit deliberately doesn't register.
+permissions:
+  network:
+    allow:
+      - mcp.productive.io
+      - app.productive.io
+
+setup:
+  install:
+    - user: "1000"
+      description: Register the productive MCP server (remote HTTP) with Claude Code at user scope.
+      command: |
+        set -u
+
+        CLAUDE_DIR="${CLAUDE_CONFIG_DIR:-/home/agent/.claude}"
+        export CLAUDE_CONFIG_DIR="$CLAUDE_DIR"
+        NAME=productive
+        URL=https://mcp.productive.io/mcp
+
+        warn() { echo "productive kit: $*" >&2; }
+
+        if ! command -v claude >/dev/null 2>&1; then
+          warn "WARN: 'claude' not found on PATH; skipping MCP registration."
+          exit 0
+        fi
+
+        # Registration only — OAuth login is interactive (browser or
+        # `claude mcp login productive --no-browser` + pasted redirect URL) and
+        # per Productive user, so it cannot happen during unattended setup.
+        out=$(claude mcp add --transport http "$NAME" "$URL" -s user 2>&1)
+        status=$?
+
+        # `claude mcp add` exits 1 with "already exists" on a re-run — that's
+        # not a failure, just nothing left to do.
+        if [ "$status" -eq 0 ]; then
+          echo "$out"
+        elif echo "$out" | grep -q "already exists"; then
+          echo "productive kit: MCP server '$NAME' already configured in user scope."
+        else
+          warn "WARN: could not register the '$NAME' MCP server."
+          warn "      $out"
+          warn "      Retry manually: claude mcp add --transport http $NAME $URL -s user"
+        fi
+        exit 0
+
+agentInstructions:
+  content: |
+    ## Productive MCP registered — authorization still needed
+
+    The `productive` MCP server is registered at user scope (remote HTTP,
+    `https://mcp.productive.io/mcp`), and this sandbox allows egress to
+    `mcp.productive.io` and `app.productive.io`. Once authorized, it can read
+    and update Productive projects/tasks, time entries, CRM deals and
+    contacts, resource bookings, and invoices/expenses.
+
+    Registration alone does not connect it — Productive's MCP server uses
+    per-user OAuth 2.0, so a human has to complete a one-time login:
+
+    - Interactively (a browser is reachable from this session): `claude mcp
+      login productive`
+    - Headless/SSH-style session: `claude mcp login productive --no-browser`,
+      then open the printed URL in any browser, sign in to Productive, and
+      paste the resulting redirect URL back when prompted.
+
+    Requirements on the Productive side: the account must be on the
+    **Ultimate** plan with AI features enabled, and the login authorizes
+    exactly one Productive organization per connection (switching orgs means
+    `claude mcp logout productive` and logging in again).
+
+    Check status with `claude mcp get productive` — `⏸ Pending approval` or an
+    auth error means the login step above still needs to happen. If the login
+    page itself fails to load, egress to `app.productive.io` may be blocked —
+    check `sbx policy log`.
