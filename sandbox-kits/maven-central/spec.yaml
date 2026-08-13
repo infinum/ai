@@ -7,9 +7,8 @@ description: >-
   other JVM build tools can resolve and download dependencies. Policy only —
   this kit installs nothing and runs no commands.
 
-# Both hosts serve identical content and neither redirects to a third-party
-# CDN, so these two are sufficient. See README for hosts deliberately left
-# out (Gradle Plugin Portal, Sonatype search/staging, etc).
+# Neither host redirects to a CDN, so these two are sufficient. See README for
+# what is deliberately left out.
 permissions:
   network:
     allow:
@@ -24,9 +23,12 @@ agentInstructions:
     `repo1.maven.org`, so Maven, Gradle, sbt and Coursier can resolve and
     download dependencies from Maven Central.
 
-    Other JVM repositories are **not** allowed by default — the Gradle Plugin
-    Portal (`plugins.gradle.org`), Sonatype snapshot/staging repos, Maven
-    Central *search* (`central.sonatype.com`, `search.maven.org`), and any
-    private/company repository will be blocked by network policy. If a build
-    fails with an HTTP 403 whose body mentions "Blocked by network policy",
-    that host needs adding to the sandbox policy — not a build-file change.
+    Those two are the only hosts this kit contributes. It does not allow the
+    Gradle Plugin Portal (`plugins.gradle.org`), Sonatype snapshot/staging
+    repos, Maven Central *search* (`central.sonatype.com`, `search.maven.org`),
+    or any private repository — which is not the same as those being blocked,
+    since the effective policy also includes host and org rules. Check
+    `sbx policy ls` rather than assuming either way.
+
+    A build that fails with an HTTP 403 mentioning "Blocked by network policy"
+    needs that host added to the sandbox policy, not a build-file change.

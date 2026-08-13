@@ -3,36 +3,48 @@
 Turns off Claude Code's automatic commit and PR attribution inside a Docker
 Sandbox.
 
-This is a mixin for the built-in `claude` sandbox agent. At sandbox
-creation it merges `attribution.commit: ""` and `attribution.pr: ""` into
-`~/.claude/settings.json` via `jq`, so the "🤖 Generated with Claude Code"
-commit trailer and the "Co-Authored-By: Claude" line are suppressed, while
-every other setting already in that file (or added by other kits) is left
-untouched.
+This is a mixin with `requires.agent: claude`: it composes onto the `claude`
+base agent only, and applying it to another one is a composition error that
+fails sandbox creation rather than quietly doing nothing.
+
+At sandbox creation it merges `attribution.commit: ""` and
+`attribution.pr: ""` into `~/.claude/settings.json` via `jq`, so the
+"🤖 Generated with Claude Code" commit trailer and the "Co-Authored-By: Claude"
+line are suppressed, while every other setting already in that file (or added by
+other kits) is left untouched.
 
 ## How it works
 
-The install command runs once, as root, at sandbox creation:
+The install command runs once at sandbox creation, as the **agent** user
+(`user: "1000"`) rather than the `setup.install` default of root — everything
+it touches lives under the agent's own home, so root would only mean chowning
+the directory and the file back afterwards:
 
-- If `~/.claude/settings.json` doesn't exist yet, it's created as `{}` first,
+- The target is `${CLAUDE_CONFIG_DIR:-/home/agent/.claude}/settings.json`, the
+  same default `infinum-ai` uses, so both kits agree on which file Claude reads
+  even if that variable points elsewhere.
+- If that `settings.json` doesn't exist yet, it's created as `{}` first,
   so the `jq` merge below always has valid JSON to work with.
 - `jq '.attribution.commit = "" | .attribution.pr = ""'` merges only those
   two keys — every other setting already in the file, or added by another
   kit's install step, survives untouched.
-- The merge writes to a temp file in the same directory as `settings.json`,
-  then `mv`s it into place — an atomic rename rather than an in-place edit,
-  so a reader never sees a half-written file.
-- The install runs as root, so both `~/.claude` (if freshly created) and the
-  rewritten `settings.json` would end up root-owned — and agent-run Claude
-  Code couldn't save its own settings under a root-owned file. The kit
-  `chown`s the directory and the file back to `agent:agent`, both
-  non-recursively, so ownership of anything else already inside
-  `~/.claude` (like `.credentials.json`) is left alone.
+- The merged JSON is captured into a shell variable and only then written back
+  over `settings.json`. Two things follow from that order: a `jq` failure (a
+  hand-edited file that is no longer valid JSON) aborts under `set -eu` before
+  the file is touched, and the write goes to the existing inode, so the file
+  keeps its own mode and owner — no temp file, no `chmod --reference`, nothing
+  left behind on the failure path.
 
-## Schema version
+The write is not atomic, which is deliberate: install commands run once,
+sequentially, before the agent launches, so there is no concurrent reader for
+an atomic rename to protect.
 
-Written as `schemaVersion: "2"`: the install step lives under `setup.install`
-and the sandbox note lives under `agentInstructions.content`.
+Unlike `infinum-ai` and `superpowers`, this kit is **not** best-effort. It runs
+under `set -eu` and makes no network call, so its only failure mode is a
+`settings.json` that is already invalid JSON — worth failing creation over.
+
+`jq` is assumed present: this kit declares `requires.agent: claude`, and the
+`claude` base image ships it.
 
 ## Usage
 
@@ -40,16 +52,8 @@ and the sandbox note lives under `agentInstructions.content`.
 $ sbx run claude --kit ./claude-no-attribution/ /path/to/project
 ```
 
-Combine with the other kits in this directory:
-
-```console
-$ sbx run claude \
-    --kit ./claude-no-attribution/ \
-    --kit ./infinum-ai/ \
-    --kit ./maven-central/ \
-    --kit ./superpowers/ \
-    /path/to/project
-```
+To combine it with the other kits here, see the
+[sandbox-kits README](../README.md#applying-the-kits).
 
 Apply to an already-running sandbox:
 
@@ -57,13 +61,23 @@ Apply to an already-running sandbox:
 $ sbx kit add my-sandbox ./claude-no-attribution/
 ```
 
+> [!NOTE]
+> `sbx kit add` applies the install command but **not** this kit's
+> `agentInstructions.content` — the engine skips the kit-memory write for
+> `kind: mixin` artifacts. Claude won't be told the setting changed, though the
+> setting itself takes effect. Use `sbx run --kit` for the full result. See
+> [Applying the kits](../README.md#applying-the-kits).
+
 ## Verify
 
 ```console
 $ sbx exec my-sandbox -- cat /home/agent/.claude/settings.json
+$ sbx exec my-sandbox -- stat -c '%U %a %n' /home/agent/.claude/settings.json
 ```
 
-`attribution.commit` and `attribution.pr` should both be `""`.
+`attribution.commit` and `attribution.pr` should both be `""`, and the `stat`
+should report `agent` — `root` means the `user: "1000"` setting on the install
+command regressed.
 
 ## References
 

@@ -4,9 +4,11 @@ Registers the `infinum-ai` Claude Code plugin marketplace (the public repo
 `infinum/ai`), installs four of its plugins (`stack-essentials`,
 `create-prd`, `pr-review-code-simplicity`, `productive-debug`), and installs
 the Infinum house rules into `~/.claude/infinum/`, chained from an
-`index.md` that `~/.claude/CLAUDE.md` imports. This is a mixin,
-`requires.agent: claude` — it needs the `claude` binary already on `PATH`
-and does nothing without it.
+`index.md` that `~/.claude/CLAUDE.md` imports.
+
+This is a mixin with `requires.agent: claude`: it composes onto the `claude`
+base agent only, and applying it to another one is a composition error that
+fails sandbox creation rather than quietly doing nothing.
 
 ## Why not the pnpm installer
 
@@ -32,10 +34,10 @@ kit doesn't already get from the CLI.
 ## What is deliberately not installed
 
 Nine other plugins exist in the `infinum-ai` marketplace but are not
-installed here, for two different reasons — matching `spec.yaml`'s
-`agentInstructions.content`. Six need local tooling or egress this sandbox does not
-have. Three are design-side plugins out of scope for a Java backend
-sandbox — they are not blocked by any sandbox limitation. The reasons
+installed here, for two different reasons. Six need local tooling or egress
+this sandbox does not have. Three are design-side plugins out of scope for a
+Java backend sandbox — they are not blocked by any sandbox limitation. This
+table is the detail `spec.yaml`'s `agentInstructions.content` points at. The reasons
 below come from upstream
 [MARKETPLACE.md](https://github.com/infinum/ai/blob/main/MARKETPLACE.md)'s
 Cowork column, which documents the same class of sandboxed-environment
@@ -68,15 +70,22 @@ created:
 
 | Source | Destination | Overwrite behaviour |
 |---|---|---|
-| `rules/<name>.md` (from the marketplace clone) | `~/.claude/infinum/<name>.md` | Overwritten on every run |
+| `rules/<name>.md` (from the marketplace clone) | `~/.claude/infinum/<name>.md` | Overwritten on every run. `README.md` and `whoami.md` are skipped |
 | — | `~/.claude/infinum/whoami.md` | Created once if missing, never overwritten again |
 | — | `~/.claude/infinum/index.md` | Regenerated on every run: `@whoami.md` first, then every other rule alphabetically |
 | — | `~/.claude/CLAUDE.md` | One `@/home/agent/.claude/infinum/index.md  # managed by infinum/ai` line appended only if absent (the literal, expanded path the script writes, not a `~` shorthand) |
 
 `whoami.md` is the one file that is not treated as marketplace output: it
 holds the user's own bio, so it is created from a stub the first time it is
-missing and left alone on every subsequent run. `rules/README.md` is
-contributor documentation, not a rule, and is skipped. Bundles
+missing and left alone on every subsequent run. That is also why the stub is
+written by the install command rather than shipped as a static file under
+`files/home/` — static kit files are re-placed on **every** container start,
+which would overwrite the user's own bio each time the sandbox restarts.
+
+The copy step skips `rules/whoami.md` for the same reason: nothing upstream
+ships that name today, but if it did it would overwrite the bio before the
+create-once guard ever ran. `rules/README.md` is contributor documentation, not
+a rule, and is skipped too. Bundles
 (`rules/<bundle>/`) are not installed by this kit because the copy step
 globs `rules/*.md`, which matches flat files only and never descends into
 a bundle subdirectory — the glob simply doesn't see them. Upstream also
@@ -84,15 +93,28 @@ gates bundles behind a TTY prompt, which a non-interactive install command
 has no way to answer, so even if the glob did reach them they would still
 need to be skipped.
 
+The copy step never deletes. A rule that upstream removes therefore stays
+behind in a sandbox that gets recreated on the same home volume, and
+`index.md` keeps importing it, because `index.md` is regenerated from whatever
+`*.md` currently sits in `~/.claude/infinum/`. That is the deliberate trade:
+pruning would mean deleting files from a directory a user may have added their
+own rules to. Delete a stale rule by hand if you hit it.
+
 ## Best-effort by design
 
-The install command always exits 0. Every failure — `claude` missing, the
-marketplace unreachable, a single plugin failing to install, no rules found
-in the clone — is a warning on stderr, not a failed sandbox. `infinum/ai` is
-public, so the most common cause of a failed marketplace add is network
-policy blocking `github.com` — sandboxes have no default GitHub credential
-and none is needed here. Check with `sbx policy log`, then retry inside the
-sandbox:
+The install command always exits 0. Every failure — the marketplace
+unreachable, a single plugin failing to install, no rules found in the clone —
+is a warning on stderr, not a failed sandbox.
+
+Failure is scoped to what depends on the network. A failed `marketplace add`
+skips the plugin installs and the rules copy, since both read the clone it would
+have made, but not the `whoami.md` stub, `index.md` or the `CLAUDE.md` import
+line — a `github.com`-blocked sandbox still comes up wired, with no rules.
+
+`infinum/ai` is public, so the most common cause of a failed marketplace add is
+network policy blocking `github.com` — sandboxes have no default GitHub
+credential and none is needed here. Check with `sbx policy log`, then retry
+inside the sandbox:
 
 ```console
 $ claude plugin marketplace add infinum/ai
@@ -110,33 +132,28 @@ smart-HTTP, which talks only to `github.com`.
 | `codeload.github.com` | Serves tarballs, not git clones |
 | `registry.npmjs.org` | Only the pnpm installer path needs npm |
 
-## Schema version
-
-Written as `schemaVersion: "2"`: egress lives under `permissions.network.allow`,
-the install step under `setup.install`, and the sandbox note under
-`agentInstructions.content`.
-
 ## Usage
 
 ```console
 $ sbx run claude --kit ./infinum-ai/ /path/to/project
 ```
 
-Combine with the other kits in this directory:
-
-```console
-$ sbx run claude \
-    --kit ./claude-no-attribution/ \
-    --kit ./infinum-ai/ \
-    --kit ./maven-central/ \
-    /path/to/project
-```
+To combine it with the other kits here, see the
+[sandbox-kits README](../README.md#applying-the-kits).
 
 Apply to an already-running sandbox:
 
 ```console
 $ sbx kit add my-sandbox ./infinum-ai/
 ```
+
+> [!NOTE]
+> `sbx kit add` runs the install command but **not** this kit's
+> `agentInstructions.content` — the engine skips the kit-memory write for
+> `kind: mixin` artifacts. The plugins and rules land; Claude just isn't told
+> they did, including the warning that `whoami.md` may still be a stub. Use
+> `sbx run --kit` for a sandbox you intend to work in. See
+> [Applying the kits](../README.md#applying-the-kits).
 
 ## Verify
 
@@ -149,7 +166,7 @@ $ sbx exec my-sandbox -- claude plugin marketplace list
 $ sbx exec my-sandbox -- claude plugin list
 $ sbx exec my-sandbox -- cat /home/agent/.claude/infinum/index.md
 $ sbx exec my-sandbox -- grep infinum /home/agent/.claude/CLAUDE.md
-$ sbx exec my-sandbox -- stat -c '%U %n' /home/agent/.claude/settings.json
+$ sbx exec my-sandbox -- stat -c '%U %a %n' /home/agent/.claude/settings.json
 ```
 
 Expect: the marketplace list includes `infinum-ai`; the plugin list includes
@@ -158,26 +175,22 @@ the four plugins above; `index.md` imports `whoami.md` plus at least
 reports `agent`, not `root` — `root` means the `user: "1000"` setting on the
 install command regressed.
 
-### Verifying it combined with `claude-no-attribution`
+### Combined with `claude-no-attribution` and `superpowers`
 
-The Usage section above recommends combining this kit with
-`claude-no-attribution`, but that combination has not actually been run:
-`claude-no-attribution` installs as **root** and rewrites the same
-`~/.claude/settings.json` via `mktemp`/`mv`/`chown` (see its own
-`spec.yaml`), while this kit's plugin installs write to that file as the
-agent user. After running both together, confirm neither clobbers the
-other:
+Three of these kits write `~/.claude/settings.json` — this one via
+`claude plugin install`, `claude-no-attribution` via a `jq` merge,
+`superpowers` via its own plugin install. They coexist because every writer
+does a read-modify-write, so `--kit` order doesn't matter. This is verified in
+a live sandbox, not inferred:
 
 ```console
-$ sbx exec my-sandbox -- jq '.enabledPlugins' /home/agent/.claude/settings.json
-$ sbx exec my-sandbox -- jq '.attribution.commit' /home/agent/.claude/settings.json
-$ sbx exec my-sandbox -- stat -c '%U %n' /home/agent/.claude/settings.json
+$ sbx exec my-sandbox -- jq '.attribution, .enabledPlugins' /home/agent/.claude/settings.json
+$ sbx exec my-sandbox -- stat -c '%U %a %n' /home/agent/.claude/settings.json
 ```
 
-Expect: `enabledPlugins` lists all four plugins from this kit as `true`;
-`attribution.commit` is still `""`; and the `stat` still reports `agent` —
-all three surviving together regardless of which kit's install command ran
-last.
+Expect `attribution.commit`/`.pr` as `""` **and** all four plugins from this
+kit (plus `superpowers`, if applied) as `true` in `enabledPlugins`, with the
+file still owned by `agent`.
 
 ## References
 

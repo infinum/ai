@@ -1,9 +1,11 @@
 # superpowers
 
 Installs the `superpowers` Claude Code plugin (the public repo
-`obra/superpowers`) from the `claude-plugins-official` marketplace. This is
-a mixin, `requires.agent: claude` — it needs the `claude` binary already on
-`PATH` and does nothing without it.
+`obra/superpowers`) from the `claude-plugins-official` marketplace.
+
+This is a mixin with `requires.agent: claude`: it composes onto the `claude`
+base agent only, and applying it to another one is a composition error that
+fails sandbox creation rather than quietly doing nothing.
 
 ## Why the official marketplace
 
@@ -68,16 +70,37 @@ brainstorming UI. The page it serves includes a small `<img>` pointing at
 `primeradiant.com`. That request is made by whatever browser opens the page
 (typically the user's, via a forwarded port), not by anything running inside
 this sandbox, so it is not something this kit's `permissions.network.allow`
-needs to account for. It only fires when neither
-`SUPERPOWERS_DISABLE_TELEMETRY` nor `DISABLE_TELEMETRY` is set.
+needs to account for. It only fires when **all three** of
+`SUPERPOWERS_DISABLE_TELEMETRY`, `DISABLE_TELEMETRY` and
+`CLAUDE_CODE_DISABLE_NONESSENTIAL_TRAFFIC` are unset or falsy
+(`skills/brainstorming/scripts/server.cjs`). The third one is the standard
+Claude Code switch, so an environment that already sets it has this off
+without doing anything.
+
+## Supply chain
+
+`superpowers` is third-party code — `obra/superpowers`, not an Anthropic
+repository, reached through Anthropic's marketplace. Two things follow, and
+neither is mitigated by this kit:
+
+- **It is unpinned.** `claude plugin install` takes whatever version the
+  marketplace currently serves; there is no version or checksum in this kit to
+  compare against. Two sandboxes created a week apart can get different code.
+- **It executes on every session.** The `SessionStart` hook above runs a
+  bundled script at every `startup`, `clear`, and `compact`, and the
+  `brainstorming` skill can start a local HTTP server.
+
+That is an accepted risk, not an oversight: the plugin is the point of the
+kit, and the `claude plugin` CLI offers no pinning to accept it more
+carefully. It is worth knowing before adding this kit to a sandbox that
+handles anything sensitive.
 
 ## Best-effort by design
 
-The install step always exits 0. If `claude` is missing, if
-`claude plugin marketplace add` fails, or if `claude plugin install` fails —
-most likely because `github.com` is unreachable, since both commands clone
-over git smart-HTTP — the script warns on stderr rather than failing the
-sandbox. A failed `marketplace add` short-circuits the rest of the step,
+The install step always exits 0. If either `claude plugin marketplace add` or
+`claude plugin install` fails — most likely because `github.com` is
+unreachable, since both commands clone over git smart-HTTP — the script warns
+on stderr rather than failing the sandbox. A failed `marketplace add` short-circuits the rest of the step,
 same as `infinum-ai` does for its own marketplace registration. Retry inside
 the sandbox once the network issue is resolved:
 
@@ -96,34 +119,29 @@ repo directly over git smart-HTTP rather than reading it out of the
 marketplace repo's own clone. Both repos are public, so no credentials are
 needed.
 
-## Schema version
-
-Written as `schemaVersion: "2"`: egress lives under `permissions.network.allow`,
-the install step under `setup.install`, and the sandbox note under
-`agentInstructions.content`.
-
 ## Usage
 
 ```console
 $ sbx run claude --kit ./superpowers/ /path/to/project
 ```
 
-Combine with the other kits in this directory:
-
-```console
-$ sbx run claude \
-    --kit ./claude-no-attribution/ \
-    --kit ./infinum-ai/ \
-    --kit ./maven-central/ \
-    --kit ./superpowers/ \
-    /path/to/project
-```
+To combine it with the other kits here, see the
+[sandbox-kits README](../README.md#applying-the-kits).
 
 Apply to an already-running sandbox:
 
 ```console
 $ sbx kit add my-sandbox ./superpowers/
 ```
+
+> [!NOTE]
+> `sbx kit add` runs the install step but **not** this kit's
+> `agentInstructions.content` — the engine skips the kit-memory write for
+> `kind: mixin` artifacts. The plugin installs and its own SessionStart hook
+> still injects `using-superpowers`, so the skills work; what's missing is the
+> kit's note listing them and the telemetry caveat. Use `sbx run --kit` for a
+> sandbox you intend to work in. See
+> [Applying the kits](../README.md#applying-the-kits).
 
 ## Verify
 
@@ -134,7 +152,7 @@ registered or the plugin actually installed. Check the outcome directly:
 ```console
 $ sbx exec my-sandbox -- claude plugin list
 $ sbx exec my-sandbox -- jq '.extraKnownMarketplaces, .enabledPlugins' /home/agent/.claude/settings.json
-$ sbx exec my-sandbox -- stat -c '%U %n' /home/agent/.claude/settings.json
+$ sbx exec my-sandbox -- stat -c '%U %a %n' /home/agent/.claude/settings.json
 ```
 
 Expect: the plugin list includes `superpowers@claude-plugins-official`; the

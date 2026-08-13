@@ -20,7 +20,7 @@ This kit does **not** ship a JDK, Maven, or Gradle — it only opens the network
 path. Pair it with whatever installs your toolchain (e.g. the `mise` kit, or a
 sandbox image that already has one).
 
-## What is deliberately not allowed
+## What this kit deliberately does not allow
 
 Allowlists are the security surface, so this kit stays narrow. These hosts are
 part of the wider JVM ecosystem but are not needed to resolve a declared
@@ -32,6 +32,10 @@ dependency from Central:
 | `plugins.gradle.org` | The Gradle Plugin Portal — a separate repository |
 | `oss.sonatype.org`, `s01.oss.sonatype.org` | Sonatype snapshot and staging repos |
 | `jitpack.io`, `jcenter.bintray.com`, … | Other third-party repositories |
+
+Leaving a host out is not the same as blocking it: the effective policy is the
+union of every applied kit's allow list, the host's own `sbx policy` rules and
+any org policy. Check `sbx policy ls` rather than inferring from this table.
 
 If your project needs one, fork this kit and extend the list:
 
@@ -51,33 +55,29 @@ Or, for a one-off, allow it on the host without touching the kit:
 $ sbx policy allow network plugins.gradle.org
 ```
 
-## Schema version
-
-Written as `schemaVersion: "2"`: egress lives under `permissions.network.allow`
-and the sandbox note lives under `agentInstructions.content`.
-
 ## Usage
 
 ```console
 $ sbx run claude --kit ./maven-central/ /path/to/project
 ```
 
-Combine with the other kits in this directory:
-
-```console
-$ sbx run claude \
-    --kit ./claude-no-attribution/ \
-    --kit ./infinum-ai/ \
-    --kit ./maven-central/ \
-    --kit ./superpowers/ \
-    /path/to/project
-```
+This kit has no `requires.agent`, so it works with any base agent, not just
+`claude`. To combine it with the other kits here, see the
+[sandbox-kits README](../README.md#applying-the-kits).
 
 Apply to an already-running sandbox:
 
 ```console
 $ sbx kit add my-sandbox ./maven-central/
 ```
+
+> [!NOTE]
+> `sbx kit add` applies the network policy but **not** this kit's
+> `agentInstructions.content` — the engine skips the kit-memory write for
+> `kind: mixin` artifacts. Egress works; the agent just won't have been told
+> which JVM repositories are reachable and which aren't, which is most of this
+> kit's value. Use `sbx run --kit` for a sandbox you intend to work in. See
+> [Applying the kits](../README.md#applying-the-kits).
 
 ## Verify
 
@@ -88,8 +88,9 @@ $ sbx exec my-sandbox -- curl -sS -o /dev/null -w '%{http_code}\n' \
 ```
 
 A `200` means the policy is in effect. A `403` whose body starts with
-`Blocked by network policy` means the kit is not applied — check `sbx policy ls`
-and `sbx policy log`.
+`Blocked by network policy` means either the kit was not applied or a `deny`
+rule is overriding its `allow` — deny wins, whichever layer it came from.
+`sbx policy log` shows which rule matched.
 
 ## References
 

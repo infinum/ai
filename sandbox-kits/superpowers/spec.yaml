@@ -3,62 +3,43 @@ kind: mixin
 name: superpowers
 displayName: Superpowers — Skills Library (TDD, Debugging, Collaboration)
 description: >-
-  Registers Claude Code's official plugin marketplace and installs the
-  `superpowers` plugin (obra/superpowers, public) from it. The official
-  marketplace only auto-registers on an interactive first launch (see
-  anthropics/claude-code#66750), so a headless sandbox provisioning run
-  needs an explicit `marketplace add` step first, same as any other
-  marketplace. Adds a skills library for brainstorming, writing/executing
-  plans, subagent-driven development, red/green TDD, systematic debugging,
-  and code review. Best-effort: warns and continues if GitHub is unreachable.
+  Installs the superpowers skills library (brainstorming, planning, TDD,
+  systematic debugging, code review) as a Claude Code plugin.
 requires:
   agent: claude
 
-# `claude plugin marketplace add anthropics/claude-plugins-official` clones
-# that repo over git smart-HTTP; installing superpowers then clones
-# github.com/obra/superpowers.git directly (a url-type plugin source), also
-# over git smart-HTTP. Both public, no credentials needed.
 permissions:
   network:
     allow:
-      - github.com
+      - github.com  # git smart-HTTP clones of two public repos; see README
 
 setup:
   install:
-    # Agent user, matching infinum-ai — the install only touches ~/.claude.
-    - user: "1000"
+    - user: "1000"  # everything written lives under the agent's own ~/.claude
       description: Register the official marketplace and install the superpowers plugin from it.
       command: |
         set -u
 
-        warn() { echo "superpowers kit: $*" >&2; }
-
-        # The base kit is responsible for the binary. If it is missing there
-        # is nothing to drive, so warn and leave the sandbox untouched.
-        if ! command -v claude >/dev/null 2>&1; then
-          warn "WARN: 'claude' not found on PATH; skipping plugin install."
-          exit 0
-        fi
-
-        # Register the official marketplace explicitly — it does not ship
-        # pre-registered in a headless/non-interactive sandbox (only on an
-        # interactive first launch; anthropics/claude-code#66750). Idempotent:
-        # reports "already on disk" and exits 0 on a second run.
+        # The official marketplace only auto-registers on an interactive first
+        # launch (anthropics/claude-code#66750), so register it here.
         if ! claude plugin marketplace add anthropics/claude-plugins-official; then
-          warn "WARN: could not add the 'claude-plugins-official' marketplace."
-          warn "      This clones https://github.com/anthropics/claude-plugins-official.git over git smart-HTTP."
-          warn "      Check whether github.com is reachable: sbx policy log"
-          warn "      Retry in here with: claude plugin marketplace add anthropics/claude-plugins-official"
-          # The install below depends on this, so stop here — still exit 0.
+          cat >&2 <<'EOF'
+        superpowers kit: WARN: could not add the 'claude-plugins-official' marketplace; skipping the install.
+          This clones https://github.com/anthropics/claude-plugins-official.git over git smart-HTTP.
+          Check whether github.com is reachable: sbx policy log
+          Retry in here with: claude plugin marketplace add anthropics/claude-plugins-official
+        EOF
           exit 0
         fi
 
         # Idempotent: reports "already installed" on a second run.
         if ! claude plugin install superpowers@claude-plugins-official; then
-          warn "WARN: could not install 'superpowers' from claude-plugins-official."
-          warn "      This clones https://github.com/obra/superpowers.git over git smart-HTTP."
-          warn "      Check whether github.com is reachable: sbx policy log"
-          warn "      Retry in here with: claude plugin install superpowers@claude-plugins-official"
+          cat >&2 <<'EOF'
+        superpowers kit: WARN: could not install 'superpowers' from claude-plugins-official.
+          This clones https://github.com/obra/superpowers.git over git smart-HTTP.
+          Check whether github.com is reachable: sbx policy log
+          Retry in here with: claude plugin install superpowers@claude-plugins-official
+        EOF
         fi
 
         exit 0
@@ -68,22 +49,22 @@ agentInstructions:
     ## Superpowers skills library installed
 
     The `superpowers` plugin (`obra/superpowers`, public, via the built-in
-    `claude-plugins-official` marketplace) is installed at user scope. It adds
-    a skills library, invoked with the `Skill` tool: `brainstorming`,
-    `writing-plans`, `executing-plans`, `subagent-driven-development`,
-    `dispatching-parallel-agents`, `test-driven-development`,
-    `systematic-debugging`, `requesting-code-review`, `receiving-code-review`,
-    `using-git-worktrees`, `finishing-a-development-branch`,
-    `verification-before-completion`, `writing-skills`, and the orientation
-    skill `using-superpowers`.
+    `claude-plugins-official` marketplace) is installed at user scope. Its
+    skills are already listed for you by the `Skill` tool, and its SessionStart
+    hook injects the `using-superpowers` orientation skill into every session —
+    both purely local, no network call. What follows is what those surfaces
+    don't tell you.
 
-    A SessionStart hook always injects `using-superpowers`'s content into
-    context at the start of every session — purely local, no network call. The
-    `brainstorming` skill can start a local web server for an interactive UI;
-    that page embeds a small `<img>` pointing at `primeradiant.com`, fetched by
-    whatever browser opens the page (not by anything running in this sandbox),
-    and only when the `SUPERPOWERS_DISABLE_TELEMETRY` / `DISABLE_TELEMETRY` env
-    vars are unset.
+    The `brainstorming` skill can start a local web server for an interactive
+    UI; that page embeds a small `<img>` pointing at `primeradiant.com`, fetched
+    by whatever browser opens the page (not by anything running in this
+    sandbox), and only when all three of `SUPERPOWERS_DISABLE_TELEMETRY`,
+    `DISABLE_TELEMETRY` and `CLAUDE_CODE_DISABLE_NONESSENTIAL_TRAFFIC` are
+    unset or set to a falsy value.
+
+    The plugin is third-party code (`obra/superpowers`) installed unpinned at
+    whatever version the marketplace currently serves, and its SessionStart
+    hook runs on every session. Nothing in this sandbox pins or verifies it.
 
     If none of the above is present, either the marketplace registration or
     the plugin install could not reach `github.com` — this kit adds exactly

@@ -3,39 +3,25 @@ kind: mixin
 name: claude-no-attribution
 displayName: Claude Code — No Attribution
 description: >-
-  Disables the "🤖 Generated with Claude Code" trailer and "Co-Authored-By:
-  Claude" line that Claude Code adds to git commits and pull request
-  descriptions. Sets attribution.commit and attribution.pr to empty strings
-  in ~/.claude/settings.json via a jq merge, so every other setting in that
-  file is preserved.
+  Removes Claude Code's "🤖 Generated with Claude Code" commit trailer and
+  "Co-Authored-By: Claude" line, leaving every other ~/.claude/settings.json
+  key intact.
 requires:
   agent: claude
 
 setup:
   install:
-    - command: |
-        set -e
-        mkdir -p /home/agent/.claude
-        # Non-recursive: if this mkdir -p just created the directory fresh as
-        # root, fix its ownership so other kits' own installs (running as the
-        # agent user) can still create files under it — e.g. `mkdir -p
-        # ~/.claude/infinum`. Non-recursive so it doesn't touch ownership of
-        # files already inside it, like .credentials.json.
-        chown agent:agent /home/agent/.claude
-        f=/home/agent/.claude/settings.json
-        [ -f "$f" ] || echo '{}' > "$f"
-        # jq merge: only the attribution keys are touched, every other
-        # setting in the file survives. Temp file lives alongside $f so the
-        # mv below is an atomic rename, not a cross-filesystem copy.
-        tmp=$(mktemp -p /home/agent/.claude)
-        jq '.attribution.commit = "" | .attribution.pr = ""' "$f" > "$tmp"
-        mv "$tmp" "$f"
-        # Runs as root, so settings.json ends up root-owned; agent-run Claude
-        # Code couldn't save settings otherwise. Chown only this file — a
-        # recursive chown would also reset .credentials.json's ownership.
-        chown agent:agent "$f"
-      user: "0"
+    - user: "1000"  # everything written lives under the agent's own ~/.claude
       description: Set attribution.commit and attribution.pr to "" in ~/.claude/settings.json to disable Claude's commit/PR attribution.
+      command: |
+        set -eu
+        f="${CLAUDE_CONFIG_DIR:-/home/agent/.claude}/settings.json"
+        mkdir -p "$(dirname "$f")"
+        [ -f "$f" ] || echo '{}' > "$f"
+        # Capture before writing: a jq failure aborts before "$f" is touched,
+        # and writing in place keeps the file's own mode and owner.
+        merged=$(jq '.attribution.commit = "" | .attribution.pr = ""' "$f")
+        printf '%s\n' "$merged" > "$f"
 
 agentInstructions:
   content: |
