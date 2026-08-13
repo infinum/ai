@@ -60,10 +60,19 @@ $ claude mcp add --transport http context7 https://mcp.context7.com/mcp -s user 
     --header "Authorization: Bearer $CONTEXT7_API_KEY"
 ```
 
-## Schema version
+## Best-effort by design
 
-Written as `schemaVersion: "2"`: egress lives under `permissions.network.allow`
-and the sandbox note lives under `agentInstructions.content`.
+The install step always exits 0. If `claude mcp add` fails — most likely
+because `mcp.context7.com` is unreachable — the script warns on stderr with
+the command to retry rather than failing sandbox creation. Re-running it is
+safe: once the server is registered, `claude mcp add` exits 1 with "already
+exists", which the script treats as nothing left to do rather than an error.
+
+Retry inside the sandbox:
+
+```console
+$ claude mcp add --transport http context7 https://mcp.context7.com/mcp -s user
+```
 
 ## Usage
 
@@ -71,22 +80,22 @@ and the sandbox note lives under `agentInstructions.content`.
 $ sbx run claude --kit ./context7/ /path/to/project
 ```
 
-Combine with the other kits in this directory:
-
-```console
-$ sbx run claude \
-    --kit ./claude-no-attribution/ \
-    --kit ./infinum-ai/ \
-    --kit ./context7/ \
-    --kit ./superpowers/ \
-    /path/to/project
-```
+To combine it with the other kits here, see the
+[sandbox-kits README](../README.md#applying-the-kits).
 
 Apply to an already-running sandbox:
 
 ```console
 $ sbx kit add my-sandbox ./context7/
 ```
+
+> [!NOTE]
+> `sbx kit add` runs the install step but **not** this kit's
+> `agentInstructions.content` — the engine skips the kit-memory write for
+> `kind: mixin` artifacts. The server is registered and reachable; Claude just
+> won't have been told it exists, so it won't reach for it. Use
+> `sbx run --kit` for a sandbox you intend to work in. See
+> [Applying the kits](../README.md#applying-the-kits).
 
 ## Verify
 

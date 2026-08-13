@@ -69,10 +69,23 @@ authorize/consent page, which lives on `app.productive.io`. Without that host
 allowed, the login page fails to load (`sbx policy log` will show the
 block) even though the server is correctly registered.
 
-## Schema version
+## Best-effort by design
 
-Written as `schemaVersion: "2"`: egress lives under `permissions.network.allow`
-and the sandbox note lives under `agentInstructions.content`.
+The install step always exits 0. If `claude mcp add` fails — most likely
+because `mcp.productive.io` is unreachable — the script warns on stderr with
+the command to retry rather than failing sandbox creation. Re-running it is
+safe: once the server is registered, `claude mcp add` exits 1 with "already
+exists", which the script treats as nothing left to do rather than an error.
+
+A registered-but-unauthorized server is the *expected* state after creation,
+not a failure — see [Registration vs.
+authorization](#registration-vs-authorization).
+
+Retry inside the sandbox:
+
+```console
+$ claude mcp add --transport http productive https://mcp.productive.io/mcp -s user
+```
 
 ## Usage
 
@@ -80,21 +93,22 @@ and the sandbox note lives under `agentInstructions.content`.
 $ sbx run claude --kit ./productive/ /path/to/project
 ```
 
-Combine with the other kits in this directory:
-
-```console
-$ sbx run claude \
-    --kit ./claude-no-attribution/ \
-    --kit ./infinum-ai/ \
-    --kit ./productive/ \
-    /path/to/project
-```
+To combine it with the other kits here, see the
+[sandbox-kits README](../README.md#applying-the-kits).
 
 Apply to an already-running sandbox:
 
 ```console
 $ sbx kit add my-sandbox ./productive/
 ```
+
+> [!NOTE]
+> `sbx kit add` runs the install step but **not** this kit's
+> `agentInstructions.content` — the engine skips the kit-memory write for
+> `kind: mixin` artifacts. The server is registered, but Claude won't have
+> been told it exists or that it still needs an OAuth login, which is most of
+> what that note carries. Use `sbx run --kit` for a sandbox you intend to work
+> in. See [Applying the kits](../README.md#applying-the-kits).
 
 ## Verify
 

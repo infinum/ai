@@ -106,10 +106,23 @@ $ claude mcp add sonarqube -s user \
        -e SONARQUBE_TOKEN -e SONARQUBE_ORG sonarsource/sonarqube-mcp
 ```
 
-## Schema version
+## Best-effort by design
 
-Written as `schemaVersion: "2"`: egress lives under `permissions.network.allow`
-and the sandbox note lives under `agentInstructions.content`.
+The install step always exits 0. It skips registration and warns on stderr,
+rather than failing sandbox creation, in three cases:
+
+- No `docker` on `PATH` — the server only runs as a container image.
+- `SONARQUBE_TOKEN` or `SONARQUBE_ORG` missing from the environment.
+- `claude mcp add` itself failing.
+
+Re-running it is safe: once the server is registered, `claude mcp add` exits 1
+with "already exists", which the script treats as nothing left to do rather
+than an error. The [Credentials](#credentials) section has the command to
+retry by hand.
+
+Note that a skipped registration is quiet — the sandbox still comes up
+healthy. `claude mcp list` is what tells you whether it's there; the creation
+log is what tells you why it isn't.
 
 ## Usage
 
@@ -117,22 +130,22 @@ and the sandbox note lives under `agentInstructions.content`.
 $ SONARQUBE_TOKEN=... SONARQUBE_ORG=... sbx run claude --kit ./sonarcloud/ /path/to/project
 ```
 
-Combine with the other kits in this directory:
-
-```console
-$ sbx run claude \
-    --kit ./claude-no-attribution/ \
-    --kit ./infinum-ai/ \
-    --kit ./sonarcloud/ \
-    --kit ./superpowers/ \
-    /path/to/project
-```
+To combine it with the other kits here, see the
+[sandbox-kits README](../README.md#applying-the-kits).
 
 Apply to an already-running sandbox:
 
 ```console
 $ sbx kit add my-sandbox ./sonarcloud/
 ```
+
+> [!NOTE]
+> `sbx kit add` runs the install step but **not** this kit's
+> `agentInstructions.content` — the engine skips the kit-memory write for
+> `kind: mixin` artifacts. The server is registered and reachable; Claude just
+> won't have been told it exists, so it won't reach for it. Use
+> `sbx run --kit` for a sandbox you intend to work in. See
+> [Applying the kits](../README.md#applying-the-kits).
 
 ## Verify
 

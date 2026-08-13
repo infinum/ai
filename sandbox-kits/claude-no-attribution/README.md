@@ -39,9 +39,9 @@ The write is not atomic, which is deliberate: install commands run once,
 sequentially, before the agent launches, so there is no concurrent reader for
 an atomic rename to protect.
 
-Unlike `infinum-ai` and `superpowers`, this kit is **not** best-effort. It runs
-under `set -eu` and makes no network call, so its only failure mode is a
-`settings.json` that is already invalid JSON — worth failing creation over.
+Unlike the kits here that reach the network, this kit is **not** best-effort.
+It runs under `set -eu` and makes no network call, so its only failure mode is
+a `settings.json` that is already invalid JSON — worth failing creation over.
 
 `jq` is assumed present: this kit declares `requires.agent: claude`, and the
 `claude` base image ships it.

@@ -3,68 +3,57 @@ kind: mixin
 name: context7
 displayName: Context7 — Up-to-Date Docs MCP
 description: >-
-  Registers Upstash's Context7 MCP server (https://github.com/upstash/context7)
-  with Claude Code at user scope, over its remote HTTP endpoint, and allows
-  egress to mcp.context7.com. Context7 lets the agent pull current,
-  version-specific library and framework documentation and code examples
-  instead of relying on stale training data. Works anonymously (shared rate
-  limit); set CONTEXT7_API_KEY in the sandbox environment for a free key's
-  higher limit.
+  Registers Upstash's Context7 MCP server with Claude Code at user scope, so
+  the agent can pull current, version-specific library documentation and code
+  examples instead of relying on stale training data.
 requires:
   agent: claude
 
-# Remote HTTP transport only — no npx/npm involved, so the network surface
-# stays to the one host. See README for the local-stdio alternative
-# (@upstash/context7-mcp via npx) and why this kit doesn't use it.
 permissions:
   network:
     allow:
-      - mcp.context7.com
+      - mcp.context7.com  # the remote HTTP MCP endpoint; see README for the local-stdio alternative
 
 setup:
   install:
-    - user: "1000"
+    - user: "1000"  # everything written lives under the agent's own ~/.claude
       description: Register the context7 MCP server (remote HTTP) with Claude Code at user scope.
       command: |
         set -u
 
-        CLAUDE_DIR="${CLAUDE_CONFIG_DIR:-/home/agent/.claude}"
-        export CLAUDE_CONFIG_DIR="$CLAUDE_DIR"
+        # Exported so `claude` agrees with this script even if $HOME differs
+        # from /home/agent.
+        export CLAUDE_CONFIG_DIR="${CLAUDE_CONFIG_DIR:-/home/agent/.claude}"
         NAME=context7
         URL=https://mcp.context7.com/mcp
 
-        warn() { echo "context7 kit: $*" >&2; }
-
-        if ! command -v claude >/dev/null 2>&1; then
-          warn "WARN: 'claude' not found on PATH; skipping MCP registration."
-          exit 0
-        fi
-
         # CONTEXT7_API_KEY is optional: Context7's remote endpoint works
-        # anonymously on a shared rate limit. Set the var in the sandbox
-        # environment to register with a personal key instead (free, from
-        # context7.com/dashboard) for a higher limit.
+        # anonymously on a shared rate limit. Set it in the sandbox environment
+        # to register with a personal key's header instead, for a higher limit.
+        set -- --transport http "$NAME" "$URL" -s user
         if [ -n "${CONTEXT7_API_KEY:-}" ]; then
-          out=$(claude mcp add --transport http "$NAME" "$URL" -s user \
-            --header "Authorization: Bearer ${CONTEXT7_API_KEY}" 2>&1)
-        else
-          out=$(claude mcp add --transport http "$NAME" "$URL" -s user 2>&1)
+          set -- "$@" --header "Authorization: Bearer ${CONTEXT7_API_KEY}"
         fi
+
+        out=$(claude mcp add "$@" 2>&1)
         status=$?
 
         # `claude mcp add` exits 1 with "already exists" on a re-run — that's
         # not a failure, just nothing left to do. It does NOT update an
-        # already-registered entry's header, so switching in a key later
-        # needs a manual `claude mcp remove context7 -s user` first.
+        # already-registered entry's header, so switching in a key later needs
+        # a manual `claude mcp remove context7 -s user` first.
         if [ "$status" -eq 0 ]; then
           echo "$out"
         elif echo "$out" | grep -q "already exists"; then
           echo "context7 kit: MCP server '$NAME' already configured in user scope."
         else
-          warn "WARN: could not register the '$NAME' MCP server."
-          warn "      $out"
-          warn "      Retry manually: claude mcp add --transport http $NAME $URL -s user"
+          cat >&2 <<EOF
+        context7 kit: WARN: could not register the '$NAME' MCP server.
+          $out
+          Retry in here: claude mcp add --transport http $NAME $URL -s user
+        EOF
         fi
+
         exit 0
 
 agentInstructions:
@@ -84,6 +73,6 @@ agentInstructions:
     server with that key's `Authorization: Bearer` header instead, for a
     higher limit — get a free key at context7.com/dashboard.
 
-    Check registration with `claude mcp list` or `claude mcp get context7`.
-    If it's missing, `claude` may not have been on PATH during setup — retry
-    with `claude mcp add --transport http context7 https://mcp.context7.com/mcp -s user`.
+    Check registration with `claude mcp list` or `claude mcp get context7`. If
+    it's missing, the registration failed at creation time — retry with
+    `claude mcp add --transport http context7 https://mcp.context7.com/mcp -s user`.

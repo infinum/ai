@@ -3,49 +3,33 @@ kind: mixin
 name: productive
 displayName: Productive — Project Management MCP
 description: >-
-  Registers Productive's remote MCP server (https://mcp.productive.io/mcp)
-  with Claude Code at user scope and allows egress to mcp.productive.io and
-  app.productive.io. Lets the agent read and update Productive projects,
-  tasks, time entries, CRM deals, and invoices. Requires the Productive
-  Ultimate plan with AI features enabled. Authorization is OAuth 2.0,
-  per-user, and interactive — this kit only registers the server; completing
-  the login is a manual step documented in README.md.
+  Registers Productive's MCP server with Claude Code at user scope, so the
+  agent can read and update projects, tasks, time entries, deals and invoices.
+  Registration only — the per-user OAuth login is a manual step afterwards.
 requires:
   agent: claude
 
-# Two hosts: mcp.productive.io serves the MCP endpoint itself; app.productive.io
-# is where `claude mcp login` sends the user to sign in and authorize the
-# connection (OAuth authorize/consent page). Both are needed for the server to
-# ever reach a connected state. See README for the sandbox test-environment
-# endpoint (mcp-sandbox.productive.io) this kit deliberately doesn't register.
 permissions:
   network:
     allow:
-      - mcp.productive.io
-      - app.productive.io
+      - mcp.productive.io  # the remote HTTP MCP endpoint
+      - app.productive.io  # OAuth authorize/consent page `claude mcp login` opens; see README
 
 setup:
   install:
-    - user: "1000"
+    - user: "1000"  # everything written lives under the agent's own ~/.claude
       description: Register the productive MCP server (remote HTTP) with Claude Code at user scope.
       command: |
         set -u
 
-        CLAUDE_DIR="${CLAUDE_CONFIG_DIR:-/home/agent/.claude}"
-        export CLAUDE_CONFIG_DIR="$CLAUDE_DIR"
+        # Exported so `claude` agrees with this script even if $HOME differs
+        # from /home/agent.
+        export CLAUDE_CONFIG_DIR="${CLAUDE_CONFIG_DIR:-/home/agent/.claude}"
         NAME=productive
         URL=https://mcp.productive.io/mcp
 
-        warn() { echo "productive kit: $*" >&2; }
-
-        if ! command -v claude >/dev/null 2>&1; then
-          warn "WARN: 'claude' not found on PATH; skipping MCP registration."
-          exit 0
-        fi
-
-        # Registration only — OAuth login is interactive (browser or
-        # `claude mcp login productive --no-browser` + pasted redirect URL) and
-        # per Productive user, so it cannot happen during unattended setup.
+        # Registration only — OAuth login is interactive and per Productive
+        # user, so it cannot happen during unattended setup. See README.
         out=$(claude mcp add --transport http "$NAME" "$URL" -s user 2>&1)
         status=$?
 
@@ -56,10 +40,13 @@ setup:
         elif echo "$out" | grep -q "already exists"; then
           echo "productive kit: MCP server '$NAME' already configured in user scope."
         else
-          warn "WARN: could not register the '$NAME' MCP server."
-          warn "      $out"
-          warn "      Retry manually: claude mcp add --transport http $NAME $URL -s user"
+          cat >&2 <<EOF
+        productive kit: WARN: could not register the '$NAME' MCP server.
+          $out
+          Retry in here: claude mcp add --transport http $NAME $URL -s user
+        EOF
         fi
+
         exit 0
 
 agentInstructions:
