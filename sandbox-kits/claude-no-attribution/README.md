@@ -20,9 +20,10 @@ The install command runs once at sandbox creation, as the **agent** user
 it touches lives under the agent's own home, so root would only mean chowning
 the directory and the file back afterwards:
 
-- The target is `${CLAUDE_CONFIG_DIR:-/home/agent/.claude}/settings.json`, the
-  same default `infinum-ai` uses, so both kits agree on which file Claude reads
-  even if that variable points elsewhere.
+- The target is `/home/agent/.claude/settings.json`, written as a literal path.
+  The install step runs as uid 1000, whose home the base agent fixes, so the
+  config directory is known — no `CLAUDE_CONFIG_DIR` indirection, and the same
+  path `infinum-ai` writes, so both kits agree on which file Claude reads.
 - If that `settings.json` doesn't exist yet, it's created as `{}` first,
   so the `jq` merge below always has valid JSON to work with.
 - `jq '.attribution.commit = "" | .attribution.pr = ""'` merges only those
@@ -39,9 +40,11 @@ The write is not atomic, which is deliberate: install commands run once,
 sequentially, before the agent launches, so there is no concurrent reader for
 an atomic rename to protect.
 
-Unlike the kits here that reach the network, this kit is **not** best-effort.
-It runs under `set -eu` and makes no network call, so its only failure mode is
-a `settings.json` that is already invalid JSON — worth failing creation over.
+Like every kit here, this one fails sandbox creation rather than warning and
+continuing. It runs under `set -eu` and makes no network call, so its only
+failure mode is a `settings.json` that is already invalid JSON — worth failing
+creation over, since the alternative is a sandbox whose attribution settings
+silently didn't take.
 
 `jq` is assumed present: this kit declares `requires.agent: claude`, and the
 `claude` base image ships it.

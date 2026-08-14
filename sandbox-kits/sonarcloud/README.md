@@ -42,9 +42,10 @@ pull` needs (`registry-1.docker.io`, `auth.docker.io`,
 server's own outbound calls to the SonarQube Cloud API.
 
 If your sandbox has no Docker daemon reachable from the agent user, the
-install step detects that (`command -v docker`), skips registration, and
-warns instead of failing the sandbox. Fork this kit for the JAR alternative
-in that case — roughly:
+install step detects that (`command -v docker`) and **fails sandbox
+creation** — the server only runs as a container image, so there is nothing
+useful it could do instead. Drop the kit for that sandbox, or fork it for the
+JAR alternative — roughly:
 
 ```yaml
 permissions:
@@ -91,7 +92,16 @@ token](https://docs.sonarsource.com/sonarqube-cloud/managing-your-account/managi
 and `SONARQUBE_ORG` (your [organization
 key](https://sonarcloud.io/account/organizations)) must be set in the sandbox
 environment before this kit's install step runs. Neither is hardcoded in the
-spec — the install script only ever reads them from the environment.
+spec — the install script only ever reads them from the environment, and it
+**fails sandbox creation** when either is missing.
+
+Set the token as a sandbox secret, or pass both in the creation environment:
+
+```console
+$ sbx secret set sonarqube --sandbox my-sandbox -t '<token>'
+$ SONARQUBE_TOKEN=<token> SONARQUBE_ORG=<org-key> \
+    sbx run claude --kit ./sonarcloud/ /path/to/project
+```
 
 `claude mcp add` writes the env vars at registration time; it doesn't update
 an already-registered entry. Rotating the token later needs a manual
@@ -106,23 +116,29 @@ $ claude mcp add sonarqube -s user \
        -e SONARQUBE_TOKEN -e SONARQUBE_ORG sonarsource/sonarqube-mcp
 ```
 
-## Best-effort by design
+## Fails fast by design
 
-The install step always exits 0. It skips registration and warns on stderr,
-rather than failing sandbox creation, in three cases:
+The install step runs under `set -eu` and **fails sandbox creation** in three
+cases, each with an actionable message on stderr:
 
 - No `docker` on `PATH` — the server only runs as a container image.
 - `SONARQUBE_TOKEN` or `SONARQUBE_ORG` missing from the environment.
 - `claude mcp add` itself failing.
 
-Re-running it is safe: once the server is registered, `claude mcp add` exits 1
-with "already exists", which the script treats as nothing left to do rather
-than an error. The [Credentials](#credentials) section has the command to
-retry by hand.
+Each of those used to warn and skip, which produced a healthy-looking sandbox
+with no SonarQube in it — a state you only discovered later, from
+`claude mcp list` or a tool call that wasn't there. Failing at creation puts
+the reason in front of whoever is creating the sandbox.
 
-Note that a skipped registration is quiet — the sandbox still comes up
-healthy. `claude mcp list` is what tells you whether it's there; the creation
-log is what tells you why it isn't.
+Re-running the step is still safe: once the server is registered,
+`claude mcp add` exits 1 with "already exists", which the script treats as
+nothing left to do rather than an error. That is the one non-zero exit it
+tolerates — it means the desired end state already holds. The
+[Credentials](#credentials) section has the command to retry by hand.
+
+What creation *cannot* catch is a token that is present but revoked, wrongly
+scoped, or paired with a mismatched organization key — the kit registers the
+server without calling the API, so those surface on the first tool call.
 
 ## Usage
 
@@ -157,10 +173,11 @@ $ sbx exec my-sandbox -- claude mcp get sonarqube
 `Status: ✔ Connected` (or a tool call that actually returns issues/quality
 gate data for a real project) means it's wired up. A `403` whose body starts
 with `Blocked by network policy` means one of the four allowed hosts isn't in
-effect — check `sbx policy ls` and `sbx policy log`. A missing entry in
-`claude mcp list` usually means `SONARQUBE_TOKEN`/`SONARQUBE_ORG` weren't set,
-or `docker` wasn't on PATH, when the install step ran — check the sandbox's
-creation logs for `sonarcloud kit: WARN`.
+effect — check `sbx policy ls` and `sbx policy log`. An auth error with the
+server present points at the token or the organization key, which creation
+does not validate. The server cannot be *missing*: every registration failure
+now fails creation, so a sandbox that came up has it — and a creation that
+failed says why, on stderr, prefixed `sonarcloud kit: ERROR`.
 
 ## References
 

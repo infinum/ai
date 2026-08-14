@@ -5,7 +5,8 @@ displayName: Context7 — Up-to-Date Docs MCP
 description: >-
   Registers Upstash's Context7 MCP server with Claude Code at user scope, so
   the agent can pull current, version-specific library documentation and code
-  examples instead of relying on stale training data.
+  examples instead of relying on stale training data. Needs CONTEXT7_API_KEY in
+  the sandbox environment.
 requires:
   agent: claude
 
@@ -17,44 +18,47 @@ permissions:
 setup:
   install:
     - user: "1000"  # everything written lives under the agent's own ~/.claude
-      description: Register the context7 MCP server (remote HTTP) with Claude Code at user scope.
+      description: Register the context7 MCP server (remote HTTP) with Claude Code at user scope. Fails the sandbox if CONTEXT7_API_KEY is unset or the registration errors.
       command: |
-        set -u
+        set -eu
 
-        # Exported so `claude` agrees with this script even if $HOME differs
-        # from /home/agent.
-        export CLAUDE_CONFIG_DIR="${CLAUDE_CONFIG_DIR:-/home/agent/.claude}"
         NAME=context7
         URL=https://mcp.context7.com/mcp
 
-        # CONTEXT7_API_KEY is optional: Context7's remote endpoint works
-        # anonymously on a shared rate limit. Set it in the sandbox environment
-        # to register with a personal key's header instead, for a higher limit.
-        set -- --transport http "$NAME" "$URL" -s user
-        if [ -n "${CONTEXT7_API_KEY:-}" ]; then
-          set -- "$@" --header "Authorization: Bearer ${CONTEXT7_API_KEY}"
+        # Read from the environment, never hardcoded. Context7's remote endpoint
+        # would also work anonymously on a shared rate limit, but this kit
+        # requires a key: an anonymous registration that starts rate-limiting
+        # mid-session is a worse failure than one at creation time.
+        if [ -z "${CONTEXT7_API_KEY:-}" ]; then
+          cat >&2 <<EOF
+        context7 kit: ERROR: CONTEXT7_API_KEY is not set.
+          The kit registers the MCP server with that key's Authorization header.
+          Set it as a sandbox secret and recreate:
+            sbx secret set context7 --sandbox <sandbox> -t '<key>'
+          or pass it in the creation environment:
+            CONTEXT7_API_KEY=<key> sbx run claude --kit ./context7/ <workspace>
+          Get a free key at context7.com/dashboard.
+        EOF
+          exit 1
         fi
-
-        out=$(claude mcp add "$@" 2>&1)
-        status=$?
 
         # `claude mcp add` exits 1 with "already exists" on a re-run — that's
         # not a failure, just nothing left to do. It does NOT update an
-        # already-registered entry's header, so switching in a key later needs
-        # a manual `claude mcp remove context7 -s user` first.
-        if [ "$status" -eq 0 ]; then
+        # already-registered entry's header, so rotating the key later needs a
+        # manual `claude mcp remove context7 -s user` first.
+        if out=$(claude mcp add --transport http "$NAME" "$URL" -s user \
+              --header "Authorization: Bearer ${CONTEXT7_API_KEY}" 2>&1); then
           echo "$out"
         elif echo "$out" | grep -q "already exists"; then
           echo "context7 kit: MCP server '$NAME' already configured in user scope."
         else
           cat >&2 <<EOF
-        context7 kit: WARN: could not register the '$NAME' MCP server.
+        context7 kit: ERROR: could not register the '$NAME' MCP server.
           $out
-          Retry in here: claude mcp add --transport http $NAME $URL -s user
+          Retry in here: claude mcp add --transport http $NAME $URL -s user --header "Authorization: Bearer <key>"
         EOF
+          exit 1
         fi
-
-        exit 0
 
 agentInstructions:
   content: |
@@ -68,11 +72,16 @@ agentInstructions:
     dependency (add "use context7" to a prompt, or call its tools directly:
     `resolve-library-id` then `get-library-docs`).
 
-    Running anonymously shares a public rate limit. If `CONTEXT7_API_KEY` was
-    set in the sandbox environment at creation time, this kit registered the
-    server with that key's `Authorization: Bearer` header instead, for a
-    higher limit — get a free key at context7.com/dashboard.
+    The server is registered with the `Authorization: Bearer` header of the
+    `CONTEXT7_API_KEY` that was set in the sandbox environment at creation
+    time. That key is mandatory — this kit fails sandbox creation when it is
+    missing, so a sandbox you are running in never registered anonymously
+    against the shared public rate limit.
 
-    Check registration with `claude mcp list` or `claude mcp get context7`. If
-    it's missing, the registration failed at creation time — retry with
-    `claude mcp add --transport http context7 https://mcp.context7.com/mcp -s user`.
+    Check registration with `claude mcp list` or `claude mcp get context7`. It
+    cannot be missing: a failed registration fails creation, so if the server
+    is absent, something removed it after setup — re-add it with
+    `claude mcp add --transport http context7 https://mcp.context7.com/mcp -s
+    user --header "Authorization: Bearer <key>"`. The key itself is not
+    necessarily readable from this session's environment; ask the user for it
+    rather than assuming `$CONTEXT7_API_KEY` is set here.

@@ -100,16 +100,30 @@ behind in a sandbox that gets recreated on the same home volume, and
 pruning would mean deleting files from a directory a user may have added their
 own rules to. Delete a stale rule by hand if you hit it.
 
-## Best-effort by design
+## Fails fast by design
 
-The install command always exits 0. Every failure — the marketplace
-unreachable, a single plugin failing to install, no rules found in the clone —
-is a warning on stderr, not a failed sandbox.
+The install command runs under `set -eu` and **fails sandbox creation** on the
+first error, with an actionable message on stderr. Every step is mandatory:
 
-Failure is scoped to what depends on the network. A failed `marketplace add`
-skips the plugin installs and the rules copy, since both read the clone it would
-have made, but not the `whoami.md` stub, `index.md` or the `CLAUDE.md` import
-line — a `github.com`-blocked sandbox still comes up wired, with no rules.
+- `claude plugin marketplace add` failing.
+- any one of the four plugins failing to install — the loop stops there rather
+  than pressing on with the rest.
+- no `rules/*.md` found in the marketplace clone, which would mean the house
+  rules this kit exists to install are missing.
+
+It used to warn and continue instead, scoping each failure to what depended on
+the network: a `github.com`-blocked sandbox still came up "wired" — `whoami.md`,
+`index.md` and the `CLAUDE.md` import line all written — with no plugins and no
+rules behind them. That is precisely the state worth refusing, because
+`CLAUDE.md` then advertises house rules that aren't there.
+
+One consequence of failing fast: the local wiring in step 4 is never reached
+when an earlier step fails, so a failed creation leaves nothing half-written
+for the next attempt to trip over.
+
+Both `claude plugin marketplace add` and `claude plugin install` are
+idempotent — they exit 0 with "already on disk" / "already installed" — so
+re-applying the kit to a sandbox that already has it is not an error.
 
 `infinum/ai` is public, so the most common cause of a failed marketplace add is
 network policy blocking `github.com` — sandboxes have no default GitHub
@@ -157,9 +171,10 @@ $ sbx kit add my-sandbox ./infinum-ai/
 
 ## Verify
 
-The install command always exits 0, so `Install commands completed` only
-means the script ran to the end — it does not mean the marketplace was
-reachable or the plugins installed. Check the actual outcome:
+`Install commands completed` is now worth something for this kit: the install
+command exits non-zero on every failure, so a sandbox that came up has the
+marketplace, the four plugins and at least one rule. It still says nothing
+about *which* rules landed, so check the outcome:
 
 ```console
 $ sbx exec my-sandbox -- claude plugin marketplace list

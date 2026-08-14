@@ -95,14 +95,18 @@ kit, and the `claude plugin` CLI offers no pinning to accept it more
 carefully. It is worth knowing before adding this kit to a sandbox that
 handles anything sensitive.
 
-## Best-effort by design
+## Fails fast by design
 
-The install step always exits 0. If either `claude plugin marketplace add` or
-`claude plugin install` fails — most likely because `github.com` is
-unreachable, since both commands clone over git smart-HTTP — the script warns
-on stderr rather than failing the sandbox. A failed `marketplace add` short-circuits the rest of the step,
-same as `infinum-ai` does for its own marketplace registration. Retry inside
-the sandbox once the network issue is resolved:
+The install step runs under `set -eu` and **fails sandbox creation** if either
+`claude plugin marketplace add` or `claude plugin install` fails — most likely
+because `github.com` is unreachable, since both commands clone over git
+smart-HTTP. The alternative was a sandbox that comes up healthy with none of
+the skills this kit exists to provide, discovered only when someone looks for
+them. `infinum-ai` treats its own marketplace registration the same way.
+
+Both commands are idempotent — they exit 0 with "already on disk" / "already
+installed" — so re-applying the kit to a sandbox that already has it is not an
+error. Retry inside the sandbox once the network issue is resolved:
 
 ```console
 $ claude plugin marketplace add anthropics/claude-plugins-official
@@ -145,9 +149,10 @@ $ sbx kit add my-sandbox ./superpowers/
 
 ## Verify
 
-The install step always exits 0, so "Install commands completed" only
-means the script ran to the end — it does not mean the marketplace was
-registered or the plugin actually installed. Check the outcome directly:
+"Install commands completed" is now worth something for this kit: the install
+step exits non-zero if either the marketplace registration or the plugin
+install fails, so a sandbox that came up has both. Check the outcome anyway if
+you want to know *what* it installed:
 
 ```console
 $ sbx exec my-sandbox -- claude plugin list

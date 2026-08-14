@@ -23,13 +23,44 @@ that server's hosts. Each has a precondition the other kits don't:
 
 | Kit | Server | Needs |
 |---|---|---|
-| [`context7`](./context7/) | Current, version-specific library docs | Nothing. `CONTEXT7_API_KEY` optional, for a higher rate limit |
+| [`context7`](./context7/) | Current, version-specific library docs | `CONTEXT7_API_KEY` in the environment |
 | [`productive`](./productive/) | Projects, tasks, time entries, deals, invoices | Productive **Ultimate** plan, plus a manual OAuth login after creation |
 | [`sonarcloud`](./sonarcloud/) | Code quality issues, hotspots, quality gates, coverage | `SONARQUBE_TOKEN` + `SONARQUBE_ORG` in the environment, and a reachable Docker daemon |
 
-A kit whose precondition isn't met warns and skips its registration rather
-than failing sandbox creation. Each kit's own README covers its design
-decisions; this page covers what is true of all of them.
+Each kit's own README covers its design decisions; this page covers what is
+true of all of them.
+
+## Every kit fails loudly
+
+No kit here is best-effort. Every install step runs under `set -eu` and exits
+non-zero on any error — an unreachable marketplace, a failed `claude mcp add`,
+a missing credential, no `docker` on `PATH` — which **fails sandbox creation**
+with the reason on stderr, prefixed `<kit> kit: ERROR`.
+
+The alternative, which these kits used to do, is worse: warn on stderr, exit
+0, and hand back a sandbox that comes up healthy and quietly lacks the thing
+the kit exists to install. Nobody reads creation logs for a sandbox that
+started fine. An MCP server that was never registered, or house rules that
+`CLAUDE.md` advertises and doesn't have, then surface much later as the agent
+behaving oddly.
+
+Two outcomes are deliberately **not** errors:
+
+- **Already applied.** `claude mcp add` exits 1 with "already exists" and the
+  `claude plugin` commands exit 0 with "already on disk" / "already
+  installed". Every script treats those as the desired end state, so
+  re-applying a kit is safe.
+- **`productive` awaiting its OAuth login.** That login is interactive and per
+  user, so it cannot happen during unattended setup. Registration succeeding
+  with the server unauthorized is the expected result — see the
+  [kit README](./productive/README.md).
+
+Credentials are checked before they're used, and are only ever read from the
+environment — never hardcoded in a spec. `context7` needs `CONTEXT7_API_KEY`;
+`sonarcloud` needs `SONARQUBE_TOKEN` and `SONARQUBE_ORG`. A missing one fails
+creation immediately, rather than at the first tool call. What creation cannot
+check is whether a credential that *is* present is valid — a revoked token or
+a mismatched org key surfaces on first use.
 
 ## Applying the kits
 
@@ -48,12 +79,15 @@ Add the MCP kits per project, rather than by default — each one widens the
 allowlist and adds a server the agent will reach for:
 
 ```console
-$ SONARQUBE_TOKEN=... SONARQUBE_ORG=... sbx run claude \
+$ CONTEXT7_API_KEY=... SONARQUBE_TOKEN=... SONARQUBE_ORG=... sbx run claude \
     --kit ./infinum-ai/ \
     --kit ./context7/ \
     --kit ./sonarcloud/ \
     /path/to/project
 ```
+
+Leave one of those out and creation fails — see
+[Every kit fails loudly](#every-kit-fails-loudly).
 
 Order doesn't matter. Three of the first four write `~/.claude/settings.json`,
 and each writer does a read-modify-write, so the attribution keys, the
@@ -150,10 +184,10 @@ defines four layers. Where these kits stand:
 
 | Layer | `claude-no-attribution`, `infinum-ai`, `maven-central`, `superpowers` | `context7`, `productive`, `sonarcloud` |
 |---|---|---|
-| 1. `sbx kit validate` | **Passing**, zero warnings | **Not run** |
-| 2. TCK (`scripts/test-kit.sh`) | **Passing** — validation, network/commands policy, and the `container` subtest | **Not run** |
+| 1. `sbx kit validate` | **Passing**, zero warnings — before the fail-loudly change; only `command:` bodies and prose moved, so re-run to confirm | **Not run** |
+| 2. TCK (`scripts/test-kit.sh`) | **Stale.** Passed before the fail-loudly change; the `container` subtest is expected to fail now — see below | **Not run** |
 | 3. e2e under `deny-all` | **Not run.** Needs `sbx` on `PATH` and `/dev/kvm` | **Not run** |
-| 4. Manual probe in a live sandbox | **Passing** for the four together — the state below was read out of one | **Not run** |
+| 4. Manual probe in a live sandbox | **Passing** for the four together — the state below was read out of one, before the fail-loudly change | **Not run** |
 
 Layer 2 runs from a checkout of
 [`docker/sbx-kits-contrib`](https://github.com/docker/sbx-kits-contrib), one
@@ -164,20 +198,30 @@ $ KIT=/path/to/sandbox-kits/infinum-ai go test -count=1 -run TestKitTCK ./tck/..
 ```
 
 Its `container/install_execution` subtest really executes the install command
-in a container, but it asserts the exit code only — and every kit here that
-makes a network call exits 0 by design even when that call fails. Passing
-means the script ran to the end, not that anything installed.
+in a container and asserts the exit code. That assertion used to be free:
+every kit that touched the network exited 0 regardless, so passing meant the
+script ran to the end and nothing more. Now that the scripts propagate
+failure, the same subtest asserts something real — and will **fail** in any
+container where `claude` isn't on `PATH` or `github.com` isn't reachable, which
+is the likely case. That is the assertion working, not a regression in the
+kits: expect to run layer 2 in an environment that can actually satisfy the
+install, or to read a failure there as "this container can't install the kit".
 
-### What the three MCP kits have had instead
+### What the install scripts have had instead
 
-Their specs parse as YAML and their install scripts pass `sh -n`. Each script
-was then run against a stubbed `claude` (and `docker`), covering success,
-"already exists" on a re-run, outright failure, missing credentials, and a
-missing Docker daemon: every path exits 0 and prints the guidance it means to.
+Every spec parses as YAML and every extracted install script passes `sh -n`.
+Each was then run against a stubbed `claude` (and `docker`) on a hermetic
+`PATH`, asserting the **exit code** for each path: success, "already exists"
+on a re-run, outright failure, missing credentials, and a missing Docker
+daemon — 31 assertions across the six kits with install steps, all passing.
+`infinum-ai` additionally asserts its on-disk result: `whoami.md` stub,
+copied rules, generated `index.md`, the `CLAUDE.md` import line, that an
+upstream `whoami.md` never clobbers the stub, that `README.md` stays out of
+`index.md`, and that a second run doesn't duplicate the import.
 
-That says the scripts are correct shell that fails safely. It says nothing
-about the four things only layers 1–4 can tell you: that `sbx` accepts the
-specs, that the declared hosts are sufficient, that the servers connect, or
+That says the scripts are correct shell that fails where it means to. It says
+nothing about the four things only layers 1–4 can tell you: that `sbx` accepts
+the specs, that the declared hosts are sufficient, that the servers connect, or
 that Claude is told about them.
 
 Layer 3 is the gap that matters, and it matters more now than it did with four
@@ -220,7 +264,8 @@ plugins; both marketplaces registered; `settings.json` owned by `agent`
 (`productive` will sit unconnected until someone runs `claude mcp login
 productive`).
 
-Remember that `Install commands completed` in the create output only means the
-install scripts exited 0. Every kit here that makes a network call exits 0 on
-purpose even when that call fails, so for those it is not evidence that
-anything installed.
+`Install commands completed` in the create output now carries real weight: the
+scripts exit non-zero on failure, so a sandbox that came up got past every
+check they make. It is still not a substitute for the probes above — a script
+can only assert what it looked at, and none of them calls an MCP server's API
+to prove a credential works.

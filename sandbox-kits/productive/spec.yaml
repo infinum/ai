@@ -18,36 +18,31 @@ permissions:
 setup:
   install:
     - user: "1000"  # everything written lives under the agent's own ~/.claude
-      description: Register the productive MCP server (remote HTTP) with Claude Code at user scope.
+      description: Register the productive MCP server (remote HTTP) with Claude Code at user scope. Fails the sandbox if the registration errors.
       command: |
-        set -u
+        set -eu
 
-        # Exported so `claude` agrees with this script even if $HOME differs
-        # from /home/agent.
-        export CLAUDE_CONFIG_DIR="${CLAUDE_CONFIG_DIR:-/home/agent/.claude}"
         NAME=productive
         URL=https://mcp.productive.io/mcp
 
         # Registration only — OAuth login is interactive and per Productive
-        # user, so it cannot happen during unattended setup. See README.
-        out=$(claude mcp add --transport http "$NAME" "$URL" -s user 2>&1)
-        status=$?
-
+        # user, so it cannot happen during unattended setup. An unauthorized
+        # server is the expected end state here, and not a failure. See README.
+        #
         # `claude mcp add` exits 1 with "already exists" on a re-run — that's
-        # not a failure, just nothing left to do.
-        if [ "$status" -eq 0 ]; then
+        # not a failure either, just nothing left to do.
+        if out=$(claude mcp add --transport http "$NAME" "$URL" -s user 2>&1); then
           echo "$out"
         elif echo "$out" | grep -q "already exists"; then
           echo "productive kit: MCP server '$NAME' already configured in user scope."
         else
           cat >&2 <<EOF
-        productive kit: WARN: could not register the '$NAME' MCP server.
+        productive kit: ERROR: could not register the '$NAME' MCP server.
           $out
           Retry in here: claude mcp add --transport http $NAME $URL -s user
         EOF
+          exit 1
         fi
-
-        exit 0
 
 agentInstructions:
   content: |
@@ -67,6 +62,10 @@ agentInstructions:
     - Headless/SSH-style session: `claude mcp login productive --no-browser`,
       then open the printed URL in any browser, sign in to Productive, and
       paste the resulting redirect URL back when prompted.
+
+    A pending login is the only expected gap. Registration itself cannot have
+    failed — this kit fails sandbox creation when `claude mcp add` errors — so
+    the server is present in user scope.
 
     Requirements on the Productive side: the account must be on the
     **Ultimate** plan with AI features enabled, and the login authorizes

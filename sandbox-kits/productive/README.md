@@ -69,17 +69,23 @@ authorize/consent page, which lives on `app.productive.io`. Without that host
 allowed, the login page fails to load (`sbx policy log` will show the
 block) even though the server is correctly registered.
 
-## Best-effort by design
+## Fails fast by design
 
-The install step always exits 0. If `claude mcp add` fails — most likely
-because `mcp.productive.io` is unreachable — the script warns on stderr with
-the command to retry rather than failing sandbox creation. Re-running it is
-safe: once the server is registered, `claude mcp add` exits 1 with "already
-exists", which the script treats as nothing left to do rather than an error.
+The install step runs under `set -eu` and exits non-zero on any error. If
+`claude mcp add` fails — most likely because `mcp.productive.io` is
+unreachable — the script prints its output plus the command to retry and
+**fails sandbox creation**, rather than handing back a sandbox that looks fine
+and has no Productive.
 
-A registered-but-unauthorized server is the *expected* state after creation,
-not a failure — see [Registration vs.
-authorization](#registration-vs-authorization).
+Re-running the step is still safe: once the server is registered,
+`claude mcp add` exits 1 with "already exists", which the script treats as
+nothing left to do rather than an error. That is the one non-zero exit it
+tolerates — it means the desired end state already holds.
+
+A registered-but-*unauthorized* server is the other tolerated outcome, and the
+expected state after creation: the OAuth login is interactive and per user, so
+it can't happen during unattended setup and its absence is not an error — see
+[Registration vs. authorization](#registration-vs-authorization).
 
 Retry inside the sandbox:
 
@@ -119,7 +125,8 @@ $ sbx exec my-sandbox -- claude mcp get productive
 
 `Status: ✔ Connected` means both registration and OAuth login succeeded. A
 `⏸ Pending approval` or auth-related status means the server is registered
-but `claude mcp login productive` still needs to run. A `403` whose body
+but `claude mcp login productive` still needs to run. The server can't be
+*missing* — a failed registration fails creation. A `403` whose body
 starts with `Blocked by network policy` means one of the two egress entries
 isn't in effect — check `sbx policy ls` and `sbx policy log`.
 

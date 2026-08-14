@@ -15,7 +15,7 @@ setup:
       description: Set attribution.commit and attribution.pr to "" in ~/.claude/settings.json to disable Claude's commit/PR attribution.
       command: |
         set -eu
-        f="${CLAUDE_CONFIG_DIR:-/home/agent/.claude}/settings.json"
+        f=/home/agent/.claude/settings.json
         mkdir -p "$(dirname "$f")"
         [ -f "$f" ] || echo '{}' > "$f"
         # Capture before writing: a jq failure aborts before "$f" is touched,

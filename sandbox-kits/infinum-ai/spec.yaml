@@ -16,57 +16,66 @@ permissions:
 setup:
   install:
     - user: "1000"  # everything written lives under the agent's own ~/.claude
-      description: Register the infinum-ai marketplace, install the Infinum plugins, and install the house rules into ~/.claude/infinum/.
+      description: Register the infinum-ai marketplace, install the Infinum plugins, and install the house rules into ~/.claude/infinum/. Fails the sandbox if any step errors.
       command: |
-        set -u
+        set -eu
 
-        # Exported so later `claude` calls agree with this script even if
-        # $HOME differs from /home/agent.
-        export CLAUDE_CONFIG_DIR="${CLAUDE_CONFIG_DIR:-/home/agent/.claude}"
-        CONFIG_DIR="$CLAUDE_CONFIG_DIR/infinum"
+        # The install step runs as uid 1000, whose home the base agent fixes at
+        # /home/agent, so `claude`'s config dir is known rather than discovered.
+        CLAUDE_DIR=/home/agent/.claude
+        CONFIG_DIR="$CLAUDE_DIR/infinum"
         REPO="infinum/ai"
         MARKET="infinum-ai"
-        MARKET_DIR="$CLAUDE_CONFIG_DIR/plugins/marketplaces/$MARKET"
+        MARKET_DIR="$CLAUDE_DIR/plugins/marketplaces/$MARKET"
         PLUGINS="stack-essentials create-prd pr-review-code-simplicity productive-debug"
 
-        warn() { echo "infinum-ai kit: $*" >&2; }
-
         # 1. Register the marketplace. This also leaves a full clone of the
-        #    repo at $MARKET_DIR, which step 3 reads. Only steps 2 and 3 need
-        #    that clone, so a failure here skips those and nothing else.
-        market_ok=1
+        #    repo at $MARKET_DIR, which step 3 reads. Idempotent: exits 0 with
+        #    "already on disk" when the marketplace is already registered.
         if ! claude plugin marketplace add "$REPO"; then
-          market_ok=0
           cat >&2 <<EOF
-        infinum-ai kit: WARN: could not add the '$MARKET' marketplace; skipping the plugins and the house rules.
-          The whoami.md stub, index.md and the CLAUDE.md import line are still written.
+        infinum-ai kit: ERROR: could not add the '$MARKET' marketplace.
           $REPO is public, so this is most likely network policy blocking github.com.
           Check with: sbx policy log
           Then retry in here: claude plugin marketplace add $REPO
         EOF
+          exit 1
         fi
 
         mkdir -p "$CONFIG_DIR"
 
-        if [ "$market_ok" = 1 ]; then
-          # 2. Install the plugins — one failure must not cost the other three.
-          for p in $PLUGINS; do
-            claude plugin install "$p@$MARKET" || \
-              warn "WARN: plugin '$p' did not install; retry with: claude plugin install $p@$MARKET"
-          done
+        # 2. Install the plugins. Idempotent: each exits 0 with "already
+        #    installed" on a re-run.
+        for p in $PLUGINS; do
+          if ! claude plugin install "$p@$MARKET"; then
+            cat >&2 <<EOF
+        infinum-ai kit: ERROR: plugin '$p' did not install.
+          Retry in here: claude plugin install $p@$MARKET
+        EOF
+            exit 1
+          fi
+        done
 
-          # 3. Copy rules out of the clone step 1 made. Flat glob, so rules/<bundle>/
-          #    is never descended into; copy-only, so nothing is ever pruned;
-          #    whoami.md is skipped so upstream can't clobber it. See README.
-          rules_found=0
-          for f in "$MARKET_DIR"/rules/*.md; do
-            case "${f##*/}" in README.md | whoami.md) continue ;; esac
-            [ -f "$f" ] && cp "$f" "$CONFIG_DIR/" && rules_found=1
-          done
-          [ "$rules_found" = 1 ] || warn "WARN: no house rules found under $MARKET_DIR/rules/."
+        # 3. Copy rules out of the clone step 1 made. Flat glob, so rules/<bundle>/
+        #    is never descended into; copy-only, so nothing is ever pruned;
+        #    whoami.md is skipped so upstream can't clobber it. See README.
+        rules_found=0
+        for f in "$MARKET_DIR"/rules/*.md; do
+          [ -f "$f" ] || continue  # unmatched glob stays literal; skip rather than trip set -e
+          case "${f##*/}" in README.md | whoami.md) continue ;; esac
+          cp "$f" "$CONFIG_DIR/"
+          rules_found=1
+        done
+        if [ "$rules_found" != 1 ]; then
+          cat >&2 <<EOF
+        infinum-ai kit: ERROR: no house rules found under $MARKET_DIR/rules/.
+          The marketplace registered but its clone has no rules/*.md, so the rules
+          this kit exists to install are missing. Check the layout of $REPO.
+        EOF
+          exit 1
         fi
 
-        # 4. Local wiring — no network, no clone, so it runs even if step 1 failed.
+        # 4. Local wiring — no network, no clone.
 
         # 4a. whoami.md is the user's own: create once, never overwrite.
         if [ ! -f "$CONFIG_DIR/whoami.md" ]; then
@@ -86,18 +95,17 @@ setup:
         {
           echo "@$CONFIG_DIR/whoami.md"
           for f in "$CONFIG_DIR"/*.md; do
+            [ -f "$f" ] || continue
             case "${f##*/}" in whoami.md | index.md) continue ;; esac
-            [ -f "$f" ] && echo "@$f"
+            echo "@$f"
           done
         } > "$CONFIG_DIR/index.md"
 
         # 4c. One import line in CLAUDE.md, appended only when absent. The
         #     leading newline both terminates a file that lacks a trailing one
         #     and keeps the line off the end of the user's own last line.
-        grep -qsF "@$CONFIG_DIR/index.md" "$CLAUDE_CONFIG_DIR/CLAUDE.md" ||
-          printf '\n%s\n' "@$CONFIG_DIR/index.md  # managed by $REPO" >> "$CLAUDE_CONFIG_DIR/CLAUDE.md"
-
-        exit 0
+        grep -qsF "@$CONFIG_DIR/index.md" "$CLAUDE_DIR/CLAUDE.md" ||
+          printf '\n%s\n' "@$CONFIG_DIR/index.md  # managed by $REPO" >> "$CLAUDE_DIR/CLAUDE.md"
 
 agentInstructions:
   content: |
@@ -122,12 +130,11 @@ agentInstructions:
     House rules are installed at `~/.claude/infinum/`, chained from `index.md`,
     which `~/.claude/CLAUDE.md` imports.
 
+    Every step above is mandatory — the marketplace registration, all four
+    plugin installs, and finding at least one rule file all fail sandbox
+    creation when they error. So in a sandbox you are running in, none of them
+    is partially applied.
+
     `~/.claude/infinum/whoami.md` may still be the unedited stub. If it is, it
     tells you nothing real about the user — do not treat its placeholder example
     as fact.
-
-    `infinum/ai` is public. If `whoami.md` and `index.md` exist but the plugins
-    and the copied rules do not, the install could not reach it — most likely
-    network policy blocking `github.com` (check with `sbx policy log`). Retry in
-    here with `claude plugin marketplace add infinum/ai`, then re-install the
-    four plugins listed above.

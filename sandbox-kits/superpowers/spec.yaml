@@ -16,33 +16,33 @@ permissions:
 setup:
   install:
     - user: "1000"  # everything written lives under the agent's own ~/.claude
-      description: Register the official marketplace and install the superpowers plugin from it.
+      description: Register the official marketplace and install the superpowers plugin from it. Fails the sandbox if either step errors.
       command: |
-        set -u
+        set -eu
 
         # The official marketplace only auto-registers on an interactive first
         # launch (anthropics/claude-code#66750), so register it here.
+        # Idempotent: exits 0 with "already on disk" on a re-run.
         if ! claude plugin marketplace add anthropics/claude-plugins-official; then
           cat >&2 <<'EOF'
-        superpowers kit: WARN: could not add the 'claude-plugins-official' marketplace; skipping the install.
+        superpowers kit: ERROR: could not add the 'claude-plugins-official' marketplace.
           This clones https://github.com/anthropics/claude-plugins-official.git over git smart-HTTP.
           Check whether github.com is reachable: sbx policy log
           Retry in here with: claude plugin marketplace add anthropics/claude-plugins-official
         EOF
-          exit 0
+          exit 1
         fi
 
-        # Idempotent: reports "already installed" on a second run.
+        # Idempotent: exits 0 with "already installed" on a re-run.
         if ! claude plugin install superpowers@claude-plugins-official; then
           cat >&2 <<'EOF'
-        superpowers kit: WARN: could not install 'superpowers' from claude-plugins-official.
+        superpowers kit: ERROR: could not install 'superpowers' from claude-plugins-official.
           This clones https://github.com/obra/superpowers.git over git smart-HTTP.
           Check whether github.com is reachable: sbx policy log
           Retry in here with: claude plugin install superpowers@claude-plugins-official
         EOF
+          exit 1
         fi
-
-        exit 0
 
 agentInstructions:
   content: |
@@ -66,7 +66,7 @@ agentInstructions:
     whatever version the marketplace currently serves, and its SessionStart
     hook runs on every session. Nothing in this sandbox pins or verifies it.
 
-    If none of the above is present, either the marketplace registration or
-    the plugin install could not reach `github.com` — this kit adds exactly
-    that one domain. Retry in here with:
-    `claude plugin marketplace add anthropics/claude-plugins-official && claude plugin install superpowers@claude-plugins-official`.
+    Both the marketplace registration and the plugin install fail sandbox
+    creation when they error — this kit adds exactly one domain (`github.com`)
+    and needs it for both — so in a sandbox you are running in, the plugin is
+    installed rather than silently absent.
