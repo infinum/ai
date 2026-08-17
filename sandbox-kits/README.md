@@ -101,10 +101,12 @@ $ CONTEXT7_API_KEY=... SONARQUBE_TOKEN=... SONARQUBE_ORG=... sbx run claude \
 Leave one of those out and creation fails — see
 [Every kit fails loudly](#every-kit-fails-loudly).
 
-Order doesn't matter. Three of the first four write `~/.claude/settings.json`,
-and each writer does a read-modify-write, so the attribution keys, the
-marketplace registrations and the enabled-plugin list all survive together
-regardless of which install command ran last. This is verified, not assumed —
+Order doesn't matter. Both kits in the first table write
+`~/.claude/settings.json` — `infinum-base` via `jq`, `infinum-plugins` via
+`claude plugin install` — and each writer does a read-modify-write, so the
+attribution keys, the marketplace registrations and the enabled-plugin list
+all survive together regardless of which install command ran last. This is
+verified, not assumed —
 see [Verification status](#verification-status). The three MCP kits don't
 write any config file themselves — they shell out to `claude mcp add`, each
 under a distinct server name, so whatever `claude` writes it does one kit at a
@@ -136,7 +138,7 @@ sandbox generated — for a workspace at `/path/to/project`, that is
 
 ```console
 $ sbx exec my-sandbox -- ls /path/to/kits-agent-context/
-claude-no-attribution.md  infinum-ai.md  maven-central.md  superpowers.md
+infinum-base.md  infinum-plugins.md
 ```
 
 One file per applied kit after `sbx run --kit`; absent or stale after
@@ -162,7 +164,7 @@ the pinned SHA.
 
 ## Schema version
 
-All seven kits are `schemaVersion: "2"`, using only canonical v2 sections:
+All nine kits are `schemaVersion: "2"`, using only canonical v2 sections:
 egress under `permissions.network.allow`, install steps under `setup.install`,
 and the agent-facing note under `agentInstructions.content`. No v1 surfaces
 and no legacy shims, so `Artifact.Warnings` is empty.
@@ -194,12 +196,12 @@ The umbrella would pin an image and become a new agent, not a shorthand for
 The [kit-author testing guidance](https://docs.docker.com/ai/sandboxes/customize/kits/)
 defines four layers. Where these kits stand:
 
-| Layer | `claude-no-attribution`, `infinum-ai`, `maven-central`, `superpowers` | `context7`, `productive`, `sonarcloud` |
-|---|---|---|
-| 1. `sbx kit validate` | **Passing**, zero warnings — before the fail-loudly change; only `command:` bodies and prose moved, so re-run to confirm | **Not run** |
-| 2. TCK (`scripts/test-kit.sh`) | **Stale.** Passed before the fail-loudly change; the `container` subtest is expected to fail now — see below | **Not run** |
-| 3. e2e under `deny-all` | **Not run.** Needs `sbx` on `PATH` and `/dev/kvm` | **Not run** |
-| 4. Manual probe in a live sandbox | **Passing** for the four together — the state below was read out of one, before the fail-loudly change | **Not run** |
+| Layer | `claude-no-attribution`, `infinum-ai`, `maven-central`, `superpowers` | `infinum-base`, `infinum-plugins` | `context7`, `productive`, `sonarcloud` |
+|---|---|---|---|
+| 1. `sbx kit validate` | **Passing**, zero warnings — before the fail-loudly change; only `command:` bodies and prose moved, so re-run to confirm | **Not run.** No `sbx` on `PATH` in the authoring environment | **Not run** |
+| 2. TCK (`scripts/test-kit.sh`) | **Stale.** Passed before the fail-loudly change; the `container` subtest is expected to fail now — see below | **Not run** | **Not run** |
+| 3. e2e under `deny-all` | **Not run.** Needs `sbx` on `PATH` and `/dev/kvm` | **Not run** | **Not run** |
+| 4. Manual probe in a live sandbox | **Passing** for the four together — the state below was read out of one, before the fail-loudly change | **Not run** | **Not run** |
 
 Layer 2 runs from a checkout of
 [`docker/sbx-kits-contrib`](https://github.com/docker/sbx-kits-contrib), one

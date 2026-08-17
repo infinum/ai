@@ -19,7 +19,9 @@ fails sandbox creation rather than quietly doing nothing.
 ## Two install steps, not one
 
 `setup.install` holds one step per original kit, with the scripts copied
-verbatim. They share no state — the only thing in common is `github.com`
+unchanged apart from the kit name in error messages (`infinum-ai kit: ERROR`
+and `superpowers kit: ERROR` both become `infinum-plugins kit: ERROR`). They
+share no state — the only thing in common is `github.com`
 egress, declared once at the kit level. Keeping them separate means each
 step's `description` surfaces on its own in the creation output, so a failure
 names which half broke without anyone reading the script.
@@ -126,7 +128,7 @@ is idempotent by construction: `cp` overwrites and converges, `whoami.md` is
 guarded by `[ ! -f ]`, `index.md` is regenerated wholesale, and the
 `CLAUDE.md` import line is guarded by `grep -qsF`.
 
-## Applying it
+## Usage
 
 ```console
 $ sbx run claude --kit ./infinum-plugins/ /path/to/project
@@ -134,3 +136,60 @@ $ sbx run claude --kit ./infinum-plugins/ /path/to/project
 
 Applying it alongside `infinum-ai` or `superpowers` is redundant but
 harmless: `setup.install` lists concatenate and every step is idempotent.
+
+Apply to an already-running sandbox:
+
+```console
+$ sbx kit add my-sandbox ./infinum-plugins/
+```
+
+## Verify
+
+`Install commands completed` is now worth something for this kit: both
+install steps exit non-zero on any failure, so a sandbox that came up has
+both marketplaces, all five plugins, and at least one house rule. Check the
+outcome anyway to see *what* landed:
+
+```console
+$ sbx exec my-sandbox -- claude plugin marketplace list
+$ sbx exec my-sandbox -- claude plugin list
+$ sbx exec my-sandbox -- cat /home/agent/.claude/infinum/index.md
+$ sbx exec my-sandbox -- grep infinum /home/agent/.claude/CLAUDE.md
+$ sbx exec my-sandbox -- jq '.extraKnownMarketplaces, .enabledPlugins' /home/agent/.claude/settings.json
+$ sbx exec my-sandbox -- stat -c '%U %a %n' /home/agent/.claude/settings.json
+```
+
+Expect: the marketplace list includes both `infinum-ai` and
+`claude-plugins-official`; the plugin list includes the four `infinum-ai`
+plugins plus `superpowers@claude-plugins-official`; `index.md` imports
+`whoami.md` plus at least `ai-assisted-prs.md`; the `grep` finds the import
+line; the `jq` output shows both marketplaces under `extraKnownMarketplaces`
+and all five plugins as `true` under `enabledPlugins`; and the `stat`
+reports `agent`, not `root` — `root` means the `user: "1000"` setting on one
+of the install steps regressed.
+
+Then confirm idempotency:
+
+```console
+$ sbx kit add my-sandbox ./infinum-plugins/     # second application must stay clean
+```
+
+Expect both steps to report "already on disk" / "already installed" and
+still exit 0.
+
+> [!NOTE]
+> `sbx kit add` runs both install steps but **not** this kit's
+> `agentInstructions.content` — the engine skips the kit-memory write for
+> `kind: mixin` artifacts. Both marketplaces, all five plugins and the house
+> rules still land; Claude just isn't told they did, including the warning
+> that `whoami.md` may still be a stub and the `superpowers` supply-chain and
+> telemetry caveats above. Use `sbx run --kit` for a sandbox you intend to
+> work in. See [Applying the kits](../README.md#applying-the-kits).
+
+## References
+
+- [Kit spec](spec.yaml)
+- [`infinum-ai`](../infinum-ai/) and [`superpowers`](../superpowers/) — the
+  two kits this one consolidates
+- [MARKETPLACE.md](https://github.com/infinum/ai/blob/main/MARKETPLACE.md)
+- [obra/superpowers — Claude Code install instructions](https://github.com/obra/superpowers#claude-code)

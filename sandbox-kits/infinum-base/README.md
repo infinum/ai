@@ -29,19 +29,30 @@ sandbox that needs Maven Central applies that kit directly. Revisit this if
 ## The settings write
 
 `~/.claude/settings.json` is read-modify-written with `jq`, so every other
-key in it survives. Three states are handled:
+key in it survives. Five states are handled:
 
 | State | Behaviour |
 |---|---|
 | `~/.claude` does not exist | Created, seeded with `{}` |
 | `settings.json` is zero bytes | Reseeded with `{}` before `jq` reads it |
-| `settings.json` has content | Read-modify-write; unrelated keys preserved |
+| `settings.json` is whitespace-only (e.g. a single newline) | Reseeded with `{}` before `jq` reads it |
+| `settings.json` has content and is a JSON object | Read-modify-write; unrelated keys preserved |
+| `settings.json` is valid JSON but not an object (e.g. `[]`, `"string"`) | `jq` exits 5 (`Cannot index array/string with string "attribution"`), the step fails loudly under `set -eu`, and the file is left untouched |
 
-The zero-byte case is guarded with `-s` rather than `-f` deliberately. A
-zero-byte file passes `-f`, and `jq` on empty input exits **0** with empty
-output — so an `-f` guard leads to overwriting `settings.json` with a bare
-newline while reporting success. That was a real bug in
-`claude-no-attribution`, fixed there too.
+The zero-byte and whitespace-only cases are both guarded by checking for
+actual JSON content, not just file size:
+`[ -s "$f" ] && [ -n "$(tr -d '[:space:]' < "$f")" ]`. A bare `-s` guard only
+rules out zero bytes — a file holding a single newline is 1 byte, so it
+passes `-s`, and `jq` on whitespace-only input exits **0** with empty
+output, so the write below would replace the file with a bare newline while
+still reporting success. That was a real, shipped bug, and worse than the
+usual edge case: a home volume already damaged by the pre-fix
+`claude-no-attribution` kit — which left behind exactly a 1-byte newline
+file — was *not* repaired by re-running the fixed kit, because the old `-s`
+guard treated that file as "has content" and handed it straight to `jq`.
+A `[ -n "$merged" ]` check right before the write is a second line of
+defense against the same class of silent-blank failure, in case some future
+change makes `jq` exit 0 with nothing to say.
 
 The merge is captured into a variable before the file is touched, so a `jq`
 failure aborts without writing, and the write is in place so the file keeps
@@ -60,7 +71,7 @@ policy also includes host and org rules, so check `sbx policy ls`.
 Neither allowed host redirects to a CDN, so the two entries are sufficient on
 their own.
 
-## Applying it
+## Usage
 
 ```console
 $ sbx run claude --kit ./infinum-base/ /path/to/project
@@ -69,3 +80,44 @@ $ sbx run claude --kit ./infinum-base/ /path/to/project
 Applying it alongside `claude-no-attribution` or `maven-central` is
 redundant but harmless: `setup.install` lists concatenate, the attribution
 write is idempotent, and the allow-lists union.
+
+Apply to an already-running sandbox:
+
+```console
+$ sbx kit add my-sandbox ./infinum-base/
+```
+
+## Verify
+
+```console
+$ sbx exec my-sandbox -- jq '.attribution' /home/agent/.claude/settings.json
+$ sbx exec my-sandbox -- stat -c '%U %a %n' /home/agent/.claude/settings.json
+$ sbx exec my-sandbox -- curl -sS -o /dev/null -w '%{http_code}\n' \
+    https://repo.maven.apache.org/maven2/org/junit/jupiter/junit-jupiter/maven-metadata.xml
+```
+
+Expect `attribution.commit` and `attribution.pr` both `""`; the `stat` to
+report `agent`, not `root` — `root` means the `user: "1000"` setting on the
+install command regressed; and the `curl` to report `200`, confirming the
+Maven Central policy is in effect. A `403` whose body starts with `Blocked by
+network policy` means either the kit was not applied or a `deny` rule is
+overriding its `allow` — deny wins, whichever layer it came from. `sbx policy
+log` shows which rule matched.
+
+> [!NOTE]
+> `sbx kit add` applies the install command and the network policy, but
+> **not** this kit's `agentInstructions.content` — the engine skips the
+> kit-memory write for `kind: mixin` artifacts. The attribution keys still
+> get set and Maven Central is still reachable; the agent just isn't told
+> either happened, including what the "What Maven Central does not include"
+> section above warns about. Use `sbx run --kit` for a sandbox you intend to
+> work in. See [Applying the kits](../README.md#applying-the-kits).
+
+## References
+
+- [Kit spec](spec.yaml)
+- [`claude-no-attribution`](../claude-no-attribution/) and
+  [`maven-central`](../maven-central/) — the two kits this one consolidates
+- `attribution` key in the Claude Code `settings.json` schema (replaces the
+  deprecated `includeCoAuthoredBy` boolean)
+- Maven Central: <https://central.sonatype.com/>
