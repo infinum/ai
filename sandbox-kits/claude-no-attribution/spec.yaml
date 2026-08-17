@@ -17,7 +17,10 @@ setup:
         set -eu
         f=/home/agent/.claude/settings.json
         mkdir -p "$(dirname "$f")"
-        [ -f "$f" ] || echo '{}' > "$f"
+        # -s, not -f: a zero-byte settings.json passes -f, and `jq` on empty
+        # input exits 0 with empty output, so the write below would replace the
+        # file with a bare newline and still report success.
+        [ -s "$f" ] || echo '{}' > "$f"
         # Capture before writing: a jq failure aborts before "$f" is touched,
         # and writing in place keeps the file's own mode and owner.
         merged=$(jq '.attribution.commit = "" | .attribution.pr = ""' "$f")
