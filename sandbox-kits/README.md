@@ -12,10 +12,18 @@ rather than defining one.
 
 | Kit | What it does | Agent |
 |---|---|---|
-| [`infinum-ai`](./infinum-ai/) | Registers the `infinum/ai` marketplace, installs four plugins, installs the house rules into `~/.claude/infinum/` | `claude` |
-| [`superpowers`](./superpowers/) | Installs the `superpowers` skills library (TDD, debugging, planning) | `claude` |
-| [`claude-no-attribution`](./claude-no-attribution/) | Drops the "🤖 Generated with Claude Code" trailer and `Co-Authored-By` line | `claude` |
-| [`maven-central`](./maven-central/) | Allows egress to Maven Central. Policy only, installs nothing | any |
+| [`infinum-base`](./infinum-base/) | Drops AI attribution from commits and PRs, and allows Maven Central egress | `claude` |
+| [`infinum-plugins`](./infinum-plugins/) | Registers both marketplaces, installs five plugins, installs the house rules into `~/.claude/infinum/` | `claude` |
+
+Each of those consolidates two of the four single-purpose kits below, which
+remain available and unchanged:
+
+| Kit | What it does | Agent | Also in |
+|---|---|---|---|
+| [`infinum-ai`](./infinum-ai/) | Registers the `infinum/ai` marketplace, installs four plugins, installs the house rules into `~/.claude/infinum/` | `claude` | `infinum-plugins` |
+| [`superpowers`](./superpowers/) | Installs the `superpowers` skills library (TDD, debugging, planning) | `claude` | `infinum-plugins` |
+| [`claude-no-attribution`](./claude-no-attribution/) | Drops the "🤖 Generated with Claude Code" trailer and `Co-Authored-By` line | `claude` | `infinum-base` |
+| [`maven-central`](./maven-central/) | Allows egress to Maven Central. Policy only, installs nothing | any | `infinum-base` |
 
 Three more register an MCP server at **user scope** — available in every
 project in the sandbox, not just the one it was added from — and allow only
@@ -68,12 +76,16 @@ At sandbox creation, in any order — the kits don't conflict:
 
 ```console
 $ sbx run claude \
-    --kit ./claude-no-attribution/ \
-    --kit ./infinum-ai/ \
-    --kit ./maven-central/ \
-    --kit ./superpowers/ \
+    --kit ./infinum-base/ \
+    --kit ./infinum-plugins/ \
     /path/to/project
 ```
+
+The four single-purpose kits still work, and the two forms are equivalent —
+`infinum-base` carries `claude-no-attribution` plus `maven-central`, and
+`infinum-plugins` carries `infinum-ai` plus `superpowers`. Mixing them is
+redundant but harmless: `setup.install` lists concatenate, every step is
+idempotent, and the allow-lists union.
 
 Add the MCP kits per project, rather than by default — each one widens the
 allowlist and adds a server the agent will reach for:
