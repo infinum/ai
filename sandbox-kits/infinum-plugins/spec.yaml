@@ -1,0 +1,193 @@
+schemaVersion: "2"
+kind: mixin
+name: infinum-plugins
+displayName: Infinum Plugins — Harness & Skills Library
+description: >-
+  Registers the infinum-ai plugin marketplace, installs four Infinum skill
+  plugins and the Infinum house rules into ~/.claude/infinum/, and installs
+  the superpowers skills library (brainstorming, planning, TDD, systematic
+  debugging, code review). Consolidates the infinum-ai and superpowers kits.
+requires:
+  agent: claude
+
+permissions:
+  network:
+    allow:
+      - github.com  # git smart-HTTP clones of three public repos; see README
+
+setup:
+  install:
+    - user: "1000"  # everything written lives under the agent's own ~/.claude
+      description: Register the infinum-ai marketplace, install the Infinum plugins, and install the house rules into ~/.claude/infinum/. Fails the sandbox if any step errors.
+      command: |
+        set -eu
+
+        # The install step runs as uid 1000, whose home the base agent fixes at
+        # /home/agent, so `claude`'s config dir is known rather than discovered.
+        CLAUDE_DIR=/home/agent/.claude
+        CONFIG_DIR="$CLAUDE_DIR/infinum"
+        REPO="infinum/ai"
+        MARKET="infinum-ai"
+        MARKET_DIR="$CLAUDE_DIR/plugins/marketplaces/$MARKET"
+        PLUGINS="stack-essentials create-prd pr-review-code-simplicity productive-debug"
+
+        # 1. Register the marketplace. This also leaves a full clone of the
+        #    repo at $MARKET_DIR, which step 3 reads. Idempotent: exits 0 with
+        #    "already on disk" when the marketplace is already registered.
+        if ! claude plugin marketplace add "$REPO"; then
+          cat >&2 <<EOF
+        infinum-plugins kit: ERROR: could not add the '$MARKET' marketplace.
+          $REPO is public, so this is most likely network policy blocking github.com.
+          Check with: sbx policy log
+          Then retry in here: claude plugin marketplace add $REPO
+        EOF
+          exit 1
+        fi
+
+        mkdir -p "$CONFIG_DIR"
+
+        # 2. Install the plugins. Idempotent: each exits 0 with "already
+        #    installed" on a re-run.
+        for p in $PLUGINS; do
+          if ! claude plugin install "$p@$MARKET"; then
+            cat >&2 <<EOF
+        infinum-plugins kit: ERROR: plugin '$p' did not install.
+          Retry in here: claude plugin install $p@$MARKET
+        EOF
+            exit 1
+          fi
+        done
+
+        # 3. Copy rules out of the clone step 1 made. Flat glob, so rules/<bundle>/
+        #    is never descended into; copy-only, so nothing is ever pruned;
+        #    whoami.md is skipped so upstream can't clobber it. See README.
+        rules_found=0
+        for f in "$MARKET_DIR"/rules/*.md; do
+          [ -f "$f" ] || continue  # unmatched glob stays literal; skip rather than trip set -e
+          case "${f##*/}" in README.md | whoami.md) continue ;; esac
+          cp "$f" "$CONFIG_DIR/"
+          rules_found=1
+        done
+        if [ "$rules_found" != 1 ]; then
+          cat >&2 <<EOF
+        infinum-plugins kit: ERROR: no house rules found under $MARKET_DIR/rules/.
+          The marketplace registered but its clone has no rules/*.md, so the rules
+          this kit exists to install are missing. Check the layout of $REPO.
+        EOF
+          exit 1
+        fi
+
+        # 4. Local wiring — no network, no clone.
+
+        # 4a. whoami.md is the user's own: create once, never overwrite.
+        if [ ! -f "$CONFIG_DIR/whoami.md" ]; then
+          cat > "$CONFIG_DIR/whoami.md" <<'WHOAMI'
+        # Who you're working with
+
+        > Replace this with your name and role so Claude can calibrate
+        > its responses. Example:
+        >
+        > "Senior backend engineer at Infinum, focused on payments.
+        > Comfortable with Go and Postgres; new to the iOS codebase."
+        WHOAMI
+        fi
+
+        # 4b. index.md, regenerated in the installer's order: whoami first, then
+        #     every rule alphabetically. It must never import itself.
+        {
+          echo "@$CONFIG_DIR/whoami.md"
+          for f in "$CONFIG_DIR"/*.md; do
+            [ -f "$f" ] || continue
+            case "${f##*/}" in whoami.md | index.md) continue ;; esac
+            echo "@$f"
+          done
+        } > "$CONFIG_DIR/index.md"
+
+        # 4c. One import line in CLAUDE.md, appended only when absent. The
+        #     leading newline both terminates a file that lacks a trailing one
+        #     and keeps the line off the end of the user's own last line.
+        grep -qsF "@$CONFIG_DIR/index.md" "$CLAUDE_DIR/CLAUDE.md" ||
+          printf '\n%s\n' "@$CONFIG_DIR/index.md  # managed by $REPO" >> "$CLAUDE_DIR/CLAUDE.md"
+
+    - user: "1000"  # everything written lives under the agent's own ~/.claude
+      description: Register the official marketplace and install the superpowers plugin from it. Fails the sandbox if either step errors.
+      command: |
+        set -eu
+
+        # The official marketplace only auto-registers on an interactive first
+        # launch (anthropics/claude-code#66750), so register it here.
+        # Idempotent: exits 0 with "already on disk" on a re-run.
+        if ! claude plugin marketplace add anthropics/claude-plugins-official; then
+          cat >&2 <<'EOF'
+        infinum-plugins kit: ERROR: could not add the 'claude-plugins-official' marketplace.
+          This clones https://github.com/anthropics/claude-plugins-official.git over git smart-HTTP.
+          Check whether github.com is reachable: sbx policy log
+          Retry in here with: claude plugin marketplace add anthropics/claude-plugins-official
+        EOF
+          exit 1
+        fi
+
+        # Idempotent: exits 0 with "already installed" on a re-run.
+        if ! claude plugin install superpowers@claude-plugins-official; then
+          cat >&2 <<'EOF'
+        infinum-plugins kit: ERROR: could not install 'superpowers' from claude-plugins-official.
+          This clones https://github.com/obra/superpowers.git over git smart-HTTP.
+          Check whether github.com is reachable: sbx policy log
+          Retry in here with: claude plugin install superpowers@claude-plugins-official
+        EOF
+          exit 1
+        fi
+
+agentInstructions:
+  content: |
+    ## Infinum AI Harness installed
+
+    The `infinum-ai` plugin marketplace (`infinum/ai`) is registered and these
+    plugins are installed at user scope:
+
+    - `stack-essentials` — SessionStart update-banner hook; its check gates on
+      `~/.claude/infinum/.manifest.json`, which this kit never writes, so the
+      banner never fires here.
+    - `create-prd` — generate a Product Requirements Document.
+    - `pr-review-code-simplicity` — review a PR through the six laws of software
+      design.
+    - `productive-debug` — investigate a Productive bug task end-to-end.
+
+    Nine other marketplace plugins are **not** installed — some need local
+    tooling or egress this sandbox lacks, the rest are design-side and out of
+    scope here; the kit README lists each with its reason. Install one anyway
+    with `claude plugin install <name>@infinum-ai`, or browse with `/plugin`.
+
+    House rules are installed at `~/.claude/infinum/`, chained from `index.md`,
+    which `~/.claude/CLAUDE.md` imports.
+
+    `~/.claude/infinum/whoami.md` may still be the unedited stub. If it is, it
+    tells you nothing real about the user — do not treat its placeholder example
+    as fact.
+
+    ## Superpowers skills library installed
+
+    The `superpowers` plugin (`obra/superpowers`, public, via the built-in
+    `claude-plugins-official` marketplace) is installed at user scope. Its
+    skills are already listed for you by the `Skill` tool, and its SessionStart
+    hook injects the `using-superpowers` orientation skill into every session —
+    both purely local, no network call. What follows is what those surfaces
+    don't tell you.
+
+    The `brainstorming` skill can start a local web server for an interactive
+    UI; that page embeds a small `<img>` pointing at `primeradiant.com`, fetched
+    by whatever browser opens the page (not by anything running in this
+    sandbox), and only when all three of `SUPERPOWERS_DISABLE_TELEMETRY`,
+    `DISABLE_TELEMETRY` and `CLAUDE_CODE_DISABLE_NONESSENTIAL_TRAFFIC` are
+    unset or set to a falsy value.
+
+    The plugin is third-party code (`obra/superpowers`) installed unpinned at
+    whatever version the marketplace currently serves, and its SessionStart
+    hook runs on every session. Nothing in this sandbox pins or verifies it.
+
+    ## Every step is mandatory
+
+    Both marketplace registrations, all five plugin installs, and finding at
+    least one rule file fail sandbox creation when they error. So in a sandbox
+    you are running in, none of them is partially applied. This kit adds
+    exactly one domain (`github.com`) and needs it for every clone above.
