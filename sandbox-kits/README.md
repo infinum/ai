@@ -10,6 +10,14 @@ engine turns into install commands, files, and network policy at sandbox
 creation. Every kit here is `kind: mixin`, so they layer onto a base agent
 rather than defining one.
 
+One kit carries everything. Reach for it first:
+
+| Kit | What it does | Agent |
+|---|---|---|
+| [`infinum-all`](./infinum-all/) | Everything the nine kits below do, as six `setup.install` steps and one ten-host allow-list. Needs a reachable Docker daemon; a missing API key warns instead of failing creation | `claude` |
+
+Two carry half each, if you want the MCP servers left out:
+
 | Kit | What it does | Agent |
 |---|---|---|
 | [`infinum-base`](./infinum-base/) | Drops AI attribution from commits and PRs, and allows Maven Central egress | `claude` |
@@ -52,6 +60,14 @@ started fine. An MCP server that was never registered, or house rules that
 `CLAUDE.md` advertises and doesn't have, then surface much later as the agent
 behaving oddly.
 
+`infinum-all` is the one partial exception, and only for credentials: a
+missing `CONTEXT7_API_KEY` or SonarQube credential warns on stderr and
+registers the server unauthenticated rather than failing creation, because one
+kit that carries everything cannot make every sandbox depend on every
+credential. Its `docker` check, its registrations and its network are as fatal
+as everywhere else. See
+[Where this kit deviates from the originals](./infinum-all/README.md#where-this-kit-deviates-from-the-originals).
+
 Two outcomes are deliberately **not** errors:
 
 - **Already applied.** `claude mcp add` exits 1 with "already exists" and the
@@ -66,13 +82,57 @@ Two outcomes are deliberately **not** errors:
 Credentials are checked before they're used, and are only ever read from the
 environment — never hardcoded in a spec. `context7` needs `CONTEXT7_API_KEY`;
 `sonarcloud` needs `SONARQUBE_TOKEN` and `SONARQUBE_ORG`. A missing one fails
-creation immediately, rather than at the first tool call. What creation cannot
+creation immediately, rather than at the first tool call — except in
+`infinum-all`, where it warns and registers the server unauthenticated. What creation cannot
 check is whether a credential that *is* present is valid — a revoked token or
 a mismatched org key surfaces on first use.
 
+## Why install commands, not scripts under `files/`
+
+Every kit here carries its shell inline in `setup.install`. None of them ships
+a script under `files/` and runs it, and that is not a style choice — it does
+not work:
+
+- `files/` only recognises two targets, `files/home/` and `files/workspace/`.
+  Any other subdirectory — `files/scripts/`, `files/etc/` — is **ignored with
+  a warning**, so a script has to land in the agent's home or the workspace or
+  not at all.
+- Within a kit's customizer chain, install commands are entry **2** and static
+  home files are entry **4** ([lifecycle §8](https://docs.docker.com/ai/sandboxes/customize/kits/)).
+  A script shipped under `files/home/` therefore isn't on disk yet when
+  `setup.install` runs. The TCK's container subtest copies static files
+  *before* executing install commands, so it would pass either way — which
+  makes this exactly the kind of gap a green test suite hides.
+- A `volumes:` entry with `type: tmpfs` doesn't help: it is mounted **empty**,
+  and no `files/` target can populate it.
+- `setup.files` is entry **5**, later still, so writing the scripts that way
+  and running them from `setup.install` fails for the same reason.
+
+That leaves `setup.startup` — which does run after the files land, but on
+every container start, and after the container is already up rather than
+before the agent binary launches. Not worth it for writes that belong in the
+pre-launch phase.
+
+So a kit that wants several logically separate scripts uses several
+`setup.install` entries instead, each with its own `user`, its own
+`description` (which is what shows up in the creation progress output) and its
+own body. [`infinum-all`](./infinum-all/) is the kit that pushed hardest on
+this, with six.
+
 ## Applying the kits
 
-At sandbox creation, in any order — the kits don't conflict:
+At sandbox creation, in any order — the kits don't conflict. Everything, one
+flag:
+
+```console
+$ CONTEXT7_API_KEY=... SONARQUBE_TOKEN=... SONARQUBE_ORG=... sbx run claude \
+    --kit ./infinum-all/ \
+    /path/to/project
+```
+
+Those three variables are optional there — see
+[`infinum-all`](./infinum-all/README.md#credentials). Everything except the
+MCP servers, two flags:
 
 ```console
 $ sbx run claude \
@@ -164,7 +224,7 @@ the pinned SHA.
 
 ## Schema version
 
-All nine kits are `schemaVersion: "2"`, using only canonical v2 sections:
+All ten kits are `schemaVersion: "2"`, using only canonical v2 sections:
 egress under `permissions.network.allow`, install steps under `setup.install`,
 and the agent-facing note under `agentInstructions.content`. No v1 surfaces
 and no legacy shims, so `Artifact.Warnings` is empty.
@@ -202,6 +262,10 @@ defines four layers. Where these kits stand:
 | 2. TCK (`scripts/test-kit.sh`) | **Stale.** Passed before the fail-loudly change; the `container` subtest is expected to fail now — see below | **Not run** | **Not run** |
 | 3. e2e under `deny-all` | **Not run.** Needs `sbx` on `PATH` and `/dev/kvm` | **Not run** | **Not run** |
 | 4. Manual probe in a live sandbox | **Passing** for the four together — the state below was read out of one, before the fail-loudly change | **Not run** | **Not run** |
+
+[`infinum-all`](./infinum-all/) has its own status in
+[its README](./infinum-all/README.md#verification-status): layers 1–4 not run,
+53 stubbed-`PATH` assertions passing across its six install steps.
 
 Layer 2 runs from a checkout of
 [`docker/sbx-kits-contrib`](https://github.com/docker/sbx-kits-contrib), one
