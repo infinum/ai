@@ -5,10 +5,44 @@ displayName: SonarQube Cloud — Code Quality MCP
 description: >-
   Registers SonarSource's SonarQube MCP server with Claude Code at user scope,
   pointed at SonarQube Cloud, so the agent can query a project's real issues,
-  security hotspots, quality gate and coverage. Needs SONARQUBE_TOKEN and
-  SONARQUBE_ORG in the sandbox environment, plus docker on PATH.
+  security hotspots, quality gate and coverage. Needs a SonarQube Cloud token —
+  an optional sandbox secret, or SONARQUBE_TOKEN in the environment — plus
+  SONARQUBE_ORG and docker on PATH.
 requires:
   agent: claude
+
+# The token, declared so the sandbox secret store can supply it: without a
+# `credentials[]` entry for the service, `sbx secret set sonarqube` feeds a
+# resolution pipeline nothing ever consults, and the error message below would
+# be telling users to run a command that cannot work.
+#
+# With a binding resolved, the engine sets SONARQUBE_TOKEN to the literal
+# `proxy-managed` and the sentinel-swap proxy substitutes the real token on
+# outbound requests to sonarcloud.io, so it never enters the sandbox. Which is
+# why the step branches on SBX_CRED_SONARQUBE_MODE (`apikey` | `oauth` |
+# `none`) rather than on the variable's contents.
+#
+# `required: false` deliberately: `true` demands a host-side binding and would
+# fail creation for anyone passing the token in the environment instead, which
+# is this kit's original and still-supported route. The step's own check keeps
+# the fail-fast contract — a token from neither source still fails creation.
+#
+# `inject[].domain` must also appear in permissions.network.allow below, or the
+# spec library rejects the kit, and in the user's own `allowedDomains` for the
+# injection to actually happen.
+credentials:
+  - service: sonarqube
+    description: SonarQube Cloud user token the sonarqube MCP server authenticates its API calls with
+    required: false
+    apiKey:
+      name: SONARQUBE_TOKEN
+      inject:
+        - domain: sonarcloud.io
+          scheme: bearer          # sugar for header: Authorization, format: "Bearer %s"
+
+# SONARQUBE_ORG is deliberately not a credential: an organization key is
+# configuration, not a secret, and there is nothing for the proxy to inject it
+# into. The step reads it from the creation environment.
 
 # A self-hosted SonarQube Server lives at a URL only the user knows, so it
 # needs its own host adding. See README.
@@ -23,7 +57,7 @@ permissions:
 setup:
   install:
     - user: "1000"  # everything written lives under the agent's own ~/.claude
-      description: Register the sonarqube MCP server (Docker, SonarQube Cloud) with Claude Code at user scope. Fails the sandbox if docker is absent, the credentials are unset, or the registration errors.
+      description: Register the sonarqube MCP server (Docker, SonarQube Cloud) with Claude Code at user scope. Fails the sandbox if docker is absent, the token or organization key is unavailable, or the registration errors.
       command: |
         set -eu
 
@@ -41,17 +75,40 @@ setup:
           exit 1
         fi
 
-        # Read from the environment, never hardcoded — same convention as
-        # CONTEXT7_API_KEY in the context7 kit.
-        if [ -z "${SONARQUBE_TOKEN:-}" ] || [ -z "${SONARQUBE_ORG:-}" ]; then
+        # The token arrives one of two ways, and they are not interchangeable.
+        # A resolved sandbox secret means SONARQUBE_TOKEN holds the sentinel
+        # `proxy-managed`, and that is what gets registered — the proxy swaps in
+        # the real token on requests to sonarcloud.io. Otherwise the variable
+        # holds a real token passed in the creation environment, and that is
+        # what gets registered. The engine's mode is what tells the two apart;
+        # the variable's contents cannot.
+        if [ "${SBX_CRED_SONARQUBE_MODE:-none}" = "apikey" ]; then
+          TOKEN="${SONARQUBE_TOKEN:-proxy-managed}"
+        elif [ -n "${SONARQUBE_TOKEN:-}" ]; then
+          TOKEN="${SONARQUBE_TOKEN}"
+        else
           cat >&2 <<EOF
-        sonarcloud kit: ERROR: SONARQUBE_TOKEN and/or SONARQUBE_ORG is not set.
-          Both are required — the MCP server authenticates every SonarQube Cloud call with them.
-          Set the token as a sandbox secret and recreate:
+        sonarcloud kit: ERROR: no SonarQube Cloud token available.
+          The MCP server authenticates every SonarQube Cloud call with it.
+          Store it as a sandbox secret and recreate:
             sbx secret set sonarqube --sandbox <sandbox> -t '<token>'
-          or pass both in the creation environment:
+          (drop --sandbox to store it for every sandbox on this host; the token
+          then never enters the sandbox — the egress proxy substitutes it)
+          or pass it in the creation environment:
             SONARQUBE_TOKEN=<token> SONARQUBE_ORG=<org-key> sbx run claude --kit ./sonarcloud/ <workspace>
-          See README for where to generate the token and find the organization key.
+          See README for where to generate the token.
+        EOF
+          exit 1
+        fi
+
+        # Plain configuration, and always from the environment.
+        if [ -z "${SONARQUBE_ORG:-}" ]; then
+          cat >&2 <<EOF
+        sonarcloud kit: ERROR: SONARQUBE_ORG is not set.
+          The organization key is configuration rather than a secret, so there is no
+          sandbox secret for it — pass it in the creation environment:
+            SONARQUBE_ORG=<org-key> sbx run claude --kit ./sonarcloud/ <workspace>
+          Find it in the URL of the organization's SonarQube Cloud page.
         EOF
           exit 1
         fi
@@ -61,7 +118,7 @@ setup:
         # already-registered entry's env vars, so rotating the token later
         # needs a manual `claude mcp remove sonarqube -s user` first.
         if out=$(claude mcp add "$NAME" -s user \
-              --env SONARQUBE_TOKEN="${SONARQUBE_TOKEN}" \
+              --env SONARQUBE_TOKEN="${TOKEN}" \
               --env SONARQUBE_ORG="${SONARQUBE_ORG}" \
               -- docker run --init --pull=always -i --rm \
                 -e SONARQUBE_TOKEN -e SONARQUBE_ORG sonarsource/sonarqube-mcp 2>&1); then
@@ -89,11 +146,18 @@ agentInstructions:
     its tools under the `sonarqube` namespace (e.g. search issues, get a
     quality gate's status, list security hotspots, fetch measures).
 
-    Registration required `SONARQUBE_TOKEN` (a SonarQube Cloud token) and
-    `SONARQUBE_ORG` (the organization key) in the sandbox environment, and
-    `docker` on PATH. All three are mandatory: this kit fails sandbox creation
-    when any of them is missing, so in a sandbox you are running in they were
-    present and the server is registered.
+    Registration required a SonarQube Cloud token, `SONARQUBE_ORG` (the
+    organization key) and `docker` on PATH. All three are mandatory: this kit
+    fails sandbox creation when any of them is missing, so in a sandbox you are
+    running in they were present and the server is registered.
+
+    The token came either from a sandbox secret or from `SONARQUBE_TOKEN` in
+    the creation environment. If it came from a secret, the registered value is
+    the literal sentinel `proxy-managed` and the egress proxy substitutes the
+    real token on requests to `sonarcloud.io` — that is working as intended,
+    not a misconfiguration to repair, and the real token is not readable from
+    this sandbox. Ask the user rather than trying to recover it from the
+    environment.
 
     This is SonarQube **Cloud** only — it does not talk to a self-hosted
     SonarQube Server instance.
@@ -103,3 +167,10 @@ agentInstructions:
     revoked or wrong-scope token, an organization key that doesn't match the
     token, or blocked egress to Docker Hub or `sonarcloud.io`. Check
     `sbx policy log` for the last of those; see README for the rest.
+
+    One more, specific to a token that came from a sandbox secret: the server
+    runs as a nested `docker run` container, so the sentinel swap has to reach
+    *its* egress rather than the agent's. If every tool call fails
+    authentication while the registered value is `proxy-managed`, that is the
+    likely cause — report it rather than editing the registration, and note
+    that re-registering with a real token in `--env` is the workaround.

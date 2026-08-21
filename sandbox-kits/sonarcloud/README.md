@@ -7,10 +7,14 @@ security hotspots, quality gates, coverage, and duplications for a project
 instead of guessing from a stale local scan.
 
 This is a mixin that requires the `claude` agent (it drives `claude mcp add`).
-It contributes four entries on `permissions.network.allow` and one
-`setup.install` step that registers the server at **user scope**, so it's
-available in every project inside the sandbox, not just the one it was first
-added from.
+It contributes four entries on `permissions.network.allow`, one optional
+`credentials[]` entry for the SonarQube Cloud token, and one `setup.install`
+step that registers the server at **user scope**, so it's available in every
+project inside the sandbox, not just the one it was first added from.
+
+It is also how you add SonarQube to a sandbox built with
+[`infinum-full`](../infinum-full/), which deliberately leaves it out:
+`SONARQUBE_TOKEN=<token> SONARQUBE_ORG=<org> sbx kit add my-sandbox ./sonarcloud/`.
 
 ## Transport: Docker, against SonarQube Cloud only
 
@@ -87,21 +91,63 @@ covers the env-var differences — a Server token must be of type **USER**).
 
 ## Credentials
 
-`SONARQUBE_TOKEN` (a [SonarQube Cloud
-token](https://docs.sonarsource.com/sonarqube-cloud/managing-your-account/managing-tokens/))
+A [SonarQube Cloud
+token](https://docs.sonarsource.com/sonarqube-cloud/managing-your-account/managing-tokens/)
 and `SONARQUBE_ORG` (your [organization
-key](https://sonarcloud.io/account/organizations)) must be set in the sandbox
-environment before this kit's install step runs. Neither is hardcoded in the
-spec — the install script only ever reads them from the environment, and it
-**fails sandbox creation** when either is missing.
+key](https://sonarcloud.io/account/organizations)) are both required, and the
+install step **fails sandbox creation** when either is unavailable. Neither is
+hardcoded in the spec.
 
-Set the token as a sandbox secret, or pass both in the creation environment:
+They are different kinds of thing, and they arrive differently.
+
+**The token** is a credential, declared under `credentials[]`, so it has two
+supported sources:
 
 ```console
-$ sbx secret set sonarqube --sandbox my-sandbox -t '<token>'
-$ SONARQUBE_TOKEN=<token> SONARQUBE_ORG=<org-key> \
-    sbx run claude --kit ./sonarcloud/ /path/to/project
+$ sbx secret set sonarqube --sandbox my-sandbox -t '<token>'    # sandbox secret
+$ SONARQUBE_TOKEN=<token> … sbx run claude --kit ./sonarcloud/ …  # creation environment
 ```
+
+The secret-store route is the better one: with a binding resolved, the token
+**never enters the sandbox**. The engine sets `SONARQUBE_TOKEN` to the literal
+sentinel `proxy-managed`, the install step registers *that*, and the egress
+proxy substitutes the real token on outbound requests to `sonarcloud.io`. So
+`claude mcp get sonarqube` showing `SONARQUBE_TOKEN=proxy-managed` is correct
+and working, not a misconfiguration to repair.
+
+Which route was taken is what `SBX_CRED_SONARQUBE_MODE` (`apikey`, `oauth` or
+`none`) tells the step — never the variable's contents, which are the sentinel
+in one case and the real token in the other. The credential is
+`required: false` so that the environment route keeps working; `true` would
+demand a host-side binding and fail creation for anyone using it.
+
+**`SONARQUBE_ORG` is not a credential.** An organization key is configuration,
+and there is nothing for the proxy to inject it into, so it is always read from
+the creation environment:
+
+```console
+$ SONARQUBE_ORG=<org-key> sbx run claude --kit ./sonarcloud/ /path/to/project
+```
+
+#### Host-side binding
+
+`sbx` resolves the secret through the user's own binding in
+`~/.config/sbx/credentials.yaml`, which declares the domains the credential may
+be sent to. With no binding, sandbox creation prompts for first-time setup. For
+secret-store sourcing it is an empty discovery list plus the domain:
+
+```yaml
+bindings:
+  sonarqube:
+    discovery: []
+    allowedDomains:
+      - sonarcloud.io
+```
+
+Injection happens only for a domain in **both** the kit's
+`credentials[].apiKey.inject[].domain` and the user's `allowedDomains`. A
+declined domain does not fail creation — the request just goes out carrying the
+literal `proxy-managed` string, which SonarQube rejects.
 
 `claude mcp add` writes the env vars at registration time; it doesn't update
 an already-registered entry. Rotating the token later needs a manual
@@ -122,7 +168,7 @@ The install step runs under `set -eu` and **fails sandbox creation** in three
 cases, each with an actionable message on stderr:
 
 - No `docker` on `PATH` — the server only runs as a container image.
-- `SONARQUBE_TOKEN` or `SONARQUBE_ORG` missing from the environment.
+- No token from either source, or `SONARQUBE_ORG` missing from the environment.
 - `claude mcp add` itself failing.
 
 Each of those used to warn and skip, which produced a healthy-looking sandbox
@@ -178,6 +224,39 @@ server present points at the token or the organization key, which creation
 does not validate. The server cannot be *missing*: every registration failure
 now fails creation, so a sandbox that came up has it — and a creation that
 failed says why, on stderr, prefixed `sonarcloud kit: ERROR`.
+
+## Verification status
+
+None of the four layers in the
+[kit-authoring testing guidance](https://docs.docker.com/ai/sandboxes/customize/kits/)
+has been run against this kit: no `sbx` on `PATH` in the authoring
+environment, so no `sbx kit validate`, no TCK run, no end-to-end run under a
+`deny-all` host policy (the only thing that proves the four-host allow-list is
+complete), and no live probe.
+
+What it has had: the spec parses as YAML, its one `apiKey.inject[].domain`
+(`sonarcloud.io`) is present in `permissions.network.allow`, and the install
+command passes `sh -n`. It was then run against stubbed `claude` and `docker`
+on a hermetic `PATH` — 9 assertions, all passing — checking the exit code and
+the argv the `claude` stub received:
+
+| Branch | Expected |
+|---|---|
+| `SBX_CRED_SONARQUBE_MODE=apikey` + org | registers `--env SONARQUBE_TOKEN=proxy-managed`, exit 0 |
+| `SONARQUBE_TOKEN` in the environment + org | registers that token verbatim, exit 0 |
+| No token from either source | exit 1, no `claude mcp add` call, message names both routes |
+| Token but no `SONARQUBE_ORG` | exit 1 |
+| Token + org, no `docker` on `PATH` | exit 1 |
+
+One assumption is worth singling out, because nothing here tests it: the
+secret-store route relies on the sentinel swap reaching a **nested**
+container's egress. The MCP server runs as `docker run` inside the sandbox, so
+its calls to `sonarcloud.io` have to pass through the same proxy for
+`proxy-managed` to be substituted — unlike a remote HTTP server, where the
+agent process itself makes the calls. If every tool call fails with a SonarQube
+authentication error while `SBX_CRED_SONARQUBE_MODE=apikey`, that is where to
+look first, and passing a real token in the creation environment (or
+re-registering by hand, see [Credentials](#credentials)) is the workaround.
 
 ## References
 
