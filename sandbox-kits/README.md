@@ -5,7 +5,7 @@ sandbox the way Team Java expects one: Infinum house rules and plugins, a
 skills library, Maven Central egress, no AI attribution on commits, and the
 MCP servers we actually use.
 
-A *kit* is a declarative customization of a sandbox — a `spec.yaml` the `sbx`
+A *kit* is a declarative customization of a sandbox: a `spec.yaml` the `sbx`
 engine turns into install commands, files, and network policy at sandbox
 creation. Every kit here is `kind: mixin`, so they layer onto a base agent
 rather than defining one.
@@ -14,7 +14,7 @@ One kit carries everything. Reach for it first:
 
 | Kit | What it does | Agent |
 |---|---|---|
-| [`infinum-all`](./infinum-all/) | Everything the nine kits below do, as six `setup.install` steps and one ten-host allow-list. Needs a reachable Docker daemon; a missing API key warns instead of failing creation | `claude` |
+| [`infinum-full`](./infinum-full/) | Everything the nine kits below do, as six `setup.install` steps and one ten-host allow-list. A missing API key warns instead of failing creation | `claude` |
 
 Two carry half each, if you want the MCP servers left out:
 
@@ -33,9 +33,10 @@ remain available and unchanged:
 | [`claude-no-attribution`](./claude-no-attribution/) | Drops the "🤖 Generated with Claude Code" trailer and `Co-Authored-By` line | `claude` | `infinum-base` |
 | [`maven-central`](./maven-central/) | Allows egress to Maven Central. Policy only, installs nothing | any | `infinum-base` |
 
-Three more register an MCP server at **user scope** — available in every
-project in the sandbox, not just the one it was added from — and allow only
-that server's hosts. Each has a precondition the other kits don't:
+Three more register an MCP server at **user scope**, meaning it is available
+in every project in the sandbox rather than only the one it was added from,
+and allow only that server's hosts. Each has a precondition the other kits
+don't:
 
 | Kit | Server | Needs |
 |---|---|---|
@@ -49,9 +50,9 @@ true of all of them.
 ## Every kit fails loudly
 
 No kit here is best-effort. Every install step runs under `set -eu` and exits
-non-zero on any error — an unreachable marketplace, a failed `claude mcp add`,
-a missing credential, no `docker` on `PATH` — which **fails sandbox creation**
-with the reason on stderr, prefixed `<kit> kit: ERROR`.
+non-zero on any error: an unreachable marketplace, a failed `claude mcp add`,
+a missing credential, no `docker` on `PATH`. Any of those **fails sandbox
+creation** with the reason on stderr, prefixed `<kit> kit: ERROR`.
 
 The alternative, which these kits used to do, is worse: warn on stderr, exit
 0, and hand back a sandbox that comes up healthy and quietly lacks the thing
@@ -60,13 +61,13 @@ started fine. An MCP server that was never registered, or house rules that
 `CLAUDE.md` advertises and doesn't have, then surface much later as the agent
 behaving oddly.
 
-`infinum-all` is the one partial exception, and only for credentials: a
+`infinum-full` is the one partial exception, and only for credentials: a
 missing `CONTEXT7_API_KEY` or SonarQube credential warns on stderr and
 registers the server unauthenticated rather than failing creation, because one
 kit that carries everything cannot make every sandbox depend on every
 credential. Its `docker` check, its registrations and its network are as fatal
 as everywhere else. See
-[Where this kit deviates from the originals](./infinum-all/README.md#where-this-kit-deviates-from-the-originals).
+[Credentials](./infinum-full/README.md#credentials).
 
 Two outcomes are deliberately **not** errors:
 
@@ -76,39 +77,39 @@ Two outcomes are deliberately **not** errors:
   re-applying a kit is safe.
 - **`productive` awaiting its OAuth login.** That login is interactive and per
   user, so it cannot happen during unattended setup. Registration succeeding
-  with the server unauthorized is the expected result — see the
+  with the server unauthorized is the expected result; see the
   [kit README](./productive/README.md).
 
 Credentials are checked before they're used, and are only ever read from the
-environment — never hardcoded in a spec. `context7` needs `CONTEXT7_API_KEY`;
+environment, never hardcoded in a spec. `context7` needs `CONTEXT7_API_KEY`;
 `sonarcloud` needs `SONARQUBE_TOKEN` and `SONARQUBE_ORG`. A missing one fails
-creation immediately, rather than at the first tool call — except in
-`infinum-all`, where it warns and registers the server unauthenticated. What creation cannot
-check is whether a credential that *is* present is valid — a revoked token or
-a mismatched org key surfaces on first use.
+creation immediately rather than at the first tool call, except in
+`infinum-full`, where it warns and registers the server unauthenticated. What
+creation cannot check is whether a credential that *is* present is valid: a
+revoked token or a mismatched org key surfaces on first use.
 
 ## Why install commands, not scripts under `files/`
 
 Every kit here carries its shell inline in `setup.install`. None of them ships
-a script under `files/` and runs it, and that is not a style choice — it does
-not work:
+a script under `files/` and runs it. That is not a style choice; it does not
+work:
 
 - `files/` only recognises two targets, `files/home/` and `files/workspace/`.
-  Any other subdirectory — `files/scripts/`, `files/etc/` — is **ignored with
-  a warning**, so a script has to land in the agent's home or the workspace or
-  not at all.
+  Any other subdirectory, `files/scripts/` or `files/etc/` for instance, is
+  **ignored with a warning**, so a script has to land in the agent's home or
+  the workspace or not at all.
 - Within a kit's customizer chain, install commands are entry **2** and static
   home files are entry **4** ([lifecycle §8](https://docs.docker.com/ai/sandboxes/customize/kits/)).
   A script shipped under `files/home/` therefore isn't on disk yet when
   `setup.install` runs. The TCK's container subtest copies static files
-  *before* executing install commands, so it would pass either way — which
+  *before* executing install commands, so it would pass either way, which
   makes this exactly the kind of gap a green test suite hides.
 - A `volumes:` entry with `type: tmpfs` doesn't help: it is mounted **empty**,
   and no `files/` target can populate it.
 - `setup.files` is entry **5**, later still, so writing the scripts that way
   and running them from `setup.install` fails for the same reason.
 
-That leaves `setup.startup` — which does run after the files land, but on
+That leaves `setup.startup`, which does run after the files land, but on
 every container start, and after the container is already up rather than
 before the agent binary launches. Not worth it for writes that belong in the
 pre-launch phase.
@@ -116,22 +117,22 @@ pre-launch phase.
 So a kit that wants several logically separate scripts uses several
 `setup.install` entries instead, each with its own `user`, its own
 `description` (which is what shows up in the creation progress output) and its
-own body. [`infinum-all`](./infinum-all/) is the kit that pushed hardest on
+own body. [`infinum-full`](./infinum-full/) is the kit that pushed hardest on
 this, with six.
 
 ## Applying the kits
 
-At sandbox creation, in any order — the kits don't conflict. Everything, one
-flag:
+At sandbox creation, in any order, since the kits don't conflict. Everything,
+one flag:
 
 ```console
 $ CONTEXT7_API_KEY=... SONARQUBE_TOKEN=... SONARQUBE_ORG=... sbx run claude \
-    --kit ./infinum-all/ \
+    --kit ./infinum-full/ \
     /path/to/project
 ```
 
-Those three variables are optional there — see
-[`infinum-all`](./infinum-all/README.md#credentials). Everything except the
+Those three variables are optional there; see
+[`infinum-full`](./infinum-full/README.md#credentials). Everything except the
 MCP servers, two flags:
 
 ```console
@@ -141,14 +142,14 @@ $ sbx run claude \
     /path/to/project
 ```
 
-The four single-purpose kits still work, and the two forms are equivalent —
+The four single-purpose kits still work, and the two forms are equivalent:
 `infinum-base` carries `claude-no-attribution` plus `maven-central`, and
 `infinum-plugins` carries `infinum-ai` plus `superpowers`. Mixing them is
 redundant but harmless: `setup.install` lists concatenate, every step is
 idempotent, and the allow-lists union.
 
-Add the MCP kits per project, rather than by default — each one widens the
-allowlist and adds a server the agent will reach for:
+Add the MCP kits per project rather than by default, since each one widens
+the allowlist and adds a server the agent will reach for:
 
 ```console
 $ CONTEXT7_API_KEY=... SONARQUBE_TOKEN=... SONARQUBE_ORG=... sbx run claude \
@@ -158,26 +159,25 @@ $ CONTEXT7_API_KEY=... SONARQUBE_TOKEN=... SONARQUBE_ORG=... sbx run claude \
     /path/to/project
 ```
 
-Leave one of those out and creation fails — see
+Leave one of those out and creation fails; see
 [Every kit fails loudly](#every-kit-fails-loudly).
 
 Order doesn't matter. Both kits in the first table write
-`~/.claude/settings.json` — `infinum-base` via `jq`, `infinum-plugins` via
-`claude plugin install` — and each writer does a read-modify-write, so the
+`~/.claude/settings.json`, `infinum-base` via `jq` and `infinum-plugins` via
+`claude plugin install`, and each writer does a read-modify-write, so the
 attribution keys, the marketplace registrations and the enabled-plugin list
 all survive together regardless of which install command ran last. This is
-verified, not assumed —
-see [Verification status](#verification-status). The three MCP kits don't
-write any config file themselves — they shell out to `claude mcp add`, each
-under a distinct server name, so whatever `claude` writes it does one kit at a
-time and never twice to the same key. That reasoning is sound but, unlike the
-claim above, unverified in a live sandbox.
+verified, not assumed; see [Verification status](#verification-status). The
+three MCP kits don't write any config file themselves. They shell out to
+`claude mcp add`, each under a distinct server name, so whatever `claude`
+writes it does one kit at a time and never twice to the same key. That
+reasoning is sound but, unlike the claim above, unverified in a live sandbox.
 
 ### `sbx kit add` is not equivalent
 
 `sbx kit add <sandbox> ./<kit>/` applies a kit to an already-running sandbox,
 and it is the fast iteration loop when editing one of these. But for a
-`kind: mixin` — which all of them are — it silently **skips the kit-memory
+`kind: mixin`, which all of them are, it silently **skips the kit-memory
 write**: the engine gates that write on the artifact's own
 `agentInstructions.filename`, and a mixin can't carry one (a mixin contributes
 *to* the base sandbox's `CLAUDE.md`, it doesn't define it). The install
@@ -193,7 +193,7 @@ you intend to actually work in. Use `sbx run --kit` there.
 
 The difference is observable, so check it rather than assume it. Each mixin's
 `agentInstructions.content` lands in its own file beside the `CLAUDE.md` the
-sandbox generated — for a workspace at `/path/to/project`, that is
+sandbox generated. For a workspace at `/path/to/project`, that is
 `/path/to/kits-agent-context/<kit>.md`, not anything in your repo:
 
 ```console
@@ -202,14 +202,15 @@ infinum-base.md  infinum-plugins.md
 ```
 
 One file per applied kit after `sbx run --kit`; absent or stale after
-`sbx kit add`. The kit-authoring docs call this directory `kits-memory/` — go
-by what is on disk.
+`sbx kit add`. The kit-authoring docs call this directory `kits-memory/`, so
+go by what is on disk.
 
 ## Using these from another machine
 
 The kits are consumed by path above, which assumes a local clone. To use them
 from anywhere, reference this repo by git URL. `sbx` requires git refs to be
-pinned to a **full 40-hex commit SHA** — a branch name or tag is rejected:
+pinned to a **full 40-hex commit SHA**, and a branch name or tag is
+rejected:
 
 ```console
 $ sbx run claude \
@@ -218,9 +219,9 @@ $ sbx run claude \
 ```
 
 Run that `git rev-parse HEAD` in a clone of this repo (or read the SHA off
-GitHub) and paste the literal value — the substitution above only works if
-you're standing in the repo. Bumping a sandbox to newer kits means changing
-the pinned SHA.
+GitHub) and paste the literal value, because the substitution above only
+works if you're standing in the repo. Bumping a sandbox to newer kits means
+changing the pinned SHA.
 
 ## Schema version
 
@@ -246,7 +247,7 @@ implemented`. Re-check that: the current spec reference tags `mixins` **P1** and
 documents working resolution, so either the runtime caught up or the docs are
 ahead of it.
 
-Either way, a kit using `mixins:` must be `kind: sandbox` — which must supply
+Either way, a kit using `mixins:` must be `kind: sandbox`, which must supply
 `sandbox.image` and may not carry `requires:`, because it *is* the base agent.
 The umbrella would pin an image and become a new agent, not a shorthand for
 `sbx run claude`. Separate `--kit` flags remain the working form.
@@ -258,14 +259,14 @@ defines four layers. Where these kits stand:
 
 | Layer | `claude-no-attribution`, `infinum-ai`, `maven-central`, `superpowers` | `infinum-base`, `infinum-plugins` | `context7`, `productive`, `sonarcloud` |
 |---|---|---|---|
-| 1. `sbx kit validate` | **Passing**, zero warnings — before the fail-loudly change; only `command:` bodies and prose moved, so re-run to confirm | **Not run.** No `sbx` on `PATH` in the authoring environment | **Not run** |
-| 2. TCK (`scripts/test-kit.sh`) | **Stale.** Passed before the fail-loudly change; the `container` subtest is expected to fail now — see below | **Not run** | **Not run** |
+| 1. `sbx kit validate` | **Passing**, zero warnings, but that predates the fail-loudly change; only `command:` bodies and prose moved, so re-run to confirm | **Not run.** No `sbx` on `PATH` in the authoring environment | **Not run** |
+| 2. TCK (`scripts/test-kit.sh`) | **Stale.** Passed before the fail-loudly change; the `container` subtest is expected to fail now, see below | **Not run** | **Not run** |
 | 3. e2e under `deny-all` | **Not run.** Needs `sbx` on `PATH` and `/dev/kvm` | **Not run** | **Not run** |
-| 4. Manual probe in a live sandbox | **Passing** for the four together — the state below was read out of one, before the fail-loudly change | **Not run** | **Not run** |
+| 4. Manual probe in a live sandbox | **Passing** for the four together; the state below was read out of one, before the fail-loudly change | **Not run** | **Not run** |
 
-[`infinum-all`](./infinum-all/) has its own status in
-[its README](./infinum-all/README.md#verification-status): layers 1–4 not run,
-53 stubbed-`PATH` assertions passing across its six install steps.
+[`infinum-full`](./infinum-full/) has its own status in
+[its README](./infinum-full/README.md#verification-status): layers 1–4 not
+run, 53 stubbed-`PATH` assertions passing across its six install steps.
 
 Layer 2 runs from a checkout of
 [`docker/sbx-kits-contrib`](https://github.com/docker/sbx-kits-contrib), one
@@ -279,7 +280,7 @@ Its `container/install_execution` subtest really executes the install command
 in a container and asserts the exit code. That assertion used to be free:
 every kit that touched the network exited 0 regardless, so passing meant the
 script ran to the end and nothing more. Now that the scripts propagate
-failure, the same subtest asserts something real — and will **fail** in any
+failure, the same subtest asserts something real, and will **fail** in any
 container where `claude` isn't on `PATH` or `github.com` isn't reachable, which
 is the likely case. That is the assertion working, not a regression in the
 kits: expect to run layer 2 in an environment that can actually satisfy the
@@ -291,7 +292,8 @@ Every spec parses as YAML and every extracted install script passes `sh -n`.
 Each was then run against a stubbed `claude` (and `docker`) on a hermetic
 `PATH`, asserting the **exit code** for each path: success, "already exists"
 on a re-run, outright failure, missing credentials, and a missing Docker
-daemon — 31 assertions across the six kits with install steps, all passing.
+daemon. That is 31 assertions across the six kits with install steps, all
+passing.
 `infinum-ai` additionally asserts its on-disk result: `whoami.md` stub,
 copied rules, generated `index.md`, the `CLAUDE.md` import line, that an
 upstream `whoami.md` never clobbers the stub, that `README.md` stays out of
@@ -306,7 +308,8 @@ Layer 3 is the gap that matters, and it matters more now than it did with four
 kits. It is the only layer that proves an allowlist is *complete*. For
 `infinum-ai` and `superpowers` the `github.com`-only claim rests on the
 reasoning that `claude plugin` clones over git smart-HTTP and therefore never
-leaves `github.com` — sound but untested. The MCP kits are shakier still:
+leaves `github.com`, which is sound but untested. The MCP kits are shakier
+still:
 `sonarcloud` pulls an image from Docker Hub (three hosts, any of which may
 redirect elsewhere) and `productive` completes an OAuth flow across two hosts.
 A sandbox created under a permissive host policy does not test any of it. To
@@ -344,6 +347,6 @@ productive`).
 
 `Install commands completed` in the create output now carries real weight: the
 scripts exit non-zero on failure, so a sandbox that came up got past every
-check they make. It is still not a substitute for the probes above — a script
+check they make. It is still not a substitute for the probes above: a script
 can only assert what it looked at, and none of them calls an MCP server's API
 to prove a credential works.

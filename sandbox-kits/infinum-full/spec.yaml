@@ -1,48 +1,85 @@
 schemaVersion: "2"
 kind: mixin
-name: infinum-all
-displayName: Infinum — Everything
+name: infinum-full
+displayName: Infinum Full Setup
 description: >-
-  Every Infinum sandbox kit in one mixin: drops Claude Code's commit/PR
+  The whole Infinum setup in one mixin: drops Claude Code's commit/PR
   attribution, allows Maven Central egress, registers both plugin
   marketplaces and installs five plugins plus the house rules into
   ~/.claude/infinum/, and registers the context7, productive and sonarqube
-  MCP servers at user scope. One install step per kit it replaces. Needs a
-  reachable Docker daemon; the Context7 and SonarQube credentials are
-  optional. See README.
+  MCP servers at user scope. The Context7 and SonarQube tokens are optional
+  sandbox secrets. See README.
 requires:
   agent: claude
+
+# Two optional API-key credentials, both sourced from the sandbox secret store
+# (`sbx secret set <service>`) via the user's own binding in
+# ~/.config/sbx/credentials.yaml. `required: false` so an unbound service
+# resolves to mode `none` and creation still succeeds.
+#
+# The real token never enters the container: the engine sets each `apiKey.name`
+# to the literal `proxy-managed`, and the sentinel-swap proxy substitutes the
+# real value on outbound requests to the `inject[].domain` below. So steps 4
+# and 6 register the *sentinel* and let the proxy do the authenticating, which
+# is why they branch on `SBX_CRED_<SERVICE>_MODE` (`apikey` | `oauth` | `none`)
+# rather than testing the variable for a plausible-looking key.
+#
+# Every `inject[].domain` must also appear in permissions.network.allow below,
+# or the spec library rejects the kit, and it must also appear in the user's
+# `allowedDomains` for the injection to actually happen.
+credentials:
+  - service: context7
+    description: Context7 API key that lifts the context7 MCP server off Context7's shared public rate limit
+    required: false
+    apiKey:
+      name: CONTEXT7_API_KEY
+      inject:
+        - domain: mcp.context7.com
+          scheme: bearer          # sugar for header: Authorization, format: "Bearer %s"
+
+  - service: sonarqube
+    description: SonarQube Cloud user token that authenticates the sonarqube MCP server's API calls
+    required: false
+    apiKey:
+      name: SONARQUBE_TOKEN
+      inject:
+        - domain: sonarcloud.io
+          scheme: bearer
+
+# SONARQUBE_ORG is deliberately not here: an organization key is configuration,
+# not a secret, and there is nothing for the proxy to inject it into. Step 6
+# reads it from the creation environment.
 
 # The union of every allow-list this kit consolidates. Declarative, so nothing
 # here can be conditional on a credential that turned out to be missing.
 permissions:
   network:
     allow:
-      - repo.maven.apache.org             # maven-central: canonical host — Maven's `central`, Gradle's mavenCentral()
-      - repo1.maven.org                   # maven-central: legacy hostname — sbt, Coursier, Leiningen, older configs
-      - github.com                        # infinum-ai + superpowers: git smart-HTTP clones of three public repos
-      - mcp.context7.com                  # context7: the remote HTTP MCP endpoint
-      - mcp.productive.io                 # productive: the remote HTTP MCP endpoint
-      - app.productive.io                 # productive: OAuth authorize/consent page `claude mcp login` opens
-      - registry-1.docker.io              # sonarcloud: pulling sonarsource/sonarqube-mcp from Docker Hub
-      - auth.docker.io                    # sonarcloud: ditto — token exchange
-      - production.cloudflare.docker.com  # sonarcloud: ditto — layer download
-      - sonarcloud.io                     # sonarcloud: the MCP server's own calls to the SonarQube Cloud API
+      - repo.maven.apache.org             # Maven Central: canonical host for Maven's `central` and Gradle's mavenCentral()
+      - repo1.maven.org                   # Maven Central: legacy hostname for sbt, Coursier, Leiningen and older configs
+      - github.com                        # steps 2-3: git smart-HTTP clones of three public repos
+      - mcp.context7.com                  # step 4: the remote HTTP MCP endpoint; also the context7 key's injection domain
+      - mcp.productive.io                 # step 5: the remote HTTP MCP endpoint
+      - app.productive.io                 # step 5: OAuth authorize/consent page `claude mcp login` opens
+      - registry-1.docker.io              # step 6: pulling sonarsource/sonarqube-mcp from Docker Hub
+      - auth.docker.io                    # step 6: Docker Hub token exchange for that pull
+      - production.cloudflare.docker.com  # step 6: Docker Hub layer download for that pull
+      - sonarcloud.io                     # step 6: the MCP server's own calls to the SonarQube Cloud API; also the sonarqube token's injection domain
 
-# One step per consolidated kit. Three invariants, none of them cosmetic:
+# Six steps, three invariants, none of them cosmetic:
 #   - Cheapest-first order: the local write, then the two clone-and-install
 #     steps, then the three MCP registrations. Any step's failure fails sandbox
 #     creation, so the steps needing no network fail before the ones that do.
 #   - Every step runs as uid 1000, so what it writes is owned by `agent`, not
 #     `root`.
-#   - Failure messages spell out the fix inline — the creation log is often the
-#     only thing the user sees. The one exception is the three-line sonarqube
-#     re-registration, which points at the README instead.
-# maven-central contributes no step — it is policy only.
+#   - Failure messages spell out the fix inline, because the creation log is
+#     often the only thing the user sees. The one exception is the three-line
+#     sonarqube re-registration, which points at the README instead.
+# The two Maven Central hosts need no step at all; they are policy only.
 setup:
   install:
     - user: "1000"
-      description: "1/6 claude-no-attribution — set attribution.commit and attribution.pr to \"\" in ~/.claude/settings.json"
+      description: "1/6 attribution: set attribution.commit and attribution.pr to \"\" in ~/.claude/settings.json"
       command: |
         set -eu
         f=/home/agent/.claude/settings.json
@@ -53,11 +90,11 @@ setup:
         # Capture before writing: a jq failure aborts before "$f" is touched,
         # and writing in place keeps the file's own mode and owner.
         merged=$(jq '.attribution.commit = "" | .attribution.pr = ""' "$f")
-        [ -n "$merged" ] || { echo "infinum-all kit: ERROR: jq produced no output for $f" >&2; exit 1; }
+        [ -n "$merged" ] || { echo "infinum-full kit: ERROR: jq produced no output for $f" >&2; exit 1; }
         printf '%s\n' "$merged" > "$f"
 
     - user: "1000"
-      description: "2/6 infinum-ai — register the infinum-ai marketplace, install the Infinum plugins, install the house rules into ~/.claude/infinum/"
+      description: "2/6 plugins and house rules: register the infinum-ai marketplace, install the Infinum plugins, install the house rules into ~/.claude/infinum/"
       command: |
         set -eu
 
@@ -75,7 +112,7 @@ setup:
         #    "already on disk" when the marketplace is already registered.
         if ! claude plugin marketplace add "$REPO"; then
           cat >&2 <<EOF
-        infinum-all kit: ERROR: could not add the '$MARKET' marketplace.
+        infinum-full kit: ERROR: could not add the '$MARKET' marketplace.
           $REPO is public, so this is most likely network policy blocking github.com.
           Check with: sbx policy log
           Then retry in here: claude plugin marketplace add $REPO
@@ -90,7 +127,7 @@ setup:
         for p in $PLUGINS; do
           if ! claude plugin install "$p@$MARKET"; then
             cat >&2 <<EOF
-        infinum-all kit: ERROR: plugin '$p' did not install.
+        infinum-full kit: ERROR: plugin '$p' did not install.
           Retry in here: claude plugin install $p@$MARKET
         EOF
             exit 1
@@ -109,14 +146,14 @@ setup:
         done
         if [ "$rules_found" != 1 ]; then
           cat >&2 <<EOF
-        infinum-all kit: ERROR: no house rules found under $MARKET_DIR/rules/.
+        infinum-full kit: ERROR: no house rules found under $MARKET_DIR/rules/.
           The marketplace registered but its clone has no rules/*.md, so the rules
           this kit exists to install are missing. Check the layout of $REPO.
         EOF
           exit 1
         fi
 
-        # 4. Local wiring — no network, no clone.
+        # 4. Local wiring, with no network and no clone.
 
         # 4a. whoami.md is the user's own: create once, never overwrite.
         if [ ! -f "$CONFIG_DIR/whoami.md" ]; then
@@ -149,7 +186,7 @@ setup:
           printf '\n%s\n' "@$CONFIG_DIR/index.md  # managed by $REPO" >> "$CLAUDE_DIR/CLAUDE.md"
 
     - user: "1000"
-      description: "3/6 superpowers — register the official marketplace and install the superpowers plugin from it"
+      description: "3/6 superpowers: register the official marketplace and install the superpowers plugin from it"
       command: |
         set -eu
 
@@ -158,7 +195,7 @@ setup:
         # Idempotent: exits 0 with "already on disk" on a re-run.
         if ! claude plugin marketplace add anthropics/claude-plugins-official; then
           cat >&2 <<'EOF'
-        infinum-all kit: ERROR: could not add the 'claude-plugins-official' marketplace.
+        infinum-full kit: ERROR: could not add the 'claude-plugins-official' marketplace.
           This clones https://github.com/anthropics/claude-plugins-official.git over git smart-HTTP.
           Check whether github.com is reachable: sbx policy log
           Retry in here with: claude plugin marketplace add anthropics/claude-plugins-official
@@ -169,7 +206,7 @@ setup:
         # Idempotent: exits 0 with "already installed" on a re-run.
         if ! claude plugin install superpowers@claude-plugins-official; then
           cat >&2 <<'EOF'
-        infinum-all kit: ERROR: could not install 'superpowers' from claude-plugins-official.
+        infinum-full kit: ERROR: could not install 'superpowers' from claude-plugins-official.
           This clones https://github.com/obra/superpowers.git over git smart-HTTP.
           Check whether github.com is reachable: sbx policy log
           Retry in here with: claude plugin install superpowers@claude-plugins-official
@@ -178,26 +215,31 @@ setup:
         fi
 
     - user: "1000"
-      description: "4/6 context7 — register the context7 MCP server (remote HTTP) at user scope"
+      description: "4/6 context7: register the context7 MCP server (remote HTTP) at user scope"
       command: |
         set -eu
 
         NAME=context7
         URL=https://mcp.context7.com/mcp
 
-        # Read from the environment, never hardcoded. A missing key warns and
-        # registers the server anyway, unauthenticated — deliberate, and not
-        # what the standalone context7 kit does. See README.
+        # Whether a credential is wired comes from the engine, not from the
+        # variable: CONTEXT7_API_KEY holds the sentinel `proxy-managed`, so it
+        # is never a real key to test. An unbound credential warns and registers
+        # the server anyway, unauthenticated. That is deliberate; see README.
         set -- --transport http "$NAME" "$URL" -s user
-        if [ -n "${CONTEXT7_API_KEY:-}" ]; then
-          set -- "$@" --header "Authorization: Bearer ${CONTEXT7_API_KEY}"
+        if [ "${SBX_CRED_CONTEXT7_MODE:-none}" = "apikey" ]; then
+          # Register the sentinel; the proxy swaps in the real key on requests
+          # to mcp.context7.com. The `:-proxy-managed` default only covers the
+          # engine reporting apikey mode without populating the variable.
+          set -- "$@" --header "Authorization: Bearer ${CONTEXT7_API_KEY:-proxy-managed}"
         else
           cat >&2 <<EOF
-        infinum-all kit: WARNING: CONTEXT7_API_KEY is not set.
-          Registering '$NAME' unauthenticated — it will work, on Context7's shared
+        infinum-full kit: WARNING: no Context7 API key is bound (SBX_CRED_CONTEXT7_MODE=${SBX_CRED_CONTEXT7_MODE:-none}).
+          Registering '$NAME' unauthenticated. It will work, on Context7's shared
           public rate limit, and start failing mid-session once that is exhausted.
-          To register it with a key, pass one in the creation environment:
-            CONTEXT7_API_KEY=<key> sbx run claude --kit ./infinum-all/ <workspace>
+          To register it with a key, store one as a sandbox secret and recreate:
+            sbx secret set context7 --sandbox <sandbox> -t '<key>'
+          (drop --sandbox to store it for every sandbox on this host)
           or fix it in a running sandbox:
             claude mcp remove $NAME -s user
             claude mcp add --transport http $NAME $URL -s user --header "Authorization: Bearer <key>"
@@ -210,10 +252,10 @@ setup:
         if out=$(claude mcp add "$@" 2>&1); then
           echo "$out"
         elif echo "$out" | grep -q "already exists"; then
-          echo "infinum-all kit: MCP server '$NAME' already configured in user scope."
+          echo "infinum-full kit: MCP server '$NAME' already configured in user scope."
         else
           cat >&2 <<EOF
-        infinum-all kit: ERROR: could not register the '$NAME' MCP server.
+        infinum-full kit: ERROR: could not register the '$NAME' MCP server.
           $out
           Retry in here: claude mcp add --transport http $NAME $URL -s user --header "Authorization: Bearer <key>"
         EOF
@@ -221,23 +263,23 @@ setup:
         fi
 
     - user: "1000"
-      description: "5/6 productive — register the productive MCP server (remote HTTP) at user scope"
+      description: "5/6 productive: register the productive MCP server (remote HTTP) at user scope"
       command: |
         set -eu
 
         NAME=productive
         URL=https://mcp.productive.io/mcp
 
-        # Registration only — OAuth login is interactive and per Productive
+        # Registration only. The OAuth login is interactive and per Productive
         # user, so an unauthorized server is the expected end state here, not a
         # failure. See README. "already exists" on a re-run likewise.
         if out=$(claude mcp add --transport http "$NAME" "$URL" -s user 2>&1); then
           echo "$out"
         elif echo "$out" | grep -q "already exists"; then
-          echo "infinum-all kit: MCP server '$NAME' already configured in user scope."
+          echo "infinum-full kit: MCP server '$NAME' already configured in user scope."
         else
           cat >&2 <<EOF
-        infinum-all kit: ERROR: could not register the '$NAME' MCP server.
+        infinum-full kit: ERROR: could not register the '$NAME' MCP server.
           $out
           Retry in here: claude mcp add --transport http $NAME $URL -s user
         EOF
@@ -245,39 +287,51 @@ setup:
         fi
 
     - user: "1000"
-      description: "6/6 sonarcloud — register the sonarqube MCP server (Docker, SonarQube Cloud) at user scope"
+      description: "6/6 sonarqube: register the sonarqube MCP server (Docker, SonarQube Cloud) at user scope"
       command: |
         set -eu
 
         NAME=sonarqube
 
-        # Unlike `claude`, Docker is not guaranteed by the base agent, and this
-        # server only runs as a container image. Absent docker fails creation —
-        # an environment problem, not a degraded mode to paper over. See README.
+        # Docker comes with the sandbox: the 'claude' image ships the CLI, the
+        # engine wires a daemon in at creation, and uid 1000, which this step
+        # runs as, is in the 'docker' group. So requires.agent: claude already
+        # covers what this server needs, and the check below is an assertion
+        # rather than a prerequisite. It stays because on a customized image
+        # that strips docker, failing creation beats registering a server that
+        # can never start. See README.
         if ! command -v docker >/dev/null 2>&1; then
           cat >&2 <<EOF
-        infinum-all kit: ERROR: 'docker' not found on PATH.
-          The sonarqube MCP server runs as a Docker image, so it cannot be registered here.
-          Apply this kit to a sandbox with a reachable Docker daemon, or use the narrower
-          kits (infinum-base + infinum-plugins) which need no Docker daemon — see README.
+        infinum-full kit: ERROR: 'docker' not found on PATH.
+          This should not happen in a stock 'claude' sandbox: docker is part of the
+          image and its daemon is wired in at creation. The sonarqube MCP server only
+          runs as a container image, so it cannot be registered without it.
+          If this sandbox is built on an image that strips docker, drop this step from
+          a local copy of the spec; see README.
         EOF
           exit 1
         fi
 
-        # Read from the environment, never hardcoded. Both are needed; a
-        # missing one warns and registers the server anyway, same as
-        # CONTEXT7_API_KEY above — its tool calls then fail with a SonarQube
-        # authentication error rather than the server being absent.
+        # Two different kinds of input. The token is a bound credential, so the
+        # engine's mode says whether it exists and SONARQUBE_TOKEN holds the
+        # sentinel `proxy-managed` rather than the token itself. The
+        # organization key is plain configuration, read from the environment.
+        # Both are needed; either one absent warns and registers the server
+        # anyway, same as context7 above. Its tool calls then fail with a
+        # SonarQube authentication error rather than the server being absent.
         set -- "$NAME" -s user
-        if [ -n "${SONARQUBE_TOKEN:-}" ] && [ -n "${SONARQUBE_ORG:-}" ]; then
-          set -- "$@" --env SONARQUBE_TOKEN="${SONARQUBE_TOKEN}" --env SONARQUBE_ORG="${SONARQUBE_ORG}"
+        if [ "${SBX_CRED_SONARQUBE_MODE:-none}" = "apikey" ] && [ -n "${SONARQUBE_ORG:-}" ]; then
+          # The sentinel travels into the MCP container; the proxy swaps in the
+          # real token on its outbound requests to sonarcloud.io.
+          set -- "$@" --env SONARQUBE_TOKEN="${SONARQUBE_TOKEN:-proxy-managed}" --env SONARQUBE_ORG="${SONARQUBE_ORG}"
         else
           cat >&2 <<EOF
-        infinum-all kit: WARNING: SONARQUBE_TOKEN and/or SONARQUBE_ORG is not set.
-          Registering '$NAME' without credentials — every tool call will fail with a
-          SonarQube authentication error until both are supplied. Pass both in the
-          creation environment:
-            SONARQUBE_TOKEN=<token> SONARQUBE_ORG=<org-key> sbx run claude --kit ./infinum-all/ <workspace>
+        infinum-full kit: WARNING: SonarQube is not fully configured (SBX_CRED_SONARQUBE_MODE=${SBX_CRED_SONARQUBE_MODE:-none}, SONARQUBE_ORG=${SONARQUBE_ORG:-unset}).
+          Registering '$NAME' without credentials. Every tool call will fail with a
+          SonarQube authentication error until both are supplied. The token is a
+          sandbox secret; the organization key is plain configuration:
+            sbx secret set sonarqube --sandbox <sandbox> -t '<token>'
+            SONARQUBE_ORG=<org-key> sbx run claude --kit ./infinum-full/ <workspace>
           or fix it in a running sandbox:
             claude mcp remove $NAME -s user
             claude mcp add $NAME -s user --env SONARQUBE_TOKEN=<token> --env SONARQUBE_ORG=<org-key> \\
@@ -293,10 +347,10 @@ setup:
         if out=$(claude mcp add "$@" 2>&1); then
           echo "$out"
         elif echo "$out" | grep -q "already exists"; then
-          echo "infinum-all kit: MCP server '$NAME' already configured in user scope."
+          echo "infinum-full kit: MCP server '$NAME' already configured in user scope."
         else
           cat >&2 <<EOF
-        infinum-all kit: ERROR: could not register the '$NAME' MCP server.
+        infinum-full kit: ERROR: could not register the '$NAME' MCP server.
           $out
           The README's "Credentials" section has the command to retry in here.
         EOF
@@ -318,10 +372,10 @@ agentInstructions:
     `repo1.maven.org`, so Maven, Gradle, sbt and Coursier can resolve and
     download dependencies from Maven Central.
 
-    Those two are the only Maven hosts this kit contributes. It does not allow
+    Those two are the only Maven hosts allowed here. The policy does not allow
     the Gradle Plugin Portal (`plugins.gradle.org`), Sonatype snapshot/staging
     repos, Maven Central *search* (`central.sonatype.com`, `search.maven.org`),
-    or any private repository — which is not the same as those being blocked,
+    or any private repository, which is not the same as those being blocked,
     since the effective policy also includes host and org rules. Check
     `sbx policy ls` rather than assuming either way.
 
@@ -333,34 +387,34 @@ agentInstructions:
     The `infinum-ai` plugin marketplace (`infinum/ai`) is registered and these
     plugins are installed at user scope:
 
-    - `stack-essentials` — SessionStart update-banner hook; its check gates on
+    - `stack-essentials`: SessionStart update-banner hook; its check gates on
       `~/.claude/infinum/.manifest.json`, which this kit never writes, so the
       banner never fires here.
-    - `create-prd` — generate a Product Requirements Document.
-    - `pr-review-code-simplicity` — review a PR through the six laws of software
+    - `create-prd`: generate a Product Requirements Document.
+    - `pr-review-code-simplicity`: review a PR through the six laws of software
       design.
-    - `productive-debug` — investigate a Productive bug task end-to-end.
+    - `productive-debug`: investigate a Productive bug task end-to-end.
 
-    Nine other marketplace plugins are **not** installed — some need local
-    tooling or egress this sandbox lacks, the rest are design-side and out of
-    scope here; the kit README lists each with its reason. Install one anyway
+    Nine other marketplace plugins are **not** installed. Some need local
+    tooling or egress this sandbox lacks, and the rest are design-side and out
+    of scope here; the kit README lists each with its reason. Install one anyway
     with `claude plugin install <name>@infinum-ai`, or browse with `/plugin`.
 
     House rules are installed at `~/.claude/infinum/`, chained from `index.md`,
     which `~/.claude/CLAUDE.md` imports.
 
     `~/.claude/infinum/whoami.md` may still be the unedited stub. If it is, it
-    tells you nothing real about the user — do not treat its placeholder example
-    as fact.
+    tells you nothing real about the user, so do not treat its placeholder
+    example as fact.
 
     ## Superpowers skills library installed
 
     The `superpowers` plugin (`obra/superpowers`, public, via the built-in
     `claude-plugins-official` marketplace) is installed at user scope. Its
     skills are already listed for you by the `Skill` tool, and its SessionStart
-    hook injects the `using-superpowers` orientation skill into every session —
-    both purely local, no network call. What follows is what those surfaces
-    don't tell you.
+    hook injects the `using-superpowers` orientation skill into every session.
+    Both of those are purely local, with no network call. What follows is what
+    those surfaces don't tell you.
 
     The `brainstorming` skill can start a local web server for an interactive
     UI; that page embeds a small `<img>` pointing at `primeradiant.com`, fetched
@@ -373,31 +427,37 @@ agentInstructions:
     whatever version the marketplace currently serves, and its SessionStart
     hook runs on every session. Nothing in this sandbox pins or verifies it.
 
-    ## Three MCP servers registered — two may be unauthenticated
+    ## Three MCP servers registered, two of them possibly unauthenticated
 
     `context7`, `productive` and `sonarqube` are all registered at user scope,
     so they are available in every project in this sandbox. Registration
-    succeeding is guaranteed — a failed `claude mcp add` fails sandbox creation
-    — but **being usable is not**. Check which of them actually connect with
-    `claude mcp list`, and read the per-server notes below before concluding a
-    server is broken.
+    succeeding is guaranteed, since a failed `claude mcp add` fails sandbox
+    creation, but **being usable is not**. Check which of them actually connect
+    with `claude mcp list`, and read the per-server notes below before
+    concluding a server is broken.
 
     - **`context7`** (remote HTTP, `https://mcp.context7.com/mcp`) resolves
       library/framework names to current, version-specific documentation and
-      code examples — use it instead of guessing from training data when you
+      code examples. Use it instead of guessing from training data when you
       need up-to-date API details for a dependency (add "use context7" to a
       prompt, or call `resolve-library-id` then `get-library-docs`). It was
-      registered with an `Authorization: Bearer` header **only if**
-      `CONTEXT7_API_KEY` was set in the sandbox environment at creation time.
-      Without one it is registered anonymously and runs on Context7's shared
-      public rate limit, which can start failing mid-session. A 429 or a
-      rate-limit error means that is what happened; ask the user for a key
-      rather than assuming `$CONTEXT7_API_KEY` is readable from this session.
+      registered with an `Authorization: Bearer` header **only if** a Context7
+      API key was bound as a sandbox secret at creation time. Without one it is
+      registered anonymously and runs on Context7's shared public rate limit,
+      which can start failing mid-session. A 429 or a rate-limit error means
+      that is what happened.
+
+      The key itself is not in this sandbox and cannot be read from here:
+      `$CONTEXT7_API_KEY` and the registered header both hold the literal
+      sentinel `proxy-managed`, which the egress proxy swaps for the real key on
+      requests to `mcp.context7.com`. That is working as intended, so do not
+      "fix" it by editing the header, and ask the user rather than trying to
+      recover a key from the environment.
 
     - **`productive`** (remote HTTP, `https://mcp.productive.io/mcp`) reads and
       updates Productive projects/tasks, time entries, CRM deals and contacts,
       resource bookings, and invoices/expenses. Registration alone does not
-      connect it — Productive's server uses per-user OAuth 2.0, so a human has
+      connect it. Productive's server uses per-user OAuth 2.0, so a human has
       to complete a one-time login: `claude mcp login productive`, or
       `claude mcp login productive --no-browser` in a headless session (open
       the printed URL in any browser, sign in, paste the redirect URL back).
@@ -408,31 +468,40 @@ agentInstructions:
       orgs means `claude mcp logout productive` and logging in again).
 
     - **`sonarqube`** runs SonarSource's official `sonarsource/sonarqube-mcp`
-      Docker image against **SonarQube Cloud** (`sonarcloud.io`) — a project's
-      actual issues, security hotspots, quality gate status, coverage and
-      duplications, under the `sonarqube` tool namespace. It is SonarQube
+      Docker image against **SonarQube Cloud** (`sonarcloud.io`), exposing a
+      project's actual issues, security hotspots, quality gate status, coverage
+      and duplications, under the `sonarqube` tool namespace. It is SonarQube
       **Cloud** only; it does not talk to a self-hosted SonarQube Server. It
-      was registered with credentials **only if** both `SONARQUBE_TOKEN` and
-      `SONARQUBE_ORG` were set at creation time; without them every tool call
-      fails with a SonarQube authentication error. `docker` on PATH was
-      mandatory, so that part is not a possible failure cause.
+      was registered with credentials **only if** a SonarQube token was bound
+      as a sandbox secret *and* `SONARQUBE_ORG` was set at creation time;
+      without both, every tool call fails with a SonarQube authentication
+      error. `docker` is part of this sandbox and its daemon is reachable from
+      here, so a missing container runtime is not a possible failure cause.
+      The image is pulled lazily on first use, though, so a first tool call can
+      still fail on the pull itself if Docker Hub egress is blocked. As with
+      `context7`, the registered `SONARQUBE_TOKEN` value is the sentinel
+      `proxy-managed`, not the token; the proxy substitutes the real one on
+      requests to `sonarcloud.io`.
 
     Fixing an unauthenticated server means re-registering it, since
     `claude mcp add` does not update an existing entry's header or env:
     `claude mcp remove <name> -s user`, then add it again with the credential.
-    The kit README has the exact commands.
+    That path needs a real key pasted in by the user, because a credential
+    added after creation is not proxy-managed. The kit README has the exact
+    commands.
 
     Egress is allowed to `mcp.context7.com`, `mcp.productive.io`,
     `app.productive.io`, `sonarcloud.io` and Docker Hub
     (`registry-1.docker.io`, `auth.docker.io`,
     `production.cloudflare.docker.com`). A tool call failing with an HTTP 403
-    mentioning "Blocked by network policy" is a policy problem — check
+    mentioning "Blocked by network policy" is a policy problem; check
     `sbx policy log`.
 
     ## Every step is mandatory
 
     Every install step above fails sandbox creation when it errors, so none of
     them is partially applied in a sandbox you are running in. The only
-    deliberate exceptions — and the only expected gaps — are a missing Context7
-    or SonarQube credential (the server is registered anyway, with a warning on
-    the creation log) and `productive` awaiting its interactive OAuth login.
+    deliberate exceptions, which are also the only expected gaps, are an
+    unbound Context7 or SonarQube credential (the server is registered anyway,
+    with a warning on the creation log) and `productive` awaiting its
+    interactive OAuth login.
