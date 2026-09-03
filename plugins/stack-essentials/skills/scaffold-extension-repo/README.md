@@ -32,7 +32,7 @@ infinum/ai-{type}-{name}[-private]
 | .NET team | `infinum/ai-team-dotnet` |
 | Client project | `infinum/ai-project-<client>-private` |
 
-`-private` is present exactly when the repository is private, so the name alone tells you what to expect. The marketplace name mirrors the repo: `infinum-ai-team-javascript`. The two core repos, `infinum/ai` and `infinum/ai-private`, sit outside the template (`ai-private` is installed with the same `--extend` mechanism, but it is a core repo, not a team or project one). `infinum/ai-hpb` predates the convention and keeps its name.
+`-private` is present exactly when the repository is private, so the name alone tells you what to expect. The marketplace name mirrors the repo: `infinum-ai-team-javascript`. The two core repos, `infinum/ai` and `infinum/ai-private`, sit outside the template (`ai-private` is installed with the same `--extend` mechanism, but it is a core repo, not a team or project one).
 
 ## When to use
 

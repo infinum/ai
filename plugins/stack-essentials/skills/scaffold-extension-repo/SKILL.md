@@ -49,7 +49,7 @@ For **both**, propose the pair together and scaffold them as two repositories wi
 
 The **marketplace name** (the `name` field in `marketplace.json`) follows the repo: `infinum-ai-{type}-{name}[-private]`, e.g. `infinum-ai-team-javascript`. It must never be `infinum-ai` — the installer aborts on a marketplace-name collision because two sources with one name would shadow each other's plugins in a shared cache directory.
 
-The two core repos sit outside the template: `infinum/ai` (the base) and `infinum/ai-private` (its private companion — installed through the very same `--extend` mechanism as any extension, but a core repo nonetheless). `infinum/ai-hpb` (marketplace `hpb-ai`) predates the convention and keeps its name. Do not propose renaming any of them.
+The two core repos sit outside the template: `infinum/ai` (the base) and `infinum/ai-private` (its private companion — installed through the very same `--extend` mechanism as any extension, but a core repo nonetheless). Do not propose renaming either of them.
 
 Present the proposed repository name(s), marketplace name(s), and visibility and **wait for the user's confirmation** before writing files. If a name has to bend the convention (an established product name with a hyphen, say), say so and let the user decide.
 
