@@ -2,6 +2,8 @@
 
 Baseline plumbing for the Infinum AI Stack. Installed automatically by `bin/install.js` (you don't need to opt in via the `/plugin` UI).
 
+It ships two things: a `SessionStart` update-notification hook (below) and one skill, [`scaffold-extension-repo`](skills/scaffold-extension-repo/), which walks you through creating a new extension-marketplace repository (`infinum/ai-{type}-{name}[-private]`) for team- or project-specific plugins and rules. Invoke it with `/stack-essentials:scaffold-extension-repo`; see its README for the naming convention and flow.
+
 ## What it does
 
 Adds a `SessionStart` hook that compares the HEAD commit SHA of `main` on `github.com/infinum/ai` against the SHA recorded in `~/.claude/infinum/.manifest.json` at your last installer run. When they differ, a newer version of the workspace installer is available, so the hook prints a banner on stderr at session start:
