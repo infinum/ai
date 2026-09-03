@@ -1,0 +1,12 @@
+{
+  "name": "__MARKETPLACE_NAME__",
+  "owner": {
+    "name": "Infinum"
+  },
+  "metadata": {
+    "description": "__OWNER_LABEL__ AI plugins and rules — extension of infinum/ai"
+  },
+  "plugins": [
+    { "name": "__PLUGIN_NAME__", "source": "./plugins/__PLUGIN_NAME__" }
+  ]
+}

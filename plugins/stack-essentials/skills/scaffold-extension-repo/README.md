@@ -14,9 +14,23 @@ The skill walks you through a guided flow:
 
 1. **Say what you are creating** — a team repo or a project repo, its name, and whether it should be public, private, or both.
 2. **Confirm the proposed names** — repository and marketplace names following `infinum/ai-{type}-{name}[-private]`.
-3. **Get the skeleton** — `marketplace.json`, a README with the exact install command, agent instructions, and optionally a first plugin and rule bundle with `TODO` bodies.
+3. **Get the skeleton** — a copy of the bundled [`template/`](template/) with the names filled in: `marketplace.json`, a README with the exact install command, agent instructions, and optionally a first plugin and a rule bundle. Everything the owning team must write is marked `TODO`.
 4. **Optionally create the GitHub repo** — the skill asks before running `gh repo create`.
 5. **Verify** — a local-path install against the real installer, then clean-up.
+
+## The template
+
+[`template/`](template/) is a complete extension repository with `__PLACEHOLDER__` names. You can also use it by hand: copy the directory, rename the placeholder folders, search-and-replace the placeholders, delete the optional parts you do not need (`plugins/`, `rules/`, the `<!-- private-only -->` block in the README), and fill in the `TODO`s.
+
+| Placeholder | Meaning |
+|---|---|
+| `__REPO_NAME__` | repository name without `infinum/`, e.g. `ai-team-javascript-private` |
+| `__MARKETPLACE_NAME__` | `infinum-` + repo name, e.g. `infinum-ai-team-javascript-private` |
+| `__NAME_PREFIX__` | the `{name}` part; prefix for plugin, bundle and rule names |
+| `__OWNER_LABEL__` / `__OWNER__` | human label (`JavaScript team`) / maintainer |
+| `__VISIBILITY__` | `public` or `private` |
+| `__PLUGIN_NAME__` / `__SKILL_NAME__` | first plugin and its first skill |
+| `__BUNDLE_NAME__` / `__RULE_NAME__` | first rule bundle and its first rule file |
 
 ## Naming convention
 
@@ -40,7 +54,6 @@ infinum/ai-{type}-{name}[-private]
 |---|---|
 | A team wants to collect its rules and skills in one shared place | Yes — a team repo |
 | A project spans several code repositories and shares tooling between them | Yes — a project repo |
-| Tooling can't be committed to the client's code repository | Yes — a project repo, private |
 | A skill or rule is useful to every Infinum engineer | No — open a PR against `infinum/ai` |
 | A rule is only relevant to one code repository | No — commit it to that repo's `.claude/` folder |
 
