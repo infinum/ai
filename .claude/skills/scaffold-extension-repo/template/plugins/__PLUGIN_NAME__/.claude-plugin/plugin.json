@@ -1,0 +1,9 @@
+{
+  "name": "__PLUGIN_NAME__",
+  "version": "1.0.0",
+  "description": "TODO — one line on what this plugin does for the __OWNER_LABEL__.",
+  "keywords": [
+    "infinum",
+    "__NAME_PREFIX__"
+  ]
+}
