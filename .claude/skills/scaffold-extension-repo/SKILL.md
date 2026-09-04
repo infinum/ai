@@ -1,6 +1,6 @@
 ---
 name: scaffold-extension-repo
-description: Scaffold a new extension-marketplace repository that layers team- or project-specific plugins and rules on top of the public `infinum/ai` base via `--extend`. Proposes repository and marketplace names from the `infinum/ai-{type}-{name}[-private]` convention, copies a ready-made template (marketplace.json, README with the install command, optional first plugin and rule bundle), fills in the names, and optionally creates the GitHub repo. Use when someone wants a team repo, a project repo, a private companion repo, or asks how to name or start an extension of the Infinum AI stack. Not Cowork-ready — shells out to local `git`, the `gh` CLI, and `pnpm` to initialise, create, and verify the repository.
+description: Scaffold a new extension-marketplace repository that layers team- or project-specific plugins and rules on top of the public `infinum/ai` base via `--extend`. Proposes repository and marketplace names from the `infinum/ai-{type}-{name}[-private]` convention, copies a ready-made template (marketplace.json, README with the install command, optional first plugin and rule bundle), fills in the names, and optionally creates the GitHub repo. Contributor-only skill — lives in `.claude/skills/` of the `infinum/ai` checkout, not shipped via the marketplace. Use when someone wants a team repo, a project repo, a private companion repo, or asks how to name or start an extension of the Infinum AI stack. Triggers on "new extension repo", "team repo", "project repo", "/scaffold-extension-repo".
 ---
 
 # scaffold-extension-repo
@@ -8,6 +8,8 @@ description: Scaffold a new extension-marketplace repository that layers team- o
 Create a new **extension marketplace**: a repository that holds team- or project-specific plugins and rule bundles and is layered on top of the public `infinum/ai` base by the shared installer (`--extend`). The mechanism is documented in [CONTRIBUTING.md — Extending with additional marketplaces](https://github.com/infinum/ai/blob/main/CONTRIBUTING.md#extending-with-additional-marketplaces); this skill turns it into a guided, consistent setup.
 
 Extension repos hold **only data** — plugins, rules, and their `marketplace.json`. They never carry a copy of the installer.
+
+This is a **contributor skill** for this repo — it lives under `.claude/skills/` rather than `plugins/` because creating an extension repo is a rare, one-off task for the person who owns it, not something every engineer needs installed. Run it from a checkout of `infinum/ai`; it is not available through the marketplace.
 
 The skill ships a complete **template repository** next to this file, in `template/`. Scaffolding is a copy of that directory followed by a placeholder replacement — do not write the files from memory.
 
@@ -24,7 +26,7 @@ Collect, asking only for what the user has not already said:
    If the user is unsure, ask what the first few skills or rules will be and decide from that. Project repos are almost always private (they are about a client). Team repos are often public, unless the team's work is inherently sensitive (bizdev, sales, HR).
 4. **Initial content** — optional: the name of a first plugin (and its first skill) and/or a first rule bundle (and its first rule). An empty skeleton is fine; do not invent content.
 5. **Owner** — the person or role who maintains the repo (team champion for a team repo, tech lead for a project repo).
-6. **Where to scaffold locally** — a directory to create. Default to `./<repo-name>` under the current working directory unless the user names a location.
+6. **Where to scaffold locally** — a directory to create. The working directory is the `infinum/ai` checkout, so default to a sibling of it, `../<repo-name>`, unless the user names a location. Never scaffold inside the checkout.
 
 ## Step 2: Propose names
 
@@ -72,13 +74,14 @@ Also remind the user of the second installer constraint: **rule file and bundle 
 
 ### 4a. Locate the template
 
+The template lives next to this skill, inside the `infinum/ai` checkout:
+
 ```bash
-TEMPLATE="${CLAUDE_PLUGIN_ROOT}/skills/scaffold-extension-repo/template"
-[ -d "$TEMPLATE" ] || TEMPLATE=$(ls -d ~/.claude/plugins/cache/infinum-ai/stack-essentials/*/skills/scaffold-extension-repo/template 2>/dev/null | sort -V | tail -1)
+TEMPLATE="$(git rev-parse --show-toplevel)/.claude/skills/scaffold-extension-repo/template"
 [ -d "$TEMPLATE" ] && echo "template: $TEMPLATE" || echo "template not found"
 ```
 
-If neither path resolves, stop and tell the user the plugin install looks incomplete (`/plugin update stack-essentials@infinum-ai`), rather than reconstructing files by hand.
+If the path does not resolve, the session is not running from an `infinum/ai` checkout — stop and tell the user to open one (`git clone git@github.com:infinum/ai.git` and start Claude Code there), rather than reconstructing files by hand.
 
 ### 4b. Copy it
 

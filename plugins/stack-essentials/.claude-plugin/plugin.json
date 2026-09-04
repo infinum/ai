@@ -1,14 +1,11 @@
 {
   "name": "stack-essentials",
-  "version": "1.1.0",
-  "description": "Baseline plumbing for the Infinum AI Stack — flags stale local rules at session start so you know when to re-run the installer, and scaffolds new extension-marketplace repositories (infinum/ai-{type}-{name}[-private]) for team- or project-specific tooling.",
+  "version": "1.0.0",
+  "description": "Baseline notifications for the Infinum AI Stack — flags stale local rules at session start so you know when to re-run the installer.",
   "keywords": [
     "infinum",
     "essentials",
     "notifications",
-    "updates",
-    "extension",
-    "marketplace",
-    "scaffold"
+    "updates"
   ]
 }

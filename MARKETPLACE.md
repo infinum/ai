@@ -8,11 +8,11 @@ Skills are slash commands you invoke directly in your AI tool — they carry str
 
 ## Essentials (auto-installed)
 
-The setup script enables these baseline plugins for everyone — they ship cross-cutting plumbing, plus the one skill everyone should have at hand: scaffolding a new extension repo.
+The setup script enables these baseline plugins for everyone — they ship cross-cutting plumbing rather than user-invocable skills.
 
 | Plugin                                                                          | What it does                                                                                                                                                                                                            | Cowork                                                  |
 | ------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------- |
-| [`stack-essentials`](plugins/stack-essentials/) | Baseline plumbing for the Infinum AI Stack — flags stale local rules at session start so you know when to re-run the installer, and scaffolds new extension-marketplace repositories (infinum/ai-{type}-{name}[-private]) for team- or project-specific tooling. The `scaffold-extension-repo` skill is invoked as `/stack-essentials:scaffold-extension-repo`. | Untested — the `SessionStart` hook fires in Cowork, but its update check (`git ls-remote` to GitHub) is egress-blocked there, so the banner is a silent no-op regardless. Pending live verification. The `scaffold-extension-repo` skill is Not ready — shells out to local `git`, the `gh` CLI, and `pnpm` to initialise, create, and verify the repository. |
+| [`stack-essentials`](plugins/stack-essentials/)                                 | SessionStart hook that prints a one-line banner when `infinum/ai` has new commits on `main` since your last installer run. One `git ls-remote` per machine per 24h (uses your existing git credentials), silent on failure. Disable with `INFINUM_STACK_SKIP_UPDATE_CHECK=1` or `/plugin disable stack-essentials`. | Untested — the `SessionStart` hook fires in Cowork, but its update check (`git ls-remote` to GitHub) is egress-blocked there, so the banner is a silent no-op regardless. Pending live verification. |
 
 ---
 

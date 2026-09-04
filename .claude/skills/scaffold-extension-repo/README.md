@@ -4,11 +4,13 @@ Scaffold a new **extension marketplace** — a repository holding team- or proje
 
 ## Usage
 
+This is a **contributor skill**: it lives in `.claude/skills/` of the `infinum/ai` repository and is not shipped through the marketplace. Creating an extension repo is a rare, one-off job, so the flow is: clone `infinum/ai`, start Claude Code in that checkout, and run
+
 ```
-/stack-essentials:scaffold-extension-repo
+/scaffold-extension-repo
 ```
 
-(Plugin-installed skills are namespaced as `/<plugin>:<skill>`. `stack-essentials` is installed for everyone by the installer, so the skill is available without opting in.)
+The new repo is scaffolded as a sibling directory of the checkout by default.
 
 The skill walks you through a guided flow:
 
