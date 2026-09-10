@@ -30,7 +30,7 @@ Bundles let a group ship role-specific or context-specific rules without forcing
 
 1. Create `rules/<name>.md`. Keep it focused on one topic.
 2. Push to `main`.
-3. Users pick it up next time they run `pnpm dlx --allow-build=infinum-ai github:infinum/ai`.
+3. Users pick it up next time they run `pnpm dlx github:infinum/ai`.
 
 ## Adding a bundle
 

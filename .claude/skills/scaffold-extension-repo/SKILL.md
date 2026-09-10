@@ -166,13 +166,13 @@ If the user declines or lacks permission to create repositories in the organisat
 Offer to test the skeleton against the real installer from the local checkout — no GitHub access needed:
 
 ```bash
-pnpm dlx --allow-build=infinum-ai github:infinum/ai --extend "$PWD" --plugins none --bundles none
+pnpm dlx github:infinum/ai --extend "$PWD" --plugins none --bundles none
 ```
 
 A successful run lists the new marketplace under "Sources this run". Then remove it again so the test does not linger in the user's manifest:
 
 ```bash
-pnpm dlx --allow-build=infinum-ai github:infinum/ai --remove <marketplace-name>
+pnpm dlx github:infinum/ai --remove <marketplace-name>
 ```
 
 ## Step 7: Hand off

@@ -44,7 +44,7 @@ The full flow for a meaningful feature:
 
 ### 3. Stay current
 
-The installer enables the [`stack-essentials`](plugins/stack-essentials/) plugin by default. It prints a banner at session start when `infinum/ai` has new commits on `main` since your last installer run — telling you a new version of the workspace installer is available and nudging you to re-run `pnpm dlx --allow-build=infinum-ai github:infinum/ai`. That's all it does; picking up the update is a manual re-run (do it yourself, or have an agent run it non-interactively — `node bin/install.js --help` lists the flags). Re-running is idempotent and reports exactly which rules changed (often "nothing" — see the plugin README for why). Plugin updates flow through the Claude Code marketplace's auto-update toggle separately.
+The installer enables the [`stack-essentials`](plugins/stack-essentials/) plugin by default. It prints a banner at session start when `infinum/ai` has new commits on `main` since your last installer run — telling you a new version of the workspace installer is available and nudging you to re-run `pnpm dlx github:infinum/ai`. That's all it does; picking up the update is a manual re-run (do it yourself, or have an agent run it non-interactively — `node bin/install.js --help` lists the flags). Re-running is idempotent and reports exactly which rules changed (often "nothing" — see the plugin README for why). Plugin updates flow through the Claude Code marketplace's auto-update toggle separately.
 
 To disable the update banner: set `INFINUM_STACK_SKIP_UPDATE_CHECK=1` in your environment, or run `/plugin disable stack-essentials`.
 
