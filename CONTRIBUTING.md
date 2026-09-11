@@ -24,7 +24,7 @@ This repository is published under the [Creative Commons Attribution-NonCommerci
 ## Prerequisites
 
 - **Node 24** — pinned in `package.json` `engines.node`.
-- **pnpm 12** — pinned in `packageManager`; `engines.pnpm` accepts 11 and 12. Install pnpm via [pnpm.io/installation](https://pnpm.io/installation) (the simplest path is `corepack enable` on Node 24, which activates the version listed in `packageManager` automatically).
+- **pnpm 12** — pinned in `packageManager`; `engines.pnpm` accepts 10, 11 and 12. Install pnpm via [pnpm.io/installation](https://pnpm.io/installation) (the simplest path is `corepack enable` on Node 24, which activates the version listed in `packageManager` automatically).
 
 Then, from a clone of this repo:
 

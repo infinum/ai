@@ -26,7 +26,7 @@ pnpm dlx github:infinum/ai \
   --plugins __PLUGIN_NAME__ --bundles __BUNDLE_NAME__
 ```
 
-Prerequisites: Claude Code CLI, Node 24+, pnpm 11 or 12. <!-- private-only:start -->This repository is private — installing needs Infinum GitHub access (SSH key or `gh auth login`).<!-- private-only:end -->
+Prerequisites: Claude Code CLI, Node 24+, pnpm 10, 11 or 12. <!-- private-only:start -->This repository is private — installing needs Infinum GitHub access (SSH key or `gh auth login`).<!-- private-only:end -->
 
 What the installer adds over a bare marketplace add: the opt-in rule bundles, MCP servers mirrored into Claude Desktop / Cursor / Gemini CLI, an apt-style remembered source list (later plain `pnpm dlx … github:infinum/ai` runs pull from here automatically), and update notifications when this repo changes. Remove it again with `--remove infinum/__REPO_NAME__`.
 

@@ -45,7 +45,7 @@ See each skill's README for detailed usage and examples.
 
 Run the setup script once. It registers the Infinum marketplace in Claude Code, lays down team rules and a personalization stub, and walks you through an interactive prompt to install the skills you want.
 
-**Prerequisites:** Claude Code CLI installed, GitHub access to `infinum/ai`, Node 24+, pnpm 11 or 12. The `pnpm run setup` form uses the pnpm version pinned in `packageManager` — see [CONTRIBUTING.md](CONTRIBUTING.md#prerequisites).
+**Prerequisites:** Claude Code CLI installed, GitHub access to `infinum/ai`, Node 24+, pnpm 10, 11 or 12. The `pnpm run setup` form uses the pnpm version pinned in `packageManager` — see [CONTRIBUTING.md](CONTRIBUTING.md#prerequisites).
 
 ```bash
 # Run from anywhere — clones this repo to a temp dir, runs the install script
