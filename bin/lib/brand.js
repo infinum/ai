@@ -23,8 +23,8 @@
 // vendor-neutral so an org on another host (e.g. Bitbucket) reads sensibly.
 export const REPOSITORY_NAME = "infinum/ai";
 
-// Claude Code marketplace name. Must match the npm package `name`, because the
-// install command is `--allow-build=<MARKETPLACE_NAME> github:<REPOSITORY_NAME>`.
+// Claude Code marketplace name. Kept equal to the npm package `name` in
+// package.json so the two identities never drift.
 export const MARKETPLACE_NAME = "infinum-ai";
 
 // Subdirectory the installer owns under the Claude config dir: ~/.claude/<name>/.
@@ -45,4 +45,4 @@ export const ORG_NAME = "Infinum";
 export const SKIP_UPDATE_ENV = `${ENV_PREFIX}_STACK_SKIP_UPDATE_CHECK`;
 
 // One-shot install/update command shown in help text and update banners.
-export const INSTALL_CMD = `pnpm dlx --allow-build=${MARKETPLACE_NAME} github:${REPOSITORY_NAME}`;
+export const INSTALL_CMD = `pnpm dlx github:${REPOSITORY_NAME}`;

@@ -24,12 +24,13 @@ This repository is published under the [Creative Commons Attribution-NonCommerci
 ## Prerequisites
 
 - **Node 24** — pinned in `package.json` `engines.node`.
-- **pnpm 11.0.8** — pinned in `engines.pnpm` and `packageManager`. Install pnpm via [pnpm.io/installation](https://pnpm.io/installation) (the simplest path is `corepack enable` on Node 24, which activates the version listed in `packageManager` automatically).
+- **pnpm 12** — pinned in `packageManager`; `engines.pnpm` accepts 10, 11 and 12. Install pnpm via [pnpm.io/installation](https://pnpm.io/installation) (the simplest path is `corepack enable` on Node 24, which activates the version listed in `packageManager` automatically).
 
 Then, from a clone of this repo:
 
 ```bash
 pnpm install
+pnpm run hooks            # one-time: points git at .githooks/ so the pre-commit plugin validation runs
 pnpm run setup            # registers the published infinum/ai marketplace from GitHub (main branch)
 pnpm run setup:local      # registers THIS checkout as the marketplace — use when iterating on plugin code or installer changes
 ```
@@ -43,7 +44,15 @@ claude plugin marketplace remove infinum-ai
 pnpm run setup:local      # or `pnpm run setup` for the GitHub version
 ```
 
-`pnpm install` also wires up a pre-commit hook (`.githooks/pre-commit`) that runs `claude plugin validate` on every plugin manifest. Without it, a plugin with an unrecognized root key in `plugin.json` would commit fine but never appear in the marketplace listing — Claude Code silently drops invalid plugins. Run the same check manually any time:
+## Git hooks
+
+The repo ships a pre-commit hook in `.githooks/pre-commit` that runs `claude plugin validate` on every plugin manifest. Git does not pick up hooks from a tracked directory on its own, so run this once after cloning:
+
+```bash
+pnpm run hooks            # = git config core.hooksPath .githooks
+```
+
+This used to happen automatically through a `prepare` lifecycle script. It no longer does: pnpm runs the lifecycle scripts of a package fetched from GitHub only when the caller approves them, and from pnpm 11.25 and in pnpm 12 the approval key must be the repository URL rather than the package name. Every `pnpm dlx github:infinum/ai` user would have had to pass that key for a hook setup that is meaningless in a `dlx` tarball. Keeping the package free of lifecycle scripts keeps the install one-liner short and works on every pnpm version, at the cost of this one manual step for contributors. If you skip it, nothing breaks locally, but an invalid manifest can reach a PR: a plugin with an unrecognized root key in `plugin.json` commits fine but never appears in the marketplace listing, because Claude Code silently drops invalid plugins. Run the same check manually any time:
 
 ```bash
 pnpm run validate:plugins
@@ -53,7 +62,7 @@ The hook skips with a warning if `claude` isn't on PATH (so doc-only contributor
 
 ## Installer dependencies
 
-`bin/install.js` has a single direct dependency: `@clack/prompts`, **pinned to an exact version** (no caret) in `package.json`. The reason is that `pnpm-lock.yaml` is only honored when a contributor runs `pnpm install` from a clone — but most users install via `pnpm dlx --allow-build=infinum-ai github:infinum/ai`, and `pnpm dlx` ignores `pnpm-lock.yaml`. Without an exact pin, those two paths could resolve to different versions of `@clack/prompts`, defeating the lockfile.
+`bin/install.js` has a single direct dependency: `@clack/prompts`, **pinned to an exact version** (no caret) in `package.json`. The reason is that `pnpm-lock.yaml` is only honored when a contributor runs `pnpm install` from a clone — but most users install via `pnpm dlx github:infinum/ai`, and `pnpm dlx` ignores `pnpm-lock.yaml`. Without an exact pin, those two paths could resolve to different versions of `@clack/prompts`, defeating the lockfile.
 
 When you want to upgrade `@clack/prompts` (or add another dep), bump the version in `package.json` explicitly and re-run `pnpm install` to refresh `pnpm-lock.yaml`. There's no auto-patch; we accept that small toil in exchange for installs that are bit-identical regardless of which command bootstrapped them.
 
@@ -186,7 +195,7 @@ Reference: [Skills — Available string substitutions](https://docs.claude.com/e
 
 Claude Code runs `plugin.json` through a strict validator. **Unknown root keys make the entire plugin invisible** in the marketplace listing — Claude Code silently drops invalid plugins from the picker without an error. We hit this when we tried to use a custom `"mcp": { "crossPlatform": true }` field as an opt-in flag.
 
-To verify locally: `claude plugin validate plugins/<your-plugin>`. The pre-commit hook in `.githooks/pre-commit` runs this on every plugin manifest, so most contributors won't hit it twice — but if you bypass the hook, expect this failure mode.
+To verify locally: `claude plugin validate plugins/<your-plugin>`. The pre-commit hook in `.githooks/pre-commit` runs this on every plugin manifest, so most contributors won't hit it twice — but if you bypass the hook, or never ran `pnpm run hooks` after cloning, expect this failure mode.
 
 Stick to the documented fields: `name`, `version`, `description`, `keywords`, `author`, `homepage`, `repository`, `license`, plus the component-host fields (`hooks`, `mcpServers`). If you need to signal something to a tool, use file presence (e.g., presence of `.mcp.json` as an implicit opt-in) instead of a custom field.
 
@@ -270,7 +279,7 @@ To add a house rule:
 
 1. Create `rules/<name>.md`.
 2. Push to `main`.
-3. Users pick it up next time they run `pnpm dlx --allow-build=infinum-ai github:infinum/ai` (or `pnpm run setup` from a clone).
+3. Users pick it up next time they run `pnpm dlx github:infinum/ai` (or `pnpm run setup` from a clone).
 
 To add a bundle:
 
@@ -319,9 +328,9 @@ Because a `marketplace.json` can only reference plugins inside its own repo (see
 **Install** — pass `--extend` to the public installer (repeatable; value is a GitHub `owner/repo` or a local checkout path):
 
 ```bash
-pnpm dlx --allow-build=infinum-ai github:infinum/ai --extend <org>/<extension-repo> --bundles <bundle>
+pnpm dlx github:infinum/ai --extend <org>/<extension-repo> --bundles <bundle>
 # local checkout, for development:
-pnpm dlx --allow-build=infinum-ai github:infinum/ai --extend "$PWD" --bundles <bundle>
+pnpm dlx github:infinum/ai --extend "$PWD" --bundles <bundle>
 ```
 
 - **Repo-name vs local path.** A repo-name extension is shallow-cloned for its rules and its marketplace is registered by name (so plugins track GitHub) — a private repo needs git access, a public one just works. A local-path extension is read straight from disk and needs no auth (handy for testing).

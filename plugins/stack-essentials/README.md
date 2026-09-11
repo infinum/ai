@@ -8,7 +8,7 @@ Adds a `SessionStart` hook that compares the HEAD commit SHA of `main` on `githu
 
 ```
 [infinum/ai] A new version of the workspace installer is available; re-run to apply:
-  pnpm dlx --allow-build=infinum-ai github:infinum/ai
+  pnpm dlx github:infinum/ai
 ```
 
 Notifying you is all the hook does — re-running the installer is up to you (run it yourself, or have an agent run it non-interactively; see `bin/install.js --help` for the flags).

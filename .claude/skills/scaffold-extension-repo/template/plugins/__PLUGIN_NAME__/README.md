@@ -19,5 +19,5 @@ TODO — what this plugin does and who it is for.
 ## Install
 
 ```bash
-pnpm dlx --allow-build=infinum-ai github:infinum/ai --extend infinum/__REPO_NAME__ --plugins __PLUGIN_NAME__
+pnpm dlx github:infinum/ai --extend infinum/__REPO_NAME__ --plugins __PLUGIN_NAME__
 ```

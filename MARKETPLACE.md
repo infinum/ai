@@ -45,15 +45,17 @@ See each skill's README for detailed usage and examples.
 
 Run the setup script once. It registers the Infinum marketplace in Claude Code, lays down team rules and a personalization stub, and walks you through an interactive prompt to install the skills you want.
 
-**Prerequisites:** Claude Code CLI installed, GitHub access to `infinum/ai`, Node 24+. The `pnpm run setup` form also requires pnpm 11.0.8 — see [CONTRIBUTING.md](CONTRIBUTING.md#prerequisites).
+**Prerequisites:** Claude Code CLI installed, GitHub access to `infinum/ai`, Node 24+, pnpm 10, 11 or 12. The `pnpm run setup` form uses the pnpm version pinned in `packageManager` — see [CONTRIBUTING.md](CONTRIBUTING.md#prerequisites).
 
 ```bash
 # Run from anywhere — clones this repo to a temp dir, runs the install script
-pnpm dlx --allow-build=infinum-ai github:infinum/ai
+pnpm dlx github:infinum/ai
 
 # Or, from a clone of this repo
 pnpm install && pnpm run setup
 ```
+
+> **pnpm 12 note:** no `--allow-build` flag is needed — the installer package has no lifecycle scripts. Older instructions passed `--allow-build=infinum-ai`; from pnpm 11.25 and in pnpm 12 that form fails with `ERR_PNPM_GIT_DEP_PREPARE_NOT_ALLOWED` for packages fetched from GitHub (pnpm no longer lets a bare name approve a git-hosted package's build scripts, see [GHSA-5wx6-mg75-v57r](https://github.com/pnpm/pnpm/security/advisories/GHSA-5wx6-mg75-v57r)). Drop the flag if you still have it in a shell alias or script.
 
 The script is idempotent — re-run it any time to update rules or pick up new plugins. Your edits to `~/.claude/infinum/whoami.md` are preserved on every re-run. To uninstall, the final summary block prints the exact commands.
 
@@ -64,12 +66,12 @@ If you've pointed Claude Code at a non-default config directory via `CLAUDE_CONF
 The installer also runs **non-interactively** (non-TTY). When it can't prompt — driven by an agent, in CI, or through a piped `pnpm dlx`/`npx` — it keeps your previously selected rule bundles and skips plugin selection unless you name choices explicitly. Pass `--bundles <names|all|none>` and `--plugins <names|all|none>` to pick, and `--help` to print the live list of available rules, bundles, and plugins:
 
 ```bash
-pnpm dlx --allow-build=infinum-ai github:infinum/ai --help
+pnpm dlx github:infinum/ai --help
 ```
 
 Because it works headlessly, you don't have to run any of this by hand — you can ask Claude (or any agent) to drive the installer and walk you through it. This is handy if you're not comfortable in the terminal, or if `pnpm` isn't set up yet and the installer hits a snag on your machine: the agent can read the `--help` output, install or fix `pnpm`, and re-run with the right flags. Example prompt:
 
-> guide me through plugin installation using `pnpm dlx --allow-build=infinum-ai github:infinum/ai --help`
+> guide me through plugin installation using `pnpm dlx github:infinum/ai --help`
 
 ### Claude Code — Plugin Marketplace (manual)
 

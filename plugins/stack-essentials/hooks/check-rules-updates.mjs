@@ -87,7 +87,7 @@ export function buildBanner(staleTargets) {
 		.filter((t) => t.id !== BASE_ID)
 		.map((t) => `--extend ${t.upstream}`)
 		.join(" ");
-	const cmd = `pnpm dlx --allow-build=${BASE_ID} github:${BASE_UPSTREAM}${extendArgs ? ` ${extendArgs}` : ""}`;
+	const cmd = `pnpm dlx github:${BASE_UPSTREAM}${extendArgs ? ` ${extendArgs}` : ""}`;
 	return `[${BASE_UPSTREAM}] A newer version is available for: ${names}. Re-run to apply:\n  ${cmd}`;
 }
 
