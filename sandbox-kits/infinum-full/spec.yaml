@@ -3,85 +3,30 @@ kind: mixin
 name: infinum-full
 displayName: Infinum Full Setup
 description: >-
-  The whole Infinum setup in one mixin: drops Claude Code's commit/PR
-  attribution, allows Maven Central egress, registers both plugin
-  marketplaces and installs five plugins plus the house rules into
-  ~/.claude/infinum/, and registers the context7 MCP server at user scope —
-  authenticated by an optional sandbox secret, or against Context7's OAuth
-  endpoint when no key is bound, which one `claude mcp login` finishes.
-  SonarQube is not here; it is the standalone sonarcloud kit. Atlassian,
-  Productive and GitHub are deliberately left out too: those three are
-  supported as built-in Claude connectors, which is the recommended way to use
-  them. See README.
+  Baseline Infinum setup for a Claude sandbox: disables commit/PR
+  attribution, allows Maven Central egress, installs the Infinum plugin
+  marketplace, house rules and superpowers skills, and registers the
+  context7 MCP server via OAuth login. See README.
 requires:
   agent: claude
 
-# One optional API-key credential, sourced from the sandbox secret store
-# (`sbx secret set context7`) via the user's own binding in
-# ~/.config/sbx/credentials.yaml. `required: false` so an unbound service
-# resolves to mode `none` and creation still succeeds.
-#
-# The real key never enters the container: the engine sets `apiKey.name` to the
-# literal `proxy-managed`, and the sentinel-swap proxy substitutes the real
-# value on outbound requests to the `inject[].domain` below. So step 4
-# registers the *sentinel* and lets the proxy do the authenticating, which is
-# why it branches on `SBX_CRED_CONTEXT7_MODE` (`apikey` | `oauth` | `none`)
-# rather than testing the variable for a plausible-looking key.
-#
-# A mode other than `apikey` is not a dead end: step 4 registers Context7's
-# OAuth endpoint instead, and one `claude mcp login` inside the sandbox
-# finishes it. Nothing here ever needs the sandbox recreated.
-#
-# Every `inject[].domain` must also appear in permissions.network.allow below,
-# or the spec library rejects the kit, and it must also appear in the user's
-# `allowedDomains` for the injection to actually happen.
-credentials:
-  - service: context7
-    description: Context7 API key the context7 MCP server authenticates with; without it that server is registered against Context7's OAuth endpoint instead
-    required: false
-    apiKey:
-      name: CONTEXT7_API_KEY
-      inject:
-        - domain: mcp.context7.com
-          scheme: bearer          # sugar for header: Authorization, format: "Bearer %s"
-
-# The union of every allow-list this kit consolidates. Declarative, so nothing
-# here can be conditional on a credential that turned out to be missing — which
-# is what lets step 4 pick either Context7 endpoint without a policy change.
 permissions:
   network:
     allow:
-      - repo.maven.apache.org             # Maven Central: canonical host for Maven's `central` and Gradle's mavenCentral()
-      - repo1.maven.org                   # Maven Central: legacy hostname for sbt, Coursier, Leiningen and older configs
-      - github.com                        # steps 2-3: git smart-HTTP clones of three public repos
-      - mcp.context7.com                  # step 4: the remote HTTP MCP endpoint, both the keyed and the OAuth path; also the context7 key's injection domain
-      - context7.com                      # step 4: OAuth authorize/consent page `claude mcp login` opens, same reason productive allows app.productive.io. Reasoned from the flow, not observed — see README
-# No SonarQube or Docker Hub hosts are here: SonarQube is the standalone
-# sonarcloud kit, and nothing in this kit needs a container image. No
-# Atlassian, Productive or GitHub-MCP hosts either, because this kit registers
-# none of those servers: all three are supported as Claude connectors, which is
-# the recommended route. Only a run under a deny-all host policy proves this
-# list; `sbx policy log` names what is missing.
+      - repo.maven.apache.org
+      - repo1.maven.org
+      - github.com
+      - mcp.context7.com
+      - context7.com
 
-# Four steps, three invariants, none of them cosmetic:
-#   - Cheapest-first order: the local write, then the two clone-and-install
-#     steps, then the one remote MCP registration. Any step's failure fails
-#     sandbox creation, so the steps needing no network fail before the ones
-#     that do. Every step is mandatory; the only thing a missing credential
-#     changes is which Context7 endpoint step 4 registers.
-#   - Every step runs as uid 1000, so what it writes is owned by `agent`, not
-#     `root`.
-#   - Failure messages spell out the fix inline, because the creation log is
-#     often the only thing the user sees.
-# The two Maven Central hosts need no step at all; they are policy only.
 setup:
   install:
-    - user: "1000"
-      description: "1/4 attribution: set attribution.commit and attribution.pr to \"\" in ~/.claude/settings.json"
+    - user: "agent"
+      description: "attribution: set attribution.commit and attribution.pr to \"\" in ~/.claude/settings.json"
       command: |
         set -eu
         f=/home/agent/.claude/settings.json
-        mkdir -p "$(dirname "$f")"
+        mkdir -p /home/agent/.claude
         # Reseed when the file holds no JSON at all: -s only rules out 0 bytes,
         # and jq exits 0 with empty output on a whitespace-only file too.
         [ -s "$f" ] && [ -n "$(tr -d '[:space:]' < "$f")" ] || echo '{}' > "$f"
@@ -91,13 +36,11 @@ setup:
         [ -n "$merged" ] || { echo "infinum-full kit: ERROR: jq produced no output for $f" >&2; exit 1; }
         printf '%s\n' "$merged" > "$f"
 
-    - user: "1000"
-      description: "2/4 plugins and house rules: register the infinum-ai marketplace, install the Infinum plugins, install the house rules into ~/.claude/infinum/"
+    - user: "agent"
+      description: "plugins and house rules: register the infinum-ai marketplace, install the Infinum plugins, install the house rules into ~/.claude/infinum/"
       command: |
         set -eu
 
-        # The install step runs as uid 1000, whose home the base agent fixes at
-        # /home/agent, so `claude`'s config dir is known rather than discovered.
         CLAUDE_DIR=/home/agent/.claude
         CONFIG_DIR="$CLAUDE_DIR/infinum"
         REPO="infinum/ai"
@@ -105,36 +48,23 @@ setup:
         MARKET_DIR="$CLAUDE_DIR/plugins/marketplaces/$MARKET"
         PLUGINS="stack-essentials create-prd pr-review-code-simplicity productive-debug"
 
-        # 1. Register the marketplace. This also leaves a full clone of the
-        #    repo at $MARKET_DIR, which step 3 reads. Idempotent: exits 0 with
-        #    "already on disk" when the marketplace is already registered.
+        # Also leaves a clone at $MARKET_DIR, which the rules copy below reads.
         if ! claude plugin marketplace add "$REPO"; then
-          cat >&2 <<EOF
-        infinum-full kit: ERROR: could not add the '$MARKET' marketplace.
-          $REPO is public, so this is most likely network policy blocking github.com.
-          Check with: sbx policy log
-          Then retry in here: claude plugin marketplace add $REPO
-        EOF
+          echo "infinum-full kit: ERROR: could not add the '$MARKET' marketplace (network policy likely blocking github.com)" >&2
           exit 1
         fi
 
         mkdir -p "$CONFIG_DIR"
 
-        # 2. Install the plugins. Idempotent: each exits 0 with "already
-        #    installed" on a re-run.
         for p in $PLUGINS; do
           if ! claude plugin install "$p@$MARKET"; then
-            cat >&2 <<EOF
-        infinum-full kit: ERROR: plugin '$p' did not install.
-          Retry in here: claude plugin install $p@$MARKET
-        EOF
+            echo "infinum-full kit: ERROR: plugin '$p' did not install" >&2
             exit 1
           fi
         done
 
-        # 3. Copy rules out of the clone step 1 made. Flat glob, so rules/<bundle>/
-        #    is never descended into; copy-only, so nothing is ever pruned;
-        #    whoami.md is skipped so upstream can't clobber it. See README.
+        # Flat copy: rules/<bundle>/ is never descended into, nothing is
+        # pruned, and whoami.md is skipped so upstream can't clobber it.
         rules_found=0
         for f in "$MARKET_DIR"/rules/*.md; do
           [ -f "$f" ] || continue  # unmatched glob stays literal; skip rather than trip set -e
@@ -143,17 +73,11 @@ setup:
           rules_found=1
         done
         if [ "$rules_found" != 1 ]; then
-          cat >&2 <<EOF
-        infinum-full kit: ERROR: no house rules found under $MARKET_DIR/rules/.
-          The marketplace registered but its clone has no rules/*.md, so the rules
-          this kit exists to install are missing. Check the layout of $REPO.
-        EOF
+          echo "infinum-full kit: ERROR: no house rules found under $MARKET_DIR/rules/ ($REPO's clone has no rules/*.md)" >&2
           exit 1
         fi
 
-        # 4. Local wiring, with no network and no clone.
-
-        # 4a. whoami.md is the user's own: create once, never overwrite.
+        # whoami.md is the user's own: create once, never overwrite.
         if [ ! -f "$CONFIG_DIR/whoami.md" ]; then
           cat > "$CONFIG_DIR/whoami.md" <<'WHOAMI'
         # Who you're working with
@@ -166,8 +90,8 @@ setup:
         WHOAMI
         fi
 
-        # 4b. index.md, regenerated in the installer's order: whoami first, then
-        #     every rule alphabetically. It must never import itself.
+        # Regenerated every run: whoami first, then every other rule
+        # alphabetically. Must never import itself.
         {
           echo "@$CONFIG_DIR/whoami.md"
           for f in "$CONFIG_DIR"/*.md; do
@@ -177,104 +101,52 @@ setup:
           done
         } > "$CONFIG_DIR/index.md"
 
-        # 4c. One import line in CLAUDE.md, appended only when absent. The
-        #     leading newline both terminates a file that lacks a trailing one
-        #     and keeps the line off the end of the user's own last line.
+        # Leading newline terminates a file with no trailing newline and
+        # keeps this off the end of the user's own last line.
         grep -qsF "@$CONFIG_DIR/index.md" "$CLAUDE_DIR/CLAUDE.md" ||
           printf '\n%s\n' "@$CONFIG_DIR/index.md  # managed by $REPO" >> "$CLAUDE_DIR/CLAUDE.md"
 
-    - user: "1000"
-      description: "3/4 superpowers: register the official marketplace and install the superpowers plugin from it"
+    - user: "agent"
+      description: "superpowers: register the official marketplace and install the superpowers plugin from it"
       command: |
         set -eu
 
-        # The official marketplace only auto-registers on an interactive first
-        # launch (anthropics/claude-code#66750), so register it here.
-        # Idempotent: exits 0 with "already on disk" on a re-run.
+        # Auto-registers only on an interactive first launch
+        # (anthropics/claude-code#66750), so a headless run needs this.
         if ! claude plugin marketplace add anthropics/claude-plugins-official; then
-          cat >&2 <<'EOF'
-        infinum-full kit: ERROR: could not add the 'claude-plugins-official' marketplace.
-          This clones https://github.com/anthropics/claude-plugins-official.git over git smart-HTTP.
-          Check whether github.com is reachable: sbx policy log
-          Retry in here with: claude plugin marketplace add anthropics/claude-plugins-official
-        EOF
+          echo "infinum-full kit: ERROR: could not add the 'claude-plugins-official' marketplace (network policy likely blocking github.com)" >&2
           exit 1
         fi
 
-        # Idempotent: exits 0 with "already installed" on a re-run.
         if ! claude plugin install superpowers@claude-plugins-official; then
-          cat >&2 <<'EOF'
-        infinum-full kit: ERROR: could not install 'superpowers' from claude-plugins-official.
-          This clones https://github.com/obra/superpowers.git over git smart-HTTP.
-          Check whether github.com is reachable: sbx policy log
-          Retry in here with: claude plugin install superpowers@claude-plugins-official
-        EOF
+          echo "infinum-full kit: ERROR: could not install 'superpowers' (network policy likely blocking github.com)" >&2
           exit 1
         fi
 
-    - user: "1000"
-      description: "4/4 context7: register the context7 MCP server (remote HTTP) at user scope"
+    - user: "agent"
+      description: "context7: register the context7 MCP server (remote HTTP, OAuth) at user scope"
       command: |
         set -eu
 
         NAME=context7
-        URL_KEYED=https://mcp.context7.com/mcp
-        URL_OAUTH=https://mcp.context7.com/mcp/oauth
+        URL=https://mcp.context7.com/mcp/oauth
 
-        # Two ways to authenticate the same server, and the kit always
-        # registers one of them — there is no unauthenticated end state here.
-        #
-        # Whether a key is wired comes from the engine, not from the variable:
-        # CONTEXT7_API_KEY holds the sentinel `proxy-managed`, so it is never a
-        # real key to test.
-        if [ "${SBX_CRED_CONTEXT7_MODE:-none}" = "apikey" ]; then
-          # Register the sentinel; the proxy swaps in the real key on requests
-          # to mcp.context7.com, so the key itself never enters the container.
-          # The `:-proxy-managed` default only covers the engine reporting
-          # apikey mode without populating the variable.
-          URL=$URL_KEYED
-          set -- --transport http "$NAME" "$URL" -s user \
-            --header "Authorization: Bearer ${CONTEXT7_API_KEY:-proxy-managed}"
-        else
-          # Context7 serves OAuth 2.0 on a separate path, and `claude mcp login`
-          # drives it. So no key means one interactive login, not a rate-limited
-          # anonymous server that fails mid-task and not a dead entry that has
-          # to be removed before it can be fixed. NOTE, not WARNING: this is a
-          # supported end state. See README.
-          URL=$URL_OAUTH
-          set -- --transport http "$NAME" "$URL" -s user
-          cat >&2 <<EOF
-        infinum-full kit: NOTE: no Context7 API key is bound (SBX_CRED_CONTEXT7_MODE=${SBX_CRED_CONTEXT7_MODE:-none}).
-          Registering '$NAME' against Context7's OAuth endpoint instead of the
-          API-key one. Finish it once, from inside this sandbox — no recreate,
-          and no key to paste anywhere:
+        cat >&2 <<EOF
+        infinum-full kit: NOTE: '$NAME' is registered against Context7's OAuth
+          endpoint. Finish it once, from inside this sandbox:
             claude mcp login $NAME
           or, with no browser reachable from the session:
             claude mcp login $NAME --no-browser
           (opens a URL you can sign in with on any machine, then takes the
           resulting redirect URL pasted back)
-          To skip the login on the next sandbox instead, store a key first:
-            sbx secret set context7 --sandbox <sandbox> -t '<key>'
-          (drop --sandbox to store it for every sandbox on this host)
-          Get a free key at context7.com/dashboard.
         EOF
-        fi
 
-        # "already exists" on a re-run is the desired end state, not a failure.
-        # It can also mean the *other* endpoint is registered under this name,
-        # which is why the message names the URL this run wanted: `claude mcp
-        # add` never amends an existing entry, so switching modes means
-        # `claude mcp remove context7 -s user` first. See README.
-        if out=$(claude mcp add "$@" 2>&1); then
+        if out=$(claude mcp add --transport http "$NAME" "$URL" -s user 2>&1); then
           echo "$out"
         elif echo "$out" | grep -q "already exists"; then
-          echo "infinum-full kit: MCP server '$NAME' already configured in user scope; left as it is rather than repointed at $URL."
+          echo "infinum-full kit: MCP server '$NAME' already configured in user scope."
         else
-          cat >&2 <<EOF
-        infinum-full kit: ERROR: could not register the '$NAME' MCP server.
-          $out
-          Retry in here: claude mcp add --transport http $NAME $URL -s user
-        EOF
+          echo "infinum-full kit: ERROR: could not register the '$NAME' MCP server: $out" >&2
           exit 1
         fi
 
@@ -282,150 +154,65 @@ agentInstructions:
   content: |
     ## Commit & PR attribution disabled
 
-    This sandbox sets `attribution.commit` and `attribution.pr` to empty
-    strings in `~/.claude/settings.json`. Commits and pull requests you
-    create will not include the "🤖 Generated with Claude Code" trailer or
-    the "Co-Authored-By: Claude" line.
+    `attribution.commit` and `attribution.pr` are set to `""` in
+    `~/.claude/settings.json`. Commits and PRs you create won't carry the
+    "🤖 Generated with Claude Code" trailer or the "Co-Authored-By: Claude"
+    line.
 
     ## Maven Central reachable
 
-    This sandbox allows egress to `repo.maven.apache.org` and
-    `repo1.maven.org`, so Maven, Gradle, sbt and Coursier can resolve and
-    download dependencies from Maven Central.
+    Egress is allowed to `repo.maven.apache.org` and `repo1.maven.org`
+    (Maven, Gradle, sbt, Coursier). A build failing with an HTTP 403
+    mentioning "Blocked by network policy" needs that host added to the
+    sandbox policy, not a build-file change.
 
-    Those two are the only Maven hosts allowed here. The policy does not allow
-    the Gradle Plugin Portal (`plugins.gradle.org`), Sonatype snapshot/staging
-    repos, Maven Central *search* (`central.sonatype.com`, `search.maven.org`),
-    or any private repository, which is not the same as those being blocked,
-    since the effective policy also includes host and org rules. Check
-    `sbx policy ls` rather than assuming either way.
+    ## Infinum plugins and house rules
 
-    A build that fails with an HTTP 403 mentioning "Blocked by network policy"
-    needs that host added to the sandbox policy, not a build-file change.
+    The `infinum-ai` marketplace (`infinum/ai`) is registered with four
+    plugins installed at user scope:
 
-    ## Infinum AI Harness installed
-
-    The `infinum-ai` plugin marketplace (`infinum/ai`) is registered and these
-    plugins are installed at user scope:
-
-    - `stack-essentials`: SessionStart update-banner hook; its check gates on
-      `~/.claude/infinum/.manifest.json`, which this kit never writes, so the
-      banner never fires here.
+    - `stack-essentials`: SessionStart banner hook, gated on a manifest file
+      this kit never writes — it never fires here.
     - `create-prd`: generate a Product Requirements Document.
-    - `pr-review-code-simplicity`: review a PR through the six laws of software
-      design.
-    - `productive-debug`: investigate a Productive bug task end-to-end. It
-      reads the task over MCP, so it needs the Productive Claude connector
-      enabled on the user's account; this kit registers no Productive server.
+    - `pr-review-code-simplicity`: review a PR through the six laws of
+      software design.
+    - `productive-debug`: investigate a Productive bug task end-to-end;
+      needs the Productive Claude connector enabled.
 
-    Nine other marketplace plugins are **not** installed. Some need local
-    tooling or egress this sandbox lacks, and the rest are design-side and out
-    of scope here; the kit README lists each with its reason. Install one anyway
-    with `claude plugin install <name>@infinum-ai`, or browse with `/plugin`.
+    More `infinum-ai` plugins are available: install one with
+    `claude plugin install <name>@infinum-ai`, or browse with `/plugin`.
 
-    House rules are installed at `~/.claude/infinum/`, chained from `index.md`,
-    which `~/.claude/CLAUDE.md` imports.
+    House rules live at `~/.claude/infinum/`, chained from `index.md`,
+    imported by `~/.claude/CLAUDE.md`. `whoami.md` may still be the unedited
+    stub — if so, don't treat its placeholder example as fact about the
+    user.
 
-    `~/.claude/infinum/whoami.md` may still be the unedited stub. If it is, it
-    tells you nothing real about the user, so do not treat its placeholder
-    example as fact.
+    ## Superpowers skills library
 
-    ## Superpowers skills library installed
+    `superpowers` (`obra/superpowers`, third-party, unpinned) is installed
+    at user scope via the built-in `claude-plugins-official` marketplace.
+    Its skills are already listed by the `Skill` tool, and its SessionStart
+    hook injects an orientation skill every session.
 
-    The `superpowers` plugin (`obra/superpowers`, public, via the built-in
-    `claude-plugins-official` marketplace) is installed at user scope. Its
-    skills are already listed for you by the `Skill` tool, and its SessionStart
-    hook injects the `using-superpowers` orientation skill into every session.
-    Both of those are purely local, with no network call. What follows is what
-    those surfaces don't tell you.
+    Its `brainstorming` skill can start a local server whose page embeds an
+    `<img>` pointing at `primeradiant.com`, fetched by whatever browser
+    opens the page rather than by this sandbox, unless
+    `SUPERPOWERS_DISABLE_TELEMETRY`, `DISABLE_TELEMETRY` or
+    `CLAUDE_CODE_DISABLE_NONESSENTIAL_TRAFFIC` disables it.
 
-    The `brainstorming` skill can start a local web server for an interactive
-    UI; that page embeds a small `<img>` pointing at `primeradiant.com`, fetched
-    by whatever browser opens the page (not by anything running in this
-    sandbox), and only when all three of `SUPERPOWERS_DISABLE_TELEMETRY`,
-    `DISABLE_TELEMETRY` and `CLAUDE_CODE_DISABLE_NONESSENTIAL_TRAFFIC` are
-    unset or set to a falsy value.
+    ## `context7` MCP server
 
-    The plugin is third-party code (`obra/superpowers`) installed unpinned at
-    whatever version the marketplace currently serves, and its SessionStart
-    hook runs on every session. Nothing in this sandbox pins or verifies it.
+    Registered at user scope against Context7's OAuth endpoint. Resolves
+    library/framework names to current, version-specific docs and code
+    examples — use it instead of guessing from training data (add "use
+    context7" to a prompt, or call `resolve-library-id` then
+    `get-library-docs`).
 
-    ## One MCP server: `context7`, in one of two auth modes
+    Tool calls fail with an auth error until a human runs
+    `claude mcp login context7` (or `--no-browser` with no browser
+    reachable) inside the sandbox. That's an expected gap, not a broken
+    install — don't re-register the server or switch it to Context7's
+    anonymous endpoint.
 
-    `context7` is registered at user scope, so it is available in every project
-    in this sandbox. It resolves library/framework names to current,
-    version-specific documentation and code examples — use it instead of
-    guessing from training data when you need up-to-date API details for a
-    dependency (add "use context7" to a prompt, or call `resolve-library-id`
-    then `get-library-docs`).
-
-    Registration is guaranteed: a failed `claude mcp add` fails sandbox
-    creation. **How it authenticates is not fixed**, and `claude mcp get
-    context7` tells you which mode you are in by its URL:
-
-    - **`https://mcp.context7.com/mcp`** with an `Authorization: Bearer` header
-      — a Context7 API key was bound as a sandbox secret at creation. This
-      works with no further action. The header's value is the literal sentinel
-      `proxy-managed`, and so is `$CONTEXT7_API_KEY`; the egress proxy swaps in
-      the real key on requests to `mcp.context7.com`. That is working as
-      intended, **not** a misconfiguration: do not "fix" the header, and do not
-      try to recover a key from the environment — it is not in this sandbox.
-
-    - **`https://mcp.context7.com/mcp/oauth`**, no header — no key was bound,
-      so the server is registered against Context7's OAuth endpoint and a human
-      has to complete a one-time login. Until they do, tool calls fail with an
-      authentication error. That is the expected gap, not a broken sandbox and
-      not a failed install step.
-
-      You cannot do this yourself; it needs a person with a Context7 account.
-      Say so and give them the command:
-
-      ```
-      claude mcp login context7                # or --no-browser if no browser
-      ```
-
-      `--no-browser` prints a URL to open on any machine and takes the
-      resulting redirect URL pasted back. Do not re-register the server, do not
-      switch it to the anonymous endpoint, and do not treat a rate-limit or
-      auth error as something to route around.
-
-    Egress is allowed to `mcp.context7.com` and `context7.com` (the latter for
-    the OAuth consent page). A tool call failing with an HTTP 403 mentioning
-    "Blocked by network policy" is a policy problem; check `sbx policy log`.
-
-    ## SonarQube is not part of this kit
-
-    There is no `sonarqube` MCP server here, and no Docker image is pulled for
-    one. It lives in the separate `sonarcloud` kit, which needs a SonarQube
-    Cloud token and organization key. If you need a project's real issues,
-    hotspots, quality gate or coverage and see no such tools, say that the kit
-    isn't applied — do not register a server for it yourself.
-
-    ## Atlassian, Productive and GitHub: use the Claude connectors
-
-    This kit deliberately registers **no** MCP server for Jira/Confluence,
-    Productive or GitHub. All three are supported as built-in Claude
-    connectors, and that is the recommended way to reach them: a connector is
-    enabled once on the user's Claude account rather than per sandbox, carries
-    its own OAuth, and needs no sandbox secret, no network policy entry and no
-    `claude mcp login` in here.
-
-    So if you need a Jira issue, a Productive task or the GitHub API and see no
-    such tools listed, the connector is not enabled for this session. Say so
-    and let the user enable it. Do not register a replacement MCP server, and
-    do not treat the absence as a broken sandbox.
-
-    `git` and `gh` are a separate matter and work regardless: the sandbox proxy
-    injects GitHub credentials into git HTTPS operations on its own path, so
-    cloning, pushing and `gh pr create` are available here whether or not any
-    GitHub connector is enabled. Reach for `gh` for repository, issue and PR
-    work rather than waiting on a connector.
-
-    ## Every step is mandatory
-
-    Every install step above fails sandbox creation when it errors, so none of
-    them is partially applied in a sandbox you are running in: the attribution
-    write, both marketplaces, all five plugins, the house rules and the
-    `context7` registration are all present. The only variable is which of the
-    two Context7 endpoints step 4 registered, and a pending OAuth login is the
-    only expected gap in the whole kit.
+    Egress is allowed to `mcp.context7.com` and `context7.com` (the OAuth
+    consent page).
