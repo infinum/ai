@@ -16,78 +16,39 @@ It is also how you add SonarQube to a sandbox built with
 [`infinum-full`](../infinum-full/), which deliberately leaves it out:
 `SONARQUBE_TOKEN=<token> SONARQUBE_ORG=<org> sbx kit add my-sandbox ./sonarcloud/`.
 
-## Transport: Docker, against SonarQube Cloud only
+## Requires
 
-SonarQube MCP Server ships two ways to run without a client-side plugin:
+- Base agent `claude`
+- A Docker daemon reachable from the agent user — the MCP server only runs
+  as a container image
+- A SonarQube Cloud token (sandbox secret or `SONARQUBE_TOKEN`) and
+  `SONARQUBE_ORG`
 
-- **Docker** — SonarSource's primary, recommended path. Pulls
-  `sonarsource/sonarqube-mcp` from Docker Hub and runs it as a stdio
-  subprocess. This is what SonarSource's own Claude Code docs show, and what
-  this kit uses.
-- **Standalone JAR** — download a pinned
-  `sonarqube-mcp-server-<version>.jar` from
-  `binaries.sonarsource.com` and run it with `java -jar` (Java 21+). Avoids
-  Docker-in-sandbox, at the cost of the kit having to also guarantee a JDK.
+The install step **fails sandbox creation** if any of these is missing —
+see [Fails fast by design](#fails-fast-by-design).
 
-This kit registers the server with:
+## Usage
 
 ```console
-$ claude mcp add sonarqube -s user \
-    --env SONARQUBE_TOKEN=$SONARQUBE_TOKEN \
-    --env SONARQUBE_ORG=$SONARQUBE_ORG \
-    -- docker run --init --pull=always -i --rm \
-       -e SONARQUBE_TOKEN -e SONARQUBE_ORG sonarsource/sonarqube-mcp
+$ SONARQUBE_TOKEN=... SONARQUBE_ORG=... sbx run claude --kit ./sonarcloud/ /path/to/project
 ```
 
-`permissions.network.allow` carries the three Docker Hub hosts a `docker
-pull` needs (`registry-1.docker.io`, `auth.docker.io`,
-`production.cloudflare.docker.com` — the same trio the `trivy` kit in
-`sbx-kits-contrib` documents for pulling images) plus `sonarcloud.io` for the
-server's own outbound calls to the SonarQube Cloud API.
+To combine it with the other kits here, see the
+[sandbox-kits README](../README.md#usage).
 
-If your sandbox has no Docker daemon reachable from the agent user, the
-install step detects that (`command -v docker`) and **fails sandbox
-creation** — the server only runs as a container image, so there is nothing
-useful it could do instead. Drop the kit for that sandbox, or fork it for the
-JAR alternative — roughly:
+Apply to an already-running sandbox:
 
-```yaml
-permissions:
-  network:
-    allow:
-      - binaries.sonarsource.com
-      - sonarcloud.io
-
-setup:
-  install:
-    - user: "1000"
-      description: Install a JDK and the sonarqube-mcp-server JAR, then register it.
-      command: |
-        # ensure `java` (21+) is on PATH, then:
-        curl -fsSL -o /home/agent/.local/share/sonarqube-mcp-server.jar \
-          "https://binaries.sonarsource.com/Distribution/sonarqube-mcp-server/sonarqube-mcp-server-<version>.jar"
-        claude mcp add sonarqube -s user \
-          --env STORAGE_PATH=/home/agent/.local/share/sonarqube-mcp \
-          --env SONARQUBE_TOKEN="$SONARQUBE_TOKEN" \
-          --env SONARQUBE_ORG="$SONARQUBE_ORG" \
-          -- java -jar /home/agent/.local/share/sonarqube-mcp-server.jar
+```console
+$ sbx kit add my-sandbox ./sonarcloud/
 ```
 
-Pin `<version>` to a specific release for reproducibility — `latest` isn't a
-valid path segment on `binaries.sonarsource.com`.
-
-## Cloud only — no SonarQube Server support
-
-SonarQube Cloud's API host (`sonarcloud.io`) is fixed, so it can be baked
-into `permissions.network.allow` ahead of time. A self-hosted SonarQube
-Server lives at a URL only the user knows, which this kit can't pre-declare.
-This kit deliberately only supports Cloud.
-
-To point at a self-hosted Server instead, fork this kit: drop `SONARQUBE_ORG`
-for `SONARQUBE_URL` in both the `--env` flags and the `docker run -e` list,
-and add your server's host to `permissions.network.allow` (the
-[upstream README](https://github.com/SonarSource/sonarqube-mcp-server#configuration)
-covers the env-var differences — a Server token must be of type **USER**).
+> [!NOTE]
+> `sbx kit add` runs the install step but **not** this kit's
+> `agentInstructions.content` — the engine skips the kit-memory write for
+> `kind: mixin` artifacts. The server is registered and reachable; Claude just
+> won't have been told it exists, so it won't reach for it. Use
+> `sbx run --kit` for a sandbox you intend to work in. See
+> [Usage](../README.md#usage).
 
 ## Credentials
 
@@ -162,6 +123,79 @@ $ claude mcp add sonarqube -s user \
        -e SONARQUBE_TOKEN -e SONARQUBE_ORG sonarsource/sonarqube-mcp
 ```
 
+## Transport: Docker, against SonarQube Cloud only
+
+SonarQube MCP Server ships two ways to run without a client-side plugin:
+
+- **Docker** — SonarSource's primary, recommended path. Pulls
+  `sonarsource/sonarqube-mcp` from Docker Hub and runs it as a stdio
+  subprocess. This is what SonarSource's own Claude Code docs show, and what
+  this kit uses.
+- **Standalone JAR** — download a pinned
+  `sonarqube-mcp-server-<version>.jar` from
+  `binaries.sonarsource.com` and run it with `java -jar` (Java 21+). Avoids
+  Docker-in-sandbox, at the cost of the kit having to also guarantee a JDK.
+
+This kit registers the server with:
+
+```console
+$ claude mcp add sonarqube -s user \
+    --env SONARQUBE_TOKEN=$SONARQUBE_TOKEN \
+    --env SONARQUBE_ORG=$SONARQUBE_ORG \
+    -- docker run --init --pull=always -i --rm \
+       -e SONARQUBE_TOKEN -e SONARQUBE_ORG sonarsource/sonarqube-mcp
+```
+
+`permissions.network.allow` carries the three Docker Hub hosts a `docker
+pull` needs (`registry-1.docker.io`, `auth.docker.io`,
+`production.cloudflare.docker.com` — the same trio the `trivy` kit in
+`sbx-kits-contrib` documents for pulling images) plus `sonarcloud.io` for the
+server's own outbound calls to the SonarQube Cloud API.
+
+If your sandbox has no Docker daemon reachable from the agent user, the
+install step detects that (`command -v docker`) and **fails sandbox
+creation** — the server only runs as a container image, so there is nothing
+useful it could do instead. Drop the kit for that sandbox, or fork it for the
+JAR alternative — roughly:
+
+```yaml
+permissions:
+  network:
+    allow:
+      - binaries.sonarsource.com
+      - sonarcloud.io
+
+setup:
+  install:
+    - user: "1000"
+      description: Install a JDK and the sonarqube-mcp-server JAR, then register it.
+      command: |
+        # ensure `java` (21+) is on PATH, then:
+        curl -fsSL -o /home/agent/.local/share/sonarqube-mcp-server.jar \
+          "https://binaries.sonarsource.com/Distribution/sonarqube-mcp-server/sonarqube-mcp-server-<version>.jar"
+        claude mcp add sonarqube -s user \
+          --env STORAGE_PATH=/home/agent/.local/share/sonarqube-mcp \
+          --env SONARQUBE_TOKEN="$SONARQUBE_TOKEN" \
+          --env SONARQUBE_ORG="$SONARQUBE_ORG" \
+          -- java -jar /home/agent/.local/share/sonarqube-mcp-server.jar
+```
+
+Pin `<version>` to a specific release for reproducibility — `latest` isn't a
+valid path segment on `binaries.sonarsource.com`.
+
+## Cloud only — no SonarQube Server support
+
+SonarQube Cloud's API host (`sonarcloud.io`) is fixed, so it can be baked
+into `permissions.network.allow` ahead of time. A self-hosted SonarQube
+Server lives at a URL only the user knows, which this kit can't pre-declare.
+This kit deliberately only supports Cloud.
+
+To point at a self-hosted Server instead, fork this kit: drop `SONARQUBE_ORG`
+for `SONARQUBE_URL` in both the `--env` flags and the `docker run -e` list,
+and add your server's host to `permissions.network.allow` (the
+[upstream README](https://github.com/SonarSource/sonarqube-mcp-server#configuration)
+covers the env-var differences — a Server token must be of type **USER**).
+
 ## Fails fast by design
 
 The install step runs under `set -eu` and **fails sandbox creation** in three
@@ -186,29 +220,6 @@ What creation *cannot* catch is a token that is present but revoked, wrongly
 scoped, or paired with a mismatched organization key — the kit registers the
 server without calling the API, so those surface on the first tool call.
 
-## Usage
-
-```console
-$ SONARQUBE_TOKEN=... SONARQUBE_ORG=... sbx run claude --kit ./sonarcloud/ /path/to/project
-```
-
-To combine it with the other kits here, see the
-[sandbox-kits README](../README.md#applying-the-kits).
-
-Apply to an already-running sandbox:
-
-```console
-$ sbx kit add my-sandbox ./sonarcloud/
-```
-
-> [!NOTE]
-> `sbx kit add` runs the install step but **not** this kit's
-> `agentInstructions.content` — the engine skips the kit-memory write for
-> `kind: mixin` artifacts. The server is registered and reachable; Claude just
-> won't have been told it exists, so it won't reach for it. Use
-> `sbx run --kit` for a sandbox you intend to work in. See
-> [Applying the kits](../README.md#applying-the-kits).
-
 ## Verify
 
 ```console
@@ -216,39 +227,27 @@ $ sbx exec my-sandbox -- claude mcp list
 $ sbx exec my-sandbox -- claude mcp get sonarqube
 ```
 
-`Status: ✔ Connected` (or a tool call that actually returns issues/quality
-gate data for a real project) means it's wired up. A `403` whose body starts
-with `Blocked by network policy` means one of the four allowed hosts isn't in
-effect — check `sbx policy ls` and `sbx policy log`. An auth error with the
-server present points at the token or the organization key, which creation
-does not validate. The server cannot be *missing*: every registration failure
-now fails creation, so a sandbox that came up has it — and a creation that
-failed says why, on stderr, prefixed `sonarcloud kit: ERROR`.
+- `Status: ✔ Connected` (or a tool call that actually returns issues/quality
+  gate data for a real project) — wired up correctly
+- A `403` whose body starts with `Blocked by network policy` — one of the
+  four allowed hosts isn't in effect; check `sbx policy ls` and
+  `sbx policy log`
+- An auth error with the server present — points at the token or the
+  organization key, which creation does not validate
+
+The server cannot be *missing*: every registration failure now fails
+creation, so a sandbox that came up has it — and a creation that failed
+says why, on stderr, prefixed `sonarcloud kit: ERROR`.
 
 ## Verification status
 
-None of the four layers in the
-[kit-authoring testing guidance](https://docs.docker.com/ai/sandboxes/customize/kits/)
-has been run against this kit: no `sbx` on `PATH` in the authoring
-environment, so no `sbx kit validate`, no TCK run, no end-to-end run under a
-`deny-all` host policy (the only thing that proves the four-host allow-list is
-complete), and no live probe.
+The spec parses as YAML, its `apiKey.inject[].domain` (`sonarcloud.io`) is
+present in `permissions.network.allow`, and the install command passes
+`sh -n`. It has not been run through `sbx kit validate`, a TCK run, or an
+end-to-end run under a `deny-all` host policy — the only thing that proves
+the four-host allow-list is complete.
 
-What it has had: the spec parses as YAML, its one `apiKey.inject[].domain`
-(`sonarcloud.io`) is present in `permissions.network.allow`, and the install
-command passes `sh -n`. It was then run against stubbed `claude` and `docker`
-on a hermetic `PATH` — 9 assertions, all passing — checking the exit code and
-the argv the `claude` stub received:
-
-| Branch | Expected |
-|---|---|
-| `SBX_CRED_SONARQUBE_MODE=apikey` + org | registers `--env SONARQUBE_TOKEN=proxy-managed`, exit 0 |
-| `SONARQUBE_TOKEN` in the environment + org | registers that token verbatim, exit 0 |
-| No token from either source | exit 1, no `claude mcp add` call, message names both routes |
-| Token but no `SONARQUBE_ORG` | exit 1 |
-| Token + org, no `docker` on `PATH` | exit 1 |
-
-One assumption is worth singling out, because nothing here tests it: the
+One assumption is worth flagging, because nothing here tests it: the
 secret-store route relies on the sentinel swap reaching a **nested**
 container's egress. The MCP server runs as `docker run` inside the sandbox, so
 its calls to `sonarcloud.io` have to pass through the same proxy for

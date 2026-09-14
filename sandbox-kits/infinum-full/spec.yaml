@@ -162,7 +162,7 @@ agentInstructions:
     ## Maven Central reachable
 
     Egress is allowed to `repo.maven.apache.org` and `repo1.maven.org`
-    (Maven, Gradle, sbt, Coursier). A build failing with an HTTP 403
+    (Maven, Gradle). A build failing with an HTTP 403
     mentioning "Blocked by network policy" needs that host added to the
     sandbox policy, not a build-file change.
 
