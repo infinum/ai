@@ -1,6 +1,6 @@
 # Infinum AI Stack
 
-_A workflow, a spec engine, a set of skills, and an in-house agent — packaged together and installed per repo with one command._
+_A workflow, a spec engine, a set of skills, and an in-house agent — packaged together and installed per repo with one command — plus an org-wide tracker for how it's all being adopted._
 
 ---
 
@@ -12,6 +12,7 @@ _A workflow, a spec engine, a set of skills, and an in-house agent — packaged 
 | 02 | [**Superpowers**](https://github.com/obra/superpowers) | Open-source spec-driven development plugin by @obra, adopted as our default. Powers spec → plan → code with brainstorming, TDD, and self-review skills. |
 | 03 | [**Skills marketplace**](MARKETPLACE.md) | Per-repo installable plugins — PRD authoring, security audits, UI validation, local PR review, and more. Install only what the project needs. |
 | 04 | [**Phantom**](https://github.com/infinum/ai-phantom) | Infinum's Slack-native AI agent. Mention `@Phantom` in a thread, it clones the repo, applies the change, runs your validation, and opens a PR. |
+| 05 | **AI Stats** | Infinum's internal AI-tool usage tracker. Aggregates every employee's usage — paired with code changes from GitHub / GitLab / Bitbucket — into org-wide adoption and spend, broken down by user, tool, model, team, skill, and month. |
 
 ---
 
@@ -43,7 +44,7 @@ The full flow for a meaningful feature:
 
 ### 3. Stay current
 
-The installer enables the [`stack-essentials`](plugins/stack-essentials/) plugin by default. It prints a banner at session start when `infinum/ai` has new commits on `main` since your last installer run — telling you a new version of the workspace installer is available and nudging you to re-run `pnpm dlx --allow-build=infinum-ai github:infinum/ai`. That's all it does; picking up the update is a manual re-run (do it yourself, or have an agent run it non-interactively — `node bin/install.js --help` lists the flags). Re-running is idempotent and reports exactly which rules changed (often "nothing" — see the plugin README for why). Plugin updates flow through the Claude Code marketplace's auto-update toggle separately.
+The installer enables the [`stack-essentials`](plugins/stack-essentials/) plugin by default. It prints a banner at session start when `infinum/ai` has new commits on `main` since your last installer run — telling you a new version of the workspace installer is available and nudging you to re-run `pnpm dlx github:infinum/ai`. That's all it does; picking up the update is a manual re-run (do it yourself, or have an agent run it non-interactively — `node bin/install.js --help` lists the flags). Re-running is idempotent and reports exactly which rules changed (often "nothing" — see the plugin README for why). Plugin updates flow through the Claude Code marketplace's auto-update toggle separately.
 
 To disable the update banner: set `INFINUM_STACK_SKIP_UPDATE_CHECK=1` in your environment, or run `/plugin disable stack-essentials`.
 
@@ -53,11 +54,12 @@ To disable the update banner: set `INFINUM_STACK_SKIP_UPDATE_CHECK=1` in your en
 
 | Term                | Meaning                                                                                                                                                                                                                   |
 | ------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| **The Stack**       | The packaged combination of workflow, spec engine, skills, and agent that Infinum engineers install per repo. Described in this document.                                                                                 |
+| **The Stack**       | The packaged combination of workflow, spec engine, skills, and agent that Infinum engineers install per repo, plus AI Stats for measuring adoption across the org. Described in this document.                            |
 | **PSDD**            | Pragmatic Spec Driven Development — Infinum's 4-step workflow for building with AI. Full guide: [psdd/README.md](psdd/README.md).                                                                                         |
 | **Superpowers**     | Open-source spec-driven development plugin by [@obra](https://github.com/obra/superpowers), adopted as our default. Powers spec → plan → code with brainstorming, planning, TDD, and self-review skills.                 |
 | **Skill**           | A focused, reusable instruction set installed as a plugin. Defined in a `SKILL.md` file. Each Infinum skill ships as its own plugin so engineers install only what they need.                                             |
 | **Phantom**         | Infinum's in-house Slack-native AI agent. Runs jobs in isolated Docker containers; opens PRs assigned to a human owner. Repo: [infinum/ai-phantom](https://github.com/infinum/ai-phantom).                               |
+| **AI Stats**        | Infinum's internal AI-tool usage tracker. Aggregates every employee's usage into adoption and spend by user, tool, model, team, skill, and month.                                                                        |
 
 For PSDD-specific terms (PRD/FRD, Technical brief, Ask mode, Plan mode, Build mode, Agent, Fresh agent, Context window) — see the [PSDD glossary](psdd/README.md#glossary).
 

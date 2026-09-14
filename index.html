@@ -142,6 +142,8 @@
     padding: 18px 20px;
   }
 
+  .component-wide { grid-column: 1 / -1; }
+
   .component-num {
     font-family: 'JetBrains Mono', monospace;
     font-size: 11px;
@@ -509,13 +511,13 @@
   <div class="header">
     <div class="eyebrow"><span class="eyebrow-dot"></span>Infinum · Engineering · The Stack</div>
     <h1>Infinum<br>AI Stack.</h1>
-    <p class="tagline">A workflow, a spec engine, a set of skills, and an in-house agent — packaged together and installed per repo with one command.</p>
+    <p class="tagline">A workflow, a spec engine, a set of skills, and an in-house agent — packaged together and installed per repo with one command — plus an org-wide tracker for how it's all being adopted.</p>
     <p class="access-note">More details, the full skill catalogue, and install commands are available at <a href="https://github.com/infinum/ai">github.com/infinum/ai</a>.</p>
   </div>
 
   <!-- ANALOGY / INTRO -->
   <div class="analogy">
-    <strong>Why a stack:</strong> building with AI without scaffolding produces fast garbage. After two years of practice we've shipped what the missing scaffolding actually is — workflow, skills, and agent, distributed as a single installable thing that lives alongside the code it works on.
+    <strong>Why a stack:</strong> building with AI without a shared setup produces inconsistent, hard-to-maintain results. After two years of practice we've packaged that setup — a workflow, a spec engine, skills, and an agent installed per repo, plus an org-wide view of how it's used — living alongside the code it works on.
   </div>
 
   <!-- COMPONENTS OVERVIEW -->
@@ -541,6 +543,11 @@
       <div class="component-name">Phantom</div>
       <div class="component-desc">Our Slack-native AI agent. Drops a fix in your repo from a Slack thread, runs your validation, opens the PR.</div>
     </div>
+    <div class="component component-wide">
+      <div class="component-num">05</div>
+      <div class="component-name">AI Stats</div>
+      <div class="component-desc">Internal overview of AI-tool usage, cost, and adoption across teams and skills.</div>
+    </div>
   </div>
 
   <!-- SETUP -->
@@ -557,15 +564,15 @@
       <p class="setup-intro">A single setup script registers the Infinum marketplace in Claude Code, lays down team rules and personalization stubs, and walks you through an interactive prompt to install the skills you want. Re-runnable; safe.</p>
       <div class="cmd">
         <span class="cmd-prompt">$</span>
-        <span>pnpm dlx --allow-build=infinum-ai github:infinum/ai</span>
+        <span>pnpm dlx github:infinum/ai</span>
       </div>
       <p class="setup-intro"><a class="inline" href="https://infinum.com/handbook/frontend/node/security/running-scripts-safely" target="_blank" rel="noopener noreferrer">How and why to use pnpm?</a></p>
       <p class="setup-foot"><strong>Project-level over user-level.</strong> When configuration lives in the repo, improvements travel with the project — not just with the engineer. Also installable via the <code style="font-family:'JetBrains Mono',monospace;background:var(--gray-05);border:1px solid var(--border);padding:1px 6px;font-size:12px;">pnpm dlx --allow-build=skills-cli skills</code> CLI for Cursor, Copilot, and Firebender.</p>
     </div>
   </div>
 
-  <!-- THE FOUR PARTS -->
-  <div class="section-label">The four parts, in detail</div>
+  <!-- THE FIVE PARTS -->
+  <div class="section-label">The five parts, in detail</div>
   <div class="parts">
 
     <!-- 01 PSDD -->
@@ -686,7 +693,7 @@
         <div class="bullets">
           <div class="bullet"><span class="bullet-arrow">→</span><span><strong>Sandboxed Docker containers per job.</strong> Per-stack images for Android, Flutter, JVM, .NET, MAUI, Ruby, and a base image. No ambient repo access, no shared state.</span></div>
           <div class="bullet"><span class="bullet-arrow">→</span><span><strong>Self-registers by DM.</strong> No YAML edits, no setup PR. Open a chat with Phantom, say "set up a project," and it walks you through.</span></div>
-          <div class="bullet"><span class="bullet-arrow">→</span><span><strong>Human ownership on every PR.</strong> Phantom opens; humans merge. The agent is fast; the judgment stays with the team.</span></div>
+          <div class="bullet"><span class="bullet-arrow">→</span><span><strong>Human ownership on every PR.</strong> Phantom opens; humans review and merge.</span></div>
         </div>
 
         <div class="flow">
@@ -710,6 +717,29 @@
       </div>
     </div>
 
+    <!-- 05 AI STATS -->
+    <div class="part-card">
+      <div class="part-head">
+        <div class="part-num">05</div>
+        <div class="part-meta">
+          <div class="part-title">AI Stats — the measurement layer</div>
+          <div class="part-sub">Who's adopting AI, on what, at what cost</div>
+        </div>
+        <div class="part-tag">Insights</div>
+      </div>
+      <div class="part-body">
+        <p class="part-intro">The other four help you build with AI. AI Stats measures how much it's used — a web app that aggregates every employee's AI-tool usage into company-wide adoption and spend.</p>
+
+        <div class="bullets">
+          <div class="bullet"><span class="bullet-arrow">→</span><span><strong>One schema, many tools.</strong> Cursor, Firebender, Claude Code, and Copilot — normalized into a single database.</span></div>
+          <div class="bullet"><span class="bullet-arrow">→</span><span><strong>Breakdowns by user, tool, model, team, skill, and month.</strong> Filter to the slice you care about.</span></div>
+          <div class="bullet"><span class="bullet-arrow">→</span><span><strong>Skill-level adoption.</strong> Per-skill Claude Code usage — tied back to the skills in 03.</span></div>
+          <div class="bullet"><span class="bullet-arrow">→</span><span><strong>The whole picture, not just spend.</strong> Usage and cost are paired with actual code changes from GitHub / GitLab / Bitbucket — so adoption is measured against what shipped, not tokens alone.</span></div>
+          <div class="bullet"><span class="bullet-arrow">→</span><span><strong>Role-based access.</strong> Viewer, Contributor, Manager, Owner.</span></div>
+        </div>
+      </div>
+    </div>
+
   </div>
 
   <!-- GLOSSARY -->
@@ -718,7 +748,7 @@
     <div class="glossary-head"><div class="section-label">Terms used in the stack</div></div>
     <div class="glossary-row">
       <div class="glossary-term">The Stack</div>
-      <div class="glossary-def">The packaged combination of workflow, spec engine, skills, and agent that Infinum engineers install per-repo. Described in this document.</div>
+      <div class="glossary-def">The packaged combination of workflow, spec engine, skills, and agent that Infinum engineers install per-repo, plus AI Stats for measuring adoption across the org. Described in this document.</div>
     </div>
     <div class="glossary-row">
       <div class="glossary-term">PSDD</div>
@@ -735,6 +765,10 @@
     <div class="glossary-row">
       <div class="glossary-term">Phantom</div>
       <div class="glossary-def">Infinum's in-house Slack-native AI agent. Runs jobs in isolated Docker containers; opens PRs assigned to a human owner. Repo: <a href="https://github.com/infinum/ai-phantom">infinum/ai-phantom</a>.</div>
+    </div>
+    <div class="glossary-row">
+      <div class="glossary-term">AI Stats</div>
+      <div class="glossary-def">Infinum's AI-tool usage tracker. Aggregates every employee's usage into adoption and spend by user, tool, model, team, skill, and month.</div>
     </div>
   </div>
 

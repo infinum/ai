@@ -21,7 +21,7 @@ One step at a time, in order. For each step:
 3. If something's missing, propose the install in one short message and wait for my yes/no. On yes, install. On no, share the link and move on.  
 4. Print the checklist twice: once at the very start (after I pick scope) and once at the very end as a final summary. Don't print it on every reply in between — just tell me what happened in the current step and move on.
 
-Each Infinum skill installs as its own plugin. On Claude Code, the recommended path is the one-shot installer — `pnpm dlx --allow-build=infinum-ai github:infinum/ai`, offered in Step 1 — which registers the `infinum-ai` marketplace, lays down team rules + a personalization stub, and runs an interactive picker so I can select the Infinum skills for Steps 1, 3, and 4 in a single pass. On other agents, or if I decline the installer, install one skill per step.
+Each Infinum skill installs as its own plugin. On Claude Code, the recommended path is the one-shot installer — `pnpm dlx github:infinum/ai`, offered in Step 1 — which registers the `infinum-ai` marketplace, lays down team rules + a personalization stub, and runs an interactive picker so I can select the Infinum skills for Steps 1, 3, and 4 in a single pass. On other agents, or if I decline the installer, install one skill per step.
 
 ---
 
@@ -48,7 +48,7 @@ If I already have a `create-prd` skill or equivalent available, mark it ✓ and 
 
 If not, propose:
 
-* **Claude Code (preferred):** the one-shot installer `pnpm dlx --allow-build=infinum-ai github:infinum/ai`. It registers the `infinum-ai` marketplace, lays down team rules, and runs an interactive picker so I can install `create-prd` plus the Infinum skills for Steps 3 and 4 in one go. When it finishes, ask me to confirm which skills I picked — mark Step 1 ✓ if `create-prd` was selected. Steps 3 and 4 will detect their respective skills naturally when we reach them. If I'd rather install one at a time, fall back to `/plugin marketplace add infinum/ai` then `/plugin install create-prd@infinum-ai`.
+* **Claude Code (preferred):** the one-shot installer `pnpm dlx github:infinum/ai`. It registers the `infinum-ai` marketplace, lays down team rules, and runs an interactive picker so I can install `create-prd` plus the Infinum skills for Steps 3 and 4 in one go. When it finishes, ask me to confirm which skills I picked — mark Step 1 ✓ if `create-prd` was selected. Steps 3 and 4 will detect their respective skills naturally when we reach them. If I'd rather install one at a time, fall back to `/plugin marketplace add infinum/ai` then `/plugin install create-prd@infinum-ai`.
 * **Other agents:** share `git@github.com:infinum/ai.git`. Ask once, link on no.
 
 Ask once, run/install on yes.
