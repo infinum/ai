@@ -18,6 +18,13 @@ permissions:
       - github.com
       - "*.context7.com"
       - context7.com
+      - pypi.org
+      - crates.io
+      - rubygems.org
+      - api.osv.dev
+      - rustsec.org
+      - registry.npmjs.org
+      - api.github.com
 
 setup:
   install:
@@ -46,7 +53,7 @@ setup:
         REPO="infinum/ai"
         MARKET="infinum-ai"
         MARKET_DIR="$CLAUDE_DIR/plugins/marketplaces/$MARKET"
-        PLUGINS="stack-essentials create-prd pr-review-code-simplicity productive-debug"
+        PLUGINS="stack-essentials create-prd pr-review-code-simplicity productive-debug claude-setup-audit security-check"
 
         # Also leaves a clone at $MARKET_DIR, which the rules copy below reads.
         if out=$(claude plugin marketplace add "$REPO" 2>&1); then
@@ -184,7 +191,7 @@ agentInstructions:
 
     ## Infinum plugins and house rules
 
-    The `infinum-ai` marketplace (`infinum/ai`) is registered with four
+    The `infinum-ai` marketplace (`infinum/ai`) is registered with six
     plugins installed at user scope:
 
     - `stack-essentials`: SessionStart banner hook, gated on a manifest file
@@ -194,6 +201,16 @@ agentInstructions:
       software design.
     - `productive-debug`: investigate a Productive bug task end-to-end;
       needs the Productive Claude connector enabled.
+    - `claude-setup-audit`: audit this Claude Code setup itself (settings,
+      plugins, hooks, MCP config, permissions) for vulnerabilities,
+      malicious code, and prompt injection. Reads `~/.claude/` in this
+      sandbox, so results only reflect this sandbox's config.
+    - `security-check`: three skills — vet a new dependency before adopting
+      it (`dependency-adoption-review`), audit a system/global package
+      before installing it (`system-package-audit`), and triage reported
+      vulnerabilities like Dependabot alerts (`vulnerability-report-triage`).
+      Needs the package-registry/GitHub egress above, local package
+      managers (`npm`/`pip`/`cargo`/`gem`/etc.), and an authenticated `gh`.
 
     More `infinum-ai` plugins are available: install one with
     `claude plugin install <name>@infinum-ai`, or browse with `/plugin`.
