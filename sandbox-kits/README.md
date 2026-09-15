@@ -10,7 +10,7 @@ sandbox:
 - The MCP servers we use
 
 A kit is a `spec.yaml` the `sbx` engine turns into install commands, files,
-and network policy at sandbox creation. Both kits here are `kind: mixin`,
+and network policy at sandbox creation. The kit here is `kind: mixin`,
 requiring `claude`.
 
 ## Kits
@@ -25,22 +25,7 @@ requiring `claude`.
 
 No credential.
 
-### [`sonarcloud`](./sonarcloud/)
-
-`sonarqube` MCP server against SonarQube Cloud:
-
-- Issues
-- Security hotspots
-- Quality gates
-- Coverage
-
-Needs Docker, a SonarQube Cloud token, `SONARQUBE_ORG`.
-
-```console
-$ SONARQUBE_TOKEN=<token> SONARQUBE_ORG=<org-key> sbx kit add my-sandbox ./sonarcloud/
-```
-
-Jira/Confluence, Productive and GitHub aren't kits here — use the Claude
+Jira/Confluence, Productive and GitHub aren't kits here. Use the Claude
 connectors, enabled once on the account rather than per sandbox. GitHub also
 works independently of any connector: the sandbox's own proxy already
 injects GitHub credentials into git HTTPS operations.
@@ -49,30 +34,19 @@ injects GitHub credentials into git HTTPS operations.
 
 ```console
 $ sbx run claude --kit ./infinum-full/ /path/to/project
-$ SONARQUBE_TOKEN=<token> SONARQUBE_ORG=<org-key> sbx run claude \
-    --kit ./infinum-full/ --kit ./sonarcloud/ /path/to/project
 ```
 
-Both kits fail sandbox creation on error (unreachable marketplace, failed
-`claude mcp add`, no `docker`, missing credential) instead of skipping
-silently. Re-applying either is safe.
+The kit fails sandbox creation on error (unreachable marketplace, failed
+`claude mcp add`) instead of skipping silently. Re-applying it is safe.
 
 `sbx kit add <sandbox> ./<kit>/` applies a kit to a running sandbox but
-skips `agentInstructions.content` for these `kind: mixin` kits — the write
+skips `agentInstructions.content` for these `kind: mixin` kits: the write
 is gated on `agentInstructions.filename`, which a mixin doesn't own. Use
 `sbx run --kit` for a sandbox you'll work in.
 
-## Credentials
-
-Only `sonarcloud` needs one, declared under `credentials[]` so
-`sbx secret set sonarqube` keeps the token out of the sandbox.
-`SONARQUBE_ORG` is configuration, not a credential — pass it in the
-creation environment. See
-[`sonarcloud/README.md`](./sonarcloud/README.md#credentials).
-
 ## Remote use
 
-Pin a git ref instead of a local path — `sbx` requires a full 40-hex commit
+Pin a git ref instead of a local path. `sbx` requires a full 40-hex commit
 SHA:
 
 ```console
@@ -84,5 +58,4 @@ $ sbx run claude \
 ## References
 
 - [`infinum-full`](./infinum-full/README.md)
-- [`sonarcloud`](./sonarcloud/README.md)
 - Docker Sandboxes kit authoring: <https://docs.docker.com/ai/sandboxes/customize/kits/>

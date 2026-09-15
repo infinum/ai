@@ -19,7 +19,7 @@ $ sbx run claude --kit ./infinum-full/ /path/to/project
 ```
 
 `sbx kit add` runs the install steps and network policy but skips
-`agentInstructions.content` — the engine gates that write on
+`agentInstructions.content`: the engine gates that write on
 `agentInstructions.filename`, which a mixin doesn't own. Use `sbx run --kit`
 for a sandbox you'll work in.
 
@@ -44,7 +44,7 @@ Network:
 `productive-debug` needs the Productive Claude connector enabled.
 `superpowers` (`obra/superpowers`, third-party, unpinned) loads a
 `brainstorming`-skill web page with an `<img>` from `primeradiant.com`,
-fetched by the browser, not the sandbox — disable via
+fetched by the browser, not the sandbox. Disable via
 `SUPERPOWERS_DISABLE_TELEMETRY`, `DISABLE_TELEMETRY`, or
 `CLAUDE_CODE_DISABLE_NONESSENTIAL_TRAFFIC`.
 
@@ -52,10 +52,10 @@ Other `infinum-ai` plugins: `claude plugin install <name>@infinum-ai`, or
 `/plugin`. Not installed here:
 
 - `ui-validation`, `download-figma-screenshot`, `mobile-deploy`,
-  `claude-setup-audit`, `security-check`, `progress` — local tooling or
-  blocked egress
-- `ai-ready-figma`, `design-conventions`, `purpose-driven-design` —
-  design-side scope
+  `claude-setup-audit`, `security-check`, `progress` (local tooling or
+  blocked egress)
+- `ai-ready-figma`, `design-conventions`, `purpose-driven-design`
+  (design-side scope)
 
 ## Finish the context7 login
 

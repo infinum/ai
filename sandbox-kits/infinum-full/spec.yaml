@@ -172,7 +172,7 @@ agentInstructions:
     plugins installed at user scope:
 
     - `stack-essentials`: SessionStart banner hook, gated on a manifest file
-      this kit never writes — it never fires here.
+      this kit never writes. It never fires here.
     - `create-prd`: generate a Product Requirements Document.
     - `pr-review-code-simplicity`: review a PR through the six laws of
       software design.
@@ -184,7 +184,7 @@ agentInstructions:
 
     House rules live at `~/.claude/infinum/`, chained from `index.md`,
     imported by `~/.claude/CLAUDE.md`. `whoami.md` may still be the unedited
-    stub — if so, don't treat its placeholder example as fact about the
+    stub. If so, don't treat its placeholder example as fact about the
     user.
 
     ## Superpowers skills library
@@ -204,14 +204,14 @@ agentInstructions:
 
     Registered at user scope against Context7's OAuth endpoint. Resolves
     library/framework names to current, version-specific docs and code
-    examples — use it instead of guessing from training data (add "use
+    examples. Use it instead of guessing from training data (add "use
     context7" to a prompt, or call `resolve-library-id` then
     `get-library-docs`).
 
     Tool calls fail with an auth error until a human runs
     `claude mcp login context7` (or `--no-browser` with no browser
     reachable) inside the sandbox. That's an expected gap, not a broken
-    install — don't re-register the server or switch it to Context7's
+    install. Don't re-register the server or switch it to Context7's
     anonymous endpoint.
 
     Egress is allowed to `mcp.context7.com` and `context7.com` (the OAuth
