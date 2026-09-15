@@ -14,13 +14,13 @@ built-in connectors, enabled on Claude account level.
 ## Usage
 
 ```console
-sbx run claude --kit "git@github.com:infinum/ai.git#dir=sandbox-kits/<kit>" <workspace-dir>
+sbx run claude --kit "git+https://github.com/infinum/ai.git#dir=sandbox-kits/<kit>" <workspace-dir>
 ```
 
 The kits fail sandbox creation on error. They can be applied to a running sandbox with:
 
 ```console
-sbx kit add <sandbox> "git@github.com:infinum/ai.git#dir=sandbox-kits/<kit>"
+sbx kit add <sandbox> "git+https://github.com/infinum/ai.git#dir=sandbox-kits/<kit>"
 ```
 
 Applying a kit to a running sandbox skips `agentInstructions.content` update for `kind: mixin` kits. It is preferred to use `sbx run --kit` to set up your sandbox at creation time.

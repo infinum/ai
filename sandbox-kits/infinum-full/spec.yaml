@@ -116,10 +116,13 @@ setup:
           done
         } > "$CONFIG_DIR/index.md"
 
-        # Leading newline terminates a file with no trailing newline and
-        # keeps this off the end of the user's own last line.
-        grep -qsF "@$CONFIG_DIR/index.md" "$CLAUDE_DIR/CLAUDE.md" ||
-          printf '\n%s\n' "@$CONFIG_DIR/index.md  # managed by $REPO" >> "$CLAUDE_DIR/CLAUDE.md"
+        # A leading newline only when appending to an existing file with no
+        # trailing newline keeps this off the end of the user's own last line;
+        # a brand-new CLAUDE.md shouldn't start with a blank line.
+        grep -qsF "@$CONFIG_DIR/index.md" "$CLAUDE_DIR/CLAUDE.md" || {
+          [ -s "$CLAUDE_DIR/CLAUDE.md" ] && printf '\n' >> "$CLAUDE_DIR/CLAUDE.md"
+          printf '%s\n' "@$CONFIG_DIR/index.md  # managed by $REPO" >> "$CLAUDE_DIR/CLAUDE.md"
+        }
 
     - user: "agent"
       description: "superpowers: register the official marketplace and install the superpowers plugin from it"

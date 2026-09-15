@@ -15,7 +15,7 @@ Base agent `claude`. No credentials need to be set up in advance.
 ## Usage
 
 ```console
-sbx run claude --kit "git@github.com:infinum/ai.git#dir=sandbox-kits/infinum-full" <workspace-dir>
+sbx run claude --kit "git+https://github.com/infinum/ai.git#dir=sandbox-kits/infinum-full" <workspace-dir>
 ```
 
 Applying this kit to an existing sandbox is safe: "already on disk" / "already installed" / "already
