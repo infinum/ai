@@ -16,15 +16,16 @@ permissions:
       - repo.maven.apache.org
       - repo1.maven.org
       - github.com
+      - api.github.com
       - "*.context7.com"
       - context7.com
+      - otlp-gateway-prod-eu-west-2.grafana.net
       - pypi.org
       - crates.io
       - rubygems.org
       - api.osv.dev
       - rustsec.org
       - registry.npmjs.org
-      - api.github.com
 
 setup:
   install:

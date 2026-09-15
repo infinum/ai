@@ -13,8 +13,20 @@ built-in connectors, enabled on Claude account level.
 
 ## Usage
 
+To be able to use a kit from Infinum repositories, you first need to allow it in your sandbox settings:
+
+```console
+sbx settings set kit.allowedSources '["docker.io/","github.com/infinum/"]'
+```
+
 ```console
 sbx run claude --kit "git+https://github.com/infinum/ai.git#dir=sandbox-kits/<kit>" <workspace-dir>
+```
+
+Install from a branch for testing:
+
+```console
+sbx run claude --kit "git+https://github.com/infinum/ai.git#ref=<branch>&dir=sandbox-kits/<kit>" <workspace-dir>
 ```
 
 The kits fail sandbox creation on error. They can be applied to a running sandbox with:
