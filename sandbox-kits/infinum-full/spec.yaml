@@ -16,7 +16,7 @@ permissions:
       - repo.maven.apache.org
       - repo1.maven.org
       - github.com
-      - mcp.context7.com
+      - "*.context7.com"
       - context7.com
 
 setup:
@@ -49,16 +49,24 @@ setup:
         PLUGINS="stack-essentials create-prd pr-review-code-simplicity productive-debug"
 
         # Also leaves a clone at $MARKET_DIR, which the rules copy below reads.
-        if ! claude plugin marketplace add "$REPO"; then
-          echo "infinum-full kit: ERROR: could not add the '$MARKET' marketplace (network policy likely blocking github.com)" >&2
+        if out=$(claude plugin marketplace add "$REPO" 2>&1); then
+          echo "$out"
+        elif echo "$out" | grep -qi "already"; then
+          echo "infinum-full kit: marketplace '$MARKET' already registered."
+        else
+          echo "infinum-full kit: ERROR: could not add the '$MARKET' marketplace (network policy likely blocking github.com): $out" >&2
           exit 1
         fi
 
         mkdir -p "$CONFIG_DIR"
 
         for p in $PLUGINS; do
-          if ! claude plugin install "$p@$MARKET"; then
-            echo "infinum-full kit: ERROR: plugin '$p' did not install" >&2
+          if out=$(claude plugin install "$p@$MARKET" 2>&1); then
+            echo "$out"
+          elif echo "$out" | grep -qi "already"; then
+            echo "infinum-full kit: plugin '$p' already installed."
+          else
+            echo "infinum-full kit: ERROR: plugin '$p' did not install: $out" >&2
             exit 1
           fi
         done
@@ -113,13 +121,21 @@ setup:
 
         # Auto-registers only on an interactive first launch
         # (anthropics/claude-code#66750), so a headless run needs this.
-        if ! claude plugin marketplace add anthropics/claude-plugins-official; then
-          echo "infinum-full kit: ERROR: could not add the 'claude-plugins-official' marketplace (network policy likely blocking github.com)" >&2
+        if out=$(claude plugin marketplace add anthropics/claude-plugins-official 2>&1); then
+          echo "$out"
+        elif echo "$out" | grep -qi "already"; then
+          echo "infinum-full kit: marketplace 'claude-plugins-official' already registered."
+        else
+          echo "infinum-full kit: ERROR: could not add the 'claude-plugins-official' marketplace (network policy likely blocking github.com): $out" >&2
           exit 1
         fi
 
-        if ! claude plugin install superpowers@claude-plugins-official; then
-          echo "infinum-full kit: ERROR: could not install 'superpowers' (network policy likely blocking github.com)" >&2
+        if out=$(claude plugin install superpowers@claude-plugins-official 2>&1); then
+          echo "$out"
+        elif echo "$out" | grep -qi "already"; then
+          echo "infinum-full kit: 'superpowers' already installed."
+        else
+          echo "infinum-full kit: ERROR: could not install 'superpowers' (network policy likely blocking github.com): $out" >&2
           exit 1
         fi
 
@@ -214,5 +230,5 @@ agentInstructions:
     install. Don't re-register the server or switch it to Context7's
     anonymous endpoint.
 
-    Egress is allowed to `mcp.context7.com` and `context7.com` (the OAuth
-    consent page).
+    Egress is allowed to `*.context7.com` (covers the MCP endpoint and the
+    OAuth backend) and `context7.com` (the OAuth consent page).

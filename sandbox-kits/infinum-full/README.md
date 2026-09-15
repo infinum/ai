@@ -39,7 +39,7 @@ Network:
 
 - `repo.maven.apache.org`, `repo1.maven.org` (Maven Central)
 - `github.com`
-- `mcp.context7.com`, `context7.com`
+- `*.context7.com` (MCP endpoint + OAuth backend), `context7.com` (OAuth consent page)
 
 `productive-debug` needs the Productive Claude connector enabled.
 `superpowers` (`obra/superpowers`, third-party, unpinned) loads a
