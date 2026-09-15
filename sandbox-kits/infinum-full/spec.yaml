@@ -1,0 +1,255 @@
+schemaVersion: "2"
+kind: mixin
+name: infinum-full
+displayName: Infinum Full Setup
+description: >-
+  Baseline Infinum setup for a Claude sandbox: disables commit/PR
+  attribution, allows Maven Central egress, installs the Infinum plugin
+  marketplace, house rules and superpowers skills, and registers the
+  context7 MCP server via OAuth login. See README.
+requires:
+  agent: claude
+
+permissions:
+  network:
+    allow:
+      - repo.maven.apache.org
+      - repo1.maven.org
+      - github.com
+      - api.github.com
+      - "*.context7.com"
+      - context7.com
+      - otlp-gateway-prod-eu-west-2.grafana.net
+      - pypi.org
+      - crates.io
+      - rubygems.org
+      - api.osv.dev
+      - rustsec.org
+      - registry.npmjs.org
+
+setup:
+  install:
+    - user: "agent"
+      description: "attribution: set attribution.commit and attribution.pr to \"\" in ~/.claude/settings.json"
+      command: |
+        set -eu
+        f=/home/agent/.claude/settings.json
+        mkdir -p /home/agent/.claude
+        # Reseed when the file holds no JSON at all: -s only rules out 0 bytes,
+        # and jq exits 0 with empty output on a whitespace-only file too.
+        [ -s "$f" ] && [ -n "$(tr -d '[:space:]' < "$f")" ] || echo '{}' > "$f"
+        # Capture before writing: a jq failure aborts before "$f" is touched,
+        # and writing in place keeps the file's own mode and owner.
+        merged=$(jq '.attribution.commit = "" | .attribution.pr = ""' "$f")
+        [ -n "$merged" ] || { echo "infinum-full kit: ERROR: jq produced no output for $f" >&2; exit 1; }
+        printf '%s\n' "$merged" > "$f"
+
+    - user: "agent"
+      description: "plugins and house rules: register the infinum-ai marketplace, install the Infinum plugins, install the house rules into ~/.claude/infinum/"
+      command: |
+        set -eu
+
+        CLAUDE_DIR=/home/agent/.claude
+        CONFIG_DIR="$CLAUDE_DIR/infinum"
+        REPO="infinum/ai"
+        MARKET="infinum-ai"
+        MARKET_DIR="$CLAUDE_DIR/plugins/marketplaces/$MARKET"
+        PLUGINS="stack-essentials create-prd pr-review-code-simplicity productive-debug claude-setup-audit security-check"
+
+        # Also leaves a clone at $MARKET_DIR, which the rules copy below reads.
+        if out=$(claude plugin marketplace add "$REPO" 2>&1); then
+          echo "$out"
+        elif echo "$out" | grep -qi "already"; then
+          echo "infinum-full kit: marketplace '$MARKET' already registered."
+        else
+          echo "infinum-full kit: ERROR: could not add the '$MARKET' marketplace (network policy likely blocking github.com): $out" >&2
+          exit 1
+        fi
+
+        mkdir -p "$CONFIG_DIR"
+
+        for p in $PLUGINS; do
+          if out=$(claude plugin install "$p@$MARKET" 2>&1); then
+            echo "$out"
+          elif echo "$out" | grep -qi "already"; then
+            echo "infinum-full kit: plugin '$p' already installed."
+          else
+            echo "infinum-full kit: ERROR: plugin '$p' did not install: $out" >&2
+            exit 1
+          fi
+        done
+
+        # Flat copy: rules/<bundle>/ is never descended into, nothing is
+        # pruned, and whoami.md is skipped so upstream can't clobber it.
+        rules_found=0
+        for f in "$MARKET_DIR"/rules/*.md; do
+          [ -f "$f" ] || continue  # unmatched glob stays literal; skip rather than trip set -e
+          case "${f##*/}" in README.md | whoami.md) continue ;; esac
+          cp "$f" "$CONFIG_DIR/"
+          rules_found=1
+        done
+        if [ "$rules_found" != 1 ]; then
+          echo "infinum-full kit: ERROR: no house rules found under $MARKET_DIR/rules/ ($REPO's clone has no rules/*.md)" >&2
+          exit 1
+        fi
+
+        # whoami.md is the user's own: create once, never overwrite.
+        if [ ! -f "$CONFIG_DIR/whoami.md" ]; then
+          cat > "$CONFIG_DIR/whoami.md" <<'WHOAMI'
+        # Who you're working with
+
+        > Replace this with your name and role so Claude can calibrate
+        > its responses. Example:
+        >
+        > "Senior backend engineer at Infinum, focused on payments.
+        > Comfortable with Go and Postgres; new to the iOS codebase."
+        WHOAMI
+        fi
+
+        # Regenerated every run: whoami first, then every other rule
+        # alphabetically. Must never import itself.
+        {
+          echo "@$CONFIG_DIR/whoami.md"
+          for f in "$CONFIG_DIR"/*.md; do
+            [ -f "$f" ] || continue
+            case "${f##*/}" in whoami.md | index.md) continue ;; esac
+            echo "@$f"
+          done
+        } > "$CONFIG_DIR/index.md"
+
+        # A leading newline only when appending to an existing file with no
+        # trailing newline keeps this off the end of the user's own last line;
+        # a brand-new CLAUDE.md shouldn't start with a blank line.
+        grep -qsF "@$CONFIG_DIR/index.md" "$CLAUDE_DIR/CLAUDE.md" || {
+          [ -s "$CLAUDE_DIR/CLAUDE.md" ] && printf '\n' >> "$CLAUDE_DIR/CLAUDE.md"
+          printf '%s\n' "@$CONFIG_DIR/index.md  # managed by $REPO" >> "$CLAUDE_DIR/CLAUDE.md"
+        }
+
+    - user: "agent"
+      description: "superpowers: register the official marketplace and install the superpowers plugin from it"
+      command: |
+        set -eu
+
+        # Auto-registers only on an interactive first launch
+        # (anthropics/claude-code#66750), so a headless run needs this.
+        if out=$(claude plugin marketplace add anthropics/claude-plugins-official 2>&1); then
+          echo "$out"
+        elif echo "$out" | grep -qi "already"; then
+          echo "infinum-full kit: marketplace 'claude-plugins-official' already registered."
+        else
+          echo "infinum-full kit: ERROR: could not add the 'claude-plugins-official' marketplace (network policy likely blocking github.com): $out" >&2
+          exit 1
+        fi
+
+        if out=$(claude plugin install superpowers@claude-plugins-official 2>&1); then
+          echo "$out"
+        elif echo "$out" | grep -qi "already"; then
+          echo "infinum-full kit: 'superpowers' already installed."
+        else
+          echo "infinum-full kit: ERROR: could not install 'superpowers' (network policy likely blocking github.com): $out" >&2
+          exit 1
+        fi
+
+    - user: "agent"
+      description: "context7: register the context7 MCP server (remote HTTP, OAuth) at user scope"
+      command: |
+        set -eu
+
+        NAME=context7
+        URL=https://mcp.context7.com/mcp/oauth
+
+        cat >&2 <<EOF
+        infinum-full kit: NOTE: '$NAME' is registered against Context7's OAuth
+          endpoint. Finish it once, from inside this sandbox:
+            claude mcp login $NAME
+          or, with no browser reachable from the session:
+            claude mcp login $NAME --no-browser
+          (opens a URL you can sign in with on any machine, then takes the
+          resulting redirect URL pasted back)
+        EOF
+
+        if out=$(claude mcp add --transport http "$NAME" "$URL" -s user 2>&1); then
+          echo "$out"
+        elif echo "$out" | grep -q "already exists"; then
+          echo "infinum-full kit: MCP server '$NAME' already configured in user scope."
+        else
+          echo "infinum-full kit: ERROR: could not register the '$NAME' MCP server: $out" >&2
+          exit 1
+        fi
+
+agentInstructions:
+  content: |
+    ## Commit & PR attribution disabled
+
+    `attribution.commit` and `attribution.pr` are set to `""` in
+    `~/.claude/settings.json`. Commits and PRs you create won't carry the
+    "🤖 Generated with Claude Code" trailer or the "Co-Authored-By: Claude"
+    line.
+
+    ## Maven Central reachable
+
+    Egress is allowed to `repo.maven.apache.org` and `repo1.maven.org`
+    (Maven, Gradle). A build failing with an HTTP 403
+    mentioning "Blocked by network policy" needs that host added to the
+    sandbox policy, not a build-file change.
+
+    ## Infinum plugins and house rules
+
+    The `infinum-ai` marketplace (`infinum/ai`) is registered with six
+    plugins installed at user scope:
+
+    - `stack-essentials`: SessionStart banner hook, gated on a manifest file
+      this kit never writes. It never fires here.
+    - `create-prd`: generate a Product Requirements Document.
+    - `pr-review-code-simplicity`: review a PR through the six laws of
+      software design.
+    - `productive-debug`: investigate a Productive bug task end-to-end;
+      needs the Productive Claude connector enabled.
+    - `claude-setup-audit`: audit this Claude Code setup itself (settings,
+      plugins, hooks, MCP config, permissions) for vulnerabilities,
+      malicious code, and prompt injection. Reads `~/.claude/` in this
+      sandbox, so results only reflect this sandbox's config.
+    - `security-check`: three skills — vet a new dependency before adopting
+      it (`dependency-adoption-review`), audit a system/global package
+      before installing it (`system-package-audit`), and triage reported
+      vulnerabilities like Dependabot alerts (`vulnerability-report-triage`).
+      Needs the package-registry/GitHub egress above, local package
+      managers (`npm`/`pip`/`cargo`/`gem`/etc.), and an authenticated `gh`.
+
+    More `infinum-ai` plugins are available: install one with
+    `claude plugin install <name>@infinum-ai`, or browse with `/plugin`.
+
+    House rules live at `~/.claude/infinum/`, chained from `index.md`,
+    imported by `~/.claude/CLAUDE.md`. `whoami.md` may still be the unedited
+    stub. If so, don't treat its placeholder example as fact about the
+    user.
+
+    ## Superpowers skills library
+
+    `superpowers` (`obra/superpowers`, third-party, unpinned) is installed
+    at user scope via the built-in `claude-plugins-official` marketplace.
+    Its skills are already listed by the `Skill` tool, and its SessionStart
+    hook injects an orientation skill every session.
+
+    Its `brainstorming` skill can start a local server whose page embeds an
+    `<img>` pointing at `primeradiant.com`, fetched by whatever browser
+    opens the page rather than by this sandbox, unless
+    `SUPERPOWERS_DISABLE_TELEMETRY`, `DISABLE_TELEMETRY` or
+    `CLAUDE_CODE_DISABLE_NONESSENTIAL_TRAFFIC` disables it.
+
+    ## `context7` MCP server
+
+    Registered at user scope against Context7's OAuth endpoint. Resolves
+    library/framework names to current, version-specific docs and code
+    examples. Use it instead of guessing from training data (add "use
+    context7" to a prompt, or call `resolve-library-id` then
+    `get-library-docs`).
+
+    Tool calls fail with an auth error until a human runs
+    `claude mcp login context7` (or `--no-browser` with no browser
+    reachable) inside the sandbox. That's an expected gap, not a broken
+    install. Don't re-register the server or switch it to Context7's
+    anonymous endpoint.
+
+    Egress is allowed to `*.context7.com` (covers the MCP endpoint and the
+    OAuth backend) and `context7.com` (the OAuth consent page).
