@@ -1,61 +1,31 @@
 # sandbox-kits
 
-[Docker Sandboxes](https://docs.docker.com/ai/sandboxes/) kits for a `claude`
-sandbox:
+[Docker Sandboxes](https://docs.docker.com/ai/sandboxes/) kits for a `claude` sandbox.
 
-- Infinum house rules and plugins
-- A skills library
-- Maven Central egress
-- No Claude attribution
-- The MCP servers we use
-
-A kit is a `spec.yaml` the `sbx` engine turns into install commands, files,
-and network policy at sandbox creation. The kit here is `kind: mixin`,
-requiring `claude`.
+A kit packages a set of capabilities a sandbox can use, such as tools to install or network rules to set.
 
 ## Kits
 
-### [`infinum-full`](./infinum-full/)
+- [**infinum-full**](./infinum-full/README.md): Base Infinum sandbox setup that disables Claude commit/PR attribution, installs the Infinum plugins, and registers Context7 MCP server.
 
-- Claude attribution off
-- Maven Central egress
-- `infinum-ai` plugins + house rules
-- `superpowers`
-- `context7` MCP (OAuth)
-
-No credential.
-
-Jira/Confluence, Productive and GitHub aren't kits here. Use the Claude
-connectors, enabled once on the account rather than per sandbox. GitHub also
-works independently of any connector: the sandbox's own proxy already
-injects GitHub credentials into git HTTPS operations.
+**Atlassian**, **Productive**, and **GitHub** MCPs are not included in the kit. Use Claude's
+built-in connectors, enabled on Claude account level.
 
 ## Usage
 
 ```console
-$ sbx run claude --kit ./infinum-full/ /path/to/project
+sbx run claude --kit "git@github.com:infinum/ai.git#dir=sandbox-kits/<kit>" <workspace-dir>
 ```
 
-The kit fails sandbox creation on error (unreachable marketplace, failed
-`claude mcp add`) instead of skipping silently. Re-applying it is safe.
-
-`sbx kit add <sandbox> ./<kit>/` applies a kit to a running sandbox but
-skips `agentInstructions.content` for these `kind: mixin` kits: the write
-is gated on `agentInstructions.filename`, which a mixin doesn't own. Use
-`sbx run --kit` for a sandbox you'll work in.
-
-## Remote use
-
-Pin a git ref instead of a local path. `sbx` requires a full 40-hex commit
-SHA:
+The kits fail sandbox creation on error. They can be applied to a running sandbox with:
 
 ```console
-$ sbx run claude \
-    --kit "git+https://github.com/infinum/ai.git#ref=$(git rev-parse HEAD)&dir=sandbox-kits/infinum-full" \
-    /path/to/project
+sbx kit add <sandbox> "git@github.com:infinum/ai.git#dir=sandbox-kits/<kit>"
 ```
+
+Applying a kit to a running sandbox skips `agentInstructions.content` update for `kind: mixin` kits. It is preferred to use `sbx run --kit` to set up your sandbox at creation time.
 
 ## References
 
-- [`infinum-full`](./infinum-full/README.md)
-- Docker Sandboxes kit authoring: <https://docs.docker.com/ai/sandboxes/customize/kits/>
+- Docker Sandboxes kits documentation: <https://docs.docker.com/ai/sandboxes/customize/kits/>
+- Community repository for sbx kits: <https://github.com/docker/sbx-kits-contrib>
