@@ -13,6 +13,7 @@ _A workflow, a spec engine, a set of skills, and an in-house agent — packaged 
 | 03 | [**Skills marketplace**](MARKETPLACE.md) | Per-repo installable plugins — PRD authoring, security audits, UI validation, local PR review, and more. Install only what the project needs. |
 | 04 | [**Phantom**](https://github.com/infinum/ai-phantom) | Infinum's Slack-native AI agent. Mention `@Phantom` in a thread, it clones the repo, applies the change, runs your validation, and opens a PR. |
 | 05 | **AI Stats** | Infinum's internal AI-tool usage tracker. Aggregates every employee's usage — paired with code changes from GitHub / GitLab / Bitbucket — into org-wide adoption and spend, broken down by user, tool, model, team, skill, and month. |
+| 06 | [**Sandbox kits**](sandbox-kits/README.md) | Docker Sandboxes kits for a `claude` sandbox — reusable mixins that configure sandbox setup (e.g. `infinum-full`: disables commit/PR attribution, installs Infinum plugins, registers the Context7 MCP server). |
 
 ---
 

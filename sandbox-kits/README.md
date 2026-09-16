@@ -1,6 +1,6 @@
 # sandbox-kits
 
-[Docker Sandboxes](https://docs.docker.com/ai/sandboxes/) kits for a `claude` sandbox.
+[Docker Sandboxes](https://docs.docker.com/ai/sandboxes/get-started/) kits for a `claude` sandbox.
 
 A kit packages a set of capabilities a sandbox can use, such as tools to install or network rules to set.
 
@@ -36,6 +36,10 @@ sbx kit add <sandbox> "git+https://github.com/infinum/ai.git#dir=sandbox-kits/<k
 ```
 
 Applying a kit to a running sandbox skips `agentInstructions.content` update for `kind: mixin` kits. It is preferred to use `sbx run --kit` to set up your sandbox at creation time.
+
+## Tips and tricks
+
+- **Copying text out of a sandbox:** if a normal selection + <kbd>Cmd</kbd>+<kbd>C</kbd> doesn't copy text out of the sandbox terminal, hold <kbd>Fn</kbd> while selecting the text, then copy with <kbd>Cmd</kbd>+<kbd>C</kbd> (on a Mac).
 
 ## References
 
