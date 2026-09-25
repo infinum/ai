@@ -32,7 +32,7 @@ exists" are treated as done, not errors.
 
 ### Network allow:
 
-- `repo.maven.apache.org`, `repo1.maven.org`
+- `repo.maven.apache.org`, `repo1.maven.org`, `build.shibboleth.net`
 - `github.com`, `api.github.com`
 - `*.context7.com`, `context7.com`
 - `pypi.org`, `crates.io`, `rubygems.org`, `api.osv.dev`, `rustsec.org`, `registry.npmjs.org` (`security-check` skill needs these lookups)

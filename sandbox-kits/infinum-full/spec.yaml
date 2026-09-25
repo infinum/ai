@@ -15,6 +15,7 @@ permissions:
     allow:
       - repo.maven.apache.org
       - repo1.maven.org
+      - build.shibboleth.net
       - github.com
       - api.github.com
       - "*.context7.com"
@@ -177,6 +178,12 @@ setup:
           exit 1
         fi
 
+    - user: "agent"
+      description: "git: rewrite ssh://git@ssh.github.com:443/ to https://github.com/ in ~/.gitconfig"
+      command: |
+        set -eu
+        git config --global url."https://github.com/".insteadOf "ssh://git@ssh.github.com:443/"
+
 agentInstructions:
   content: |
     ## Commit & PR attribution disabled
@@ -188,8 +195,8 @@ agentInstructions:
 
     ## Maven Central reachable
 
-    Egress is allowed to `repo.maven.apache.org` and `repo1.maven.org`
-    (Maven, Gradle). A build failing with an HTTP 403
+    Egress is allowed to `repo.maven.apache.org`, `repo1.maven.org`, and
+    `build.shibboleth.net` (Maven, Gradle). A build failing with an HTTP 403
     mentioning "Blocked by network policy" needs that host added to the
     sandbox policy, not a build-file change.
 
