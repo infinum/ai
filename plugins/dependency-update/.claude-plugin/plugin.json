@@ -1,0 +1,12 @@
+{
+  "name": "dependency-update",
+  "version": "1.0.0",
+  "description": "Analyze a dependency update in Gradle (Android, JVM) and Swift Package Manager (iOS) projects: fetched release notes, security advisories, and the project's real call sites feed a LOW / MEDIUM / HIGH risk report with the required code changes, then the exact version edit on request. Also scans a project for outdated dependencies.",
+  "keywords": [
+    "dependencies",
+    "upgrade",
+    "release-notes",
+    "gradle",
+    "swift-package-manager"
+  ]
+}

@@ -1,0 +1,86 @@
+# Known coordinate replacements.
+#
+# The `from` coordinate is superseded by the `to` coordinate. When the project
+# declares a `from` coordinate, the update type is `replacement` (+4 points),
+# and the report names the successor and the migration.
+#
+# Only list coordinates that are really superseded: an entry for a maintained
+# library gives every project a false +4. Seeded from public migration guides
+# and deprecation notices; extend it when a run confirms a new replacement.
+#
+# Coordinates: Gradle "group:artifact"; SPM "github.com/owner/repo".
+#
+# Fields:
+#   from:      superseded coordinate
+#   to:        successor coordinate ("" if there is no single successor)
+#   note:      one-line migration hint
+#   migration: URL of the migration guide, if one exists
+
+replacements:
+
+  # Android Support Library -> AndroidX
+  # https://developer.android.com/jetpack/androidx/migrate
+  - from: "com.android.support:appcompat-v7"
+    to: "androidx.appcompat:appcompat"
+    migration: "https://developer.android.com/jetpack/androidx/migrate"
+  - from: "com.android.support:design"
+    to: "com.google.android.material:material"
+    note: "Material Design Components moved to the material-components-android project."
+  - from: "com.android.support:recyclerview-v7"
+    to: "androidx.recyclerview:recyclerview"
+  - from: "com.android.support:cardview-v7"
+    to: "androidx.cardview:cardview"
+  - from: "com.android.support.constraint:constraint-layout"
+    to: "androidx.constraintlayout:constraintlayout"
+  - from: "com.android.support:support-v4"
+    to: "androidx.legacy:legacy-support-v4"
+    note: "Prefer migrating off v4 entirely; the androidx.legacy shim is a last resort."
+  - from: "com.android.support:support-annotations"
+    to: "androidx.annotation:annotation"
+  - from: "android.arch.lifecycle:runtime"
+    to: "androidx.lifecycle:lifecycle-runtime"
+  - from: "android.arch.lifecycle:extensions"
+    to: "androidx.lifecycle:lifecycle-runtime-ktx"
+    note: "No direct successor: split across lifecycle-runtime-ktx and lifecycle-viewmodel-ktx."
+  - from: "android.arch.lifecycle:viewmodel"
+    to: "androidx.lifecycle:lifecycle-viewmodel"
+  - from: "android.arch.persistence.room:runtime"
+    to: "androidx.room:room-runtime"
+  - from: "android.arch.work:work-runtime"
+    to: "androidx.work:work-runtime"
+
+  # Accompanist modules that moved into Compose or were deprecated
+  # https://google.github.io/accompanist/
+  - from: "com.google.accompanist:accompanist-pager"
+    to: "androidx.compose.foundation:foundation"
+    note: "HorizontalPager / VerticalPager are in foundation since 1.4.0."
+  - from: "com.google.accompanist:accompanist-pager-indicators"
+    to: ""
+    note: "No direct successor; build the indicator from the pager state."
+  - from: "com.google.accompanist:accompanist-swiperefresh"
+    to: "androidx.compose.material3:material3"
+    note: "Use PullToRefreshBox (material3), or pullRefresh in androidx.compose.material."
+  - from: "com.google.accompanist:accompanist-flowlayout"
+    to: "androidx.compose.foundation:foundation"
+    note: "FlowRow / FlowColumn are in foundation since 1.4.0."
+  - from: "com.google.accompanist:accompanist-systemuicontroller"
+    to: ""
+    note: "Use enableEdgeToEdge() (androidx.activity 1.8+) or WindowCompat directly."
+  - from: "com.google.accompanist:accompanist-placeholder"
+    to: ""
+    note: "Deprecated with no direct successor."
+  - from: "com.google.accompanist:accompanist-insets"
+    to: "androidx.compose.foundation:foundation"
+    note: "WindowInsets APIs are in Compose foundation."
+
+  # Kotlin
+  - from: "org.jetbrains.kotlin:kotlin-android-extensions"
+    to: ""
+    note: "Removed in Kotlin 1.8. Use ViewBinding or Jetpack Compose."
+
+  # RxJava 2 -> 3 (a new namespace; manual migration)
+  - from: "io.reactivex.rxjava2:rxjava"
+    to: "io.reactivex.rxjava3:rxjava"
+    note: "RxJava 2 reached end of life in 2021. RxJava 3 renames packages; consider coroutines/Flow instead."
+
+  # SPM: no entries yet.
