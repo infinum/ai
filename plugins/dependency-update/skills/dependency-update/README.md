@@ -5,18 +5,18 @@ Analyze a dependency update for risk and relevance in Gradle (Android, JVM) and 
 ## Usage
 
 ```
-/dependency-update:dependency-update
+/dependency-update:dependency-update <library> [target version]
 ```
 
 (Plugin-installed skills are namespaced as `/<plugin>:<skill>`.)
 
-The skill also triggers on plain requests. Examples:
+The skill runs only when you invoke it; a run is expensive, so it never triggers on plain requests. Examples:
 
-- "Can we move to Alamofire 5.12?"
-- "Bump AGP."
-- "Is Firebase 12.19 ok for us?"
-- "What changed in Room between 2.6 and 2.7?"
-- "Which dependencies are outdated?" — scan mode: one report for the whole project.
+- `/dependency-update:dependency-update Alamofire 5.12`
+- `/dependency-update:dependency-update AGP`
+- `/dependency-update:dependency-update is Firebase 12.19 ok for us?`
+- `/dependency-update:dependency-update what changed in Room between 2.6 and 2.7?`
+- `/dependency-update:dependency-update what is outdated?` — scan mode: one report for the whole project.
 
 ## What it does
 

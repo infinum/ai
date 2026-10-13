@@ -1,6 +1,8 @@
 ---
 name: dependency-update
-description: Analyze a dependency update for risk and relevance in Gradle (Android, JVM) and Swift Package Manager (iOS, Xcode) projects. Use it whenever the user wants to update, upgrade, or bump a library, SDK, package, or Gradle plugin; asks whether an update is safe or what it breaks; asks what changed or what is new between versions of a dependency; or asks which dependencies are outdated — even when they only name the library ("can we move to Alamofire 5.12?", "bump AGP", "is Firebase 12.19 ok for us?"). Produces a risk-scored report (LOW / MEDIUM / HIGH) built from the fetched release notes and the project's real usage — required code changes, behavior changes, raised minimums, security advisories — then proposes the exact version edit and applies it only after the user says yes. Not Cowork-ready — needs `gh`/`curl` egress to Maven, GitHub, and OSV registries, plus the project's Gradle or Xcode toolchain.
+description: Analyze a dependency update for risk in Gradle (Android, JVM) and Swift Package Manager (iOS) projects. Run `/dependency-update:dependency-update <library> [target version]`, or ask it what is outdated. The report gives a LOW / MEDIUM / HIGH tier with the required code changes, from the release notes and the project's call sites, then proposes the version edit and applies it only after a yes. Not Cowork-ready — needs `gh`/`curl` egress to Maven, GitHub, and OSV registries, plus the project's Gradle or Xcode toolchain.
+argument-hint: "<library> [target version]"
+disable-model-invocation: true
 ---
 
 # Dependency update analysis
