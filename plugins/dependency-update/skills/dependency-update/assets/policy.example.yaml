@@ -1,0 +1,60 @@
+# Example policy file for the dependency-update skill.
+#
+# Put the project's copy at <repo-root>/dependency-update-policy.yaml or at
+# <repo-root>/.claude/dependency-update-policy.yaml. Every field is optional.
+#
+# Rules apply in order, and the actions of all matching rules merge. If two
+# matching rules set the same field: riskFloor -> the highest wins;
+# minimumReleaseAge -> the longest wins. A rule's minimumReleaseAge replaces
+# the global value for the packages it matches (so a rule can also relax it).
+
+# Hard minimum age for every target version, as <n>d or <n>w. A younger target
+# makes the report DEFERRED. Without this field there is no hard floor; young
+# releases still get age points in the score.
+minimumReleaseAge: 3d
+
+# Commands that CI runs on every pull request. The report adds "CI runs it"
+# to an automated check whose task is in this list; one line can hold several
+# tasks. Use it when the CI workflow lives outside the repository.
+ci:
+  - ./gradlew detekt
+  - ./gradlew lintDebug
+  - ./gradlew testDebugUnitTest
+
+rules:
+
+  # A critical SDK: never report it below HIGH.
+  - match: { packagePattern: "^com\\.example\\.payments" }
+    riskFloor: high
+
+  # Kotlin and KSP must move together: the scan report lists them as one group.
+  - match: { packagePattern: "^org\\.jetbrains\\.kotlin|^com\\.google\\.devtools\\.ksp" }
+    group: kotlin
+
+  # UI and rendering libraries: always take the full analysis in scan mode.
+  # Quiet behavior changes hide in notes that read like routine fixes.
+  - match: { packagePattern: "^(io\\.coil-kt|com\\.airbnb\\.android)|github\\.com/airbnb/lottie-ios" }
+    alwaysEscalate: true
+
+  # Firebase ships often: wait a week before a new version counts as ready.
+  - match: { packagePattern: "firebase" }
+    minimumReleaseAge: 7d
+
+  # Pinned on purpose: list it under "Blocked by policy", never analyze it.
+  - match: { packageName: "github.com/example/vendor-sdk" }
+    disabled: true
+    reason: "Pinned until the vendor certifies 5.x"
+
+# Match fields (all given fields must match):
+#   packageName     exact coordinate: Gradle "group:artifact", SPM "github.com/owner/repo"
+#   packagePattern  regular expression on the coordinate
+#   updateType      patch | minor | major | rollback | replacement
+#   ecosystem       gradle | spm
+#
+# Action fields:
+#   riskFloor          low | medium | high  - raises the tier, never lowers it
+#   minimumReleaseAge  <n>d | <n>w          - hard floor for matching packages
+#   alwaysEscalate     true                 - scan mode always runs the full analysis
+#   group              <name>               - the scan report lists matching packages together
+#   disabled           true                 - no analysis; listed under "Blocked by policy"
+#   reason             <text>               - shown next to a disabled package
