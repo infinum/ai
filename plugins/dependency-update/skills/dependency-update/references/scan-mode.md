@@ -15,7 +15,7 @@ With five or fewer outdated dependencies, analyze them yourself, one after anoth
 
 With more, fan out with the Agent tool so that each dependency's release notes stay in their own context — forty release-note pages in one context crowd out the analysis:
 
-- one subagent per dependency that is a major bump, a replacement, or matches `alwaysEscalate: true`;
+- one subagent per dependency that is a major bump or matches `alwaysEscalate: true`;
 - the rest in batches of up to five per subagent;
 - up to eight subagents per message; send the next wave when a wave returns.
 
@@ -36,6 +36,7 @@ coord: <coordinate>
 from: <current>  to: <target>  type: <bump type>  released: <YYYY-MM-DD | unknown>
 tier: <LOW | MEDIUM | HIGH>  score: <n>  path: <quick | full: reason>
 urgency: <security: advisory IDs>
+replacement: <successor coordinate> (<URL of the source that says so>)
 derivation: <one line, e.g. "minor +1, age 12d +1, deprecated cluster used +1 = 3">
 required: [<label>] <symbol> at <file:line, ...> -> <change> (<version>, <URL>)
 behavior: <summary> -> <how to verify> (<version>, <URL>)
@@ -69,7 +70,7 @@ Render in the shape of `assets/scan-report.example.md`:
 
 - Sort rows by tier (HIGH first). Inside a tier, rows with a required change come first, then rows with a manual behavior check, then rows with only automated checks, then the rest; then sort by score (highest first) and by release date (newest first). The user reads the table from the top, so a build break must not sit below a change in a debug tool.
 - Rows that share a policy `group` sit together under the group name; the group shows its highest tier.
-- Each row with a `required`, `behavior`, `automated`, `question`, or `additive` item gets a block below the table, in row order. In the block, "Automated checks" is one line after "Behavior to verify", and "Manual review" (the `question` lines) follows it.
+- Each row with a `replacement`, `required`, `behavior`, `automated`, `question`, or `additive` item gets a block below the table, in row order. In the block, the replacement comes first: one line that names the successor and links its source. "Automated checks" is one line after "Behavior to verify", and "Manual review" (the `question` lines) follows it.
 - `dropped` lines go into the "Caveats" section, one line each.
 - Then "Blocked by policy", "Not checked", and "Caveats".
 

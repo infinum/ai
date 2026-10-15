@@ -24,7 +24,6 @@ Two things make the answer trustworthy, and the workflow protects both:
 | `references/spm.md` | Swift Package Manager projects (Xcode or `Package.swift`) |
 | `references/scoring.md` | Before you score (step 9) |
 | `references/scan-mode.md` | The user asks what is outdated |
-| `references/replacements.yaml` | Step 5: known successor coordinates |
 | `assets/report.example.md`, `assets/scan-report.example.md` | Before you write the report: the shape to follow |
 | `assets/policy.example.yaml` | The project has a policy file: what each field does |
 | `references/adding-an-ecosystem.md` | Only for an ecosystem that this skill does not cover yet |
@@ -49,9 +48,9 @@ The scripts give exact data, so do not redo their work by hand. They need only P
 
 3. **Load the policy** from `dependency-update-policy.yaml` at the repo root or in `.claude/`, if present (fields: `assets/policy.example.yaml`). Warn about fields you do not recognize and continue; if the file does not parse, name the line and use the defaults. If a rule sets `disabled: true` for this dependency, say so and ask whether to analyze it anyway.
 
-4. **Pick the target.** Take the version the user named, else the newest stable version from `list_versions.py`. If the newest is a major bump, also report the newest version inside the current major: it is often the safe first step. Skip pre-releases unless the user asks for one or already uses one.
+4. **Pick the target.** Take the version the user named, else the newest stable version from `list_versions.py`. If the newest is a major bump, also report the newest version inside the current major: it is often the safe first step. Skip pre-releases unless the user asks for one or already uses one. If no newer version exists, run only steps 5, 8, and 11, then stop. If step 5 found a successor, call the current version the final release and ask whether to analyze the migration; otherwise, say that the project is on the newest version. Report any open advisory.
 
-5. **Check for a replacement.** If `references/replacements.yaml` lists the current coordinate, the update is a `replacement`: name the successor and link the migration guide.
+5. **Check for a replacement.** If a source fetched in this run says that the library is superseded, the update is a `replacement`: name the successor and link the source. Signs: an archived repository; an end-of-life, deprecation, or successor notice in the README, the release notes, or the docs; a moved coordinate.
 
 6. **Get the release notes** for every version in (current, target]:
    1. the guide cache entry, if fresh (see "Guide cache");
