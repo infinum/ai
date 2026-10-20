@@ -1,22 +1,22 @@
-# dependency-update
+# mobile-dependency-update
 
-Analyze a dependency update for risk and relevance in Gradle (Android, JVM) and Swift Package Manager (iOS, Xcode) projects. The skill fetches the release notes for every version between the current and the target, checks security advisories, reads the project's real call sites, and writes a risk-scored report (LOW / MEDIUM / HIGH) that names the required code changes. It proposes the exact version edit and applies it only after you say yes.
+Analyze a dependency update for risk and relevance in Gradle (Android) and Swift Package Manager (iOS, Xcode) projects. The skill fetches the release notes for every version between the current and the target, checks security advisories, reads the project's real call sites, and writes a risk-scored report (LOW / MEDIUM / HIGH) that names the required code changes. It proposes the exact version edit and applies it only after you say yes.
 
 ## Usage
 
 ```
-/dependency-update:dependency-update <library> [target version]
+/mobile-dependency-update:mobile-dependency-update <library> [target version]
 ```
 
 (Plugin-installed skills are namespaced as `/<plugin>:<skill>`.)
 
 The skill runs only when you invoke it; a run is expensive, so it never triggers on plain requests. Examples:
 
-- `/dependency-update:dependency-update Alamofire 5.12`
-- `/dependency-update:dependency-update AGP`
-- `/dependency-update:dependency-update is Firebase 12.19 ok for us?`
-- `/dependency-update:dependency-update what changed in Room between 2.6 and 2.7?`
-- `/dependency-update:dependency-update what is outdated?` — scan mode: one report for the whole project.
+- `/mobile-dependency-update:mobile-dependency-update Alamofire 5.12`
+- `/mobile-dependency-update:mobile-dependency-update AGP`
+- `/mobile-dependency-update:mobile-dependency-update is Firebase 12.19 ok for us?`
+- `/mobile-dependency-update:mobile-dependency-update what changed in Room between 2.6 and 2.7?`
+- `/mobile-dependency-update:mobile-dependency-update what is outdated?` — scan mode: one report for the whole project.
 
 ## What it does
 

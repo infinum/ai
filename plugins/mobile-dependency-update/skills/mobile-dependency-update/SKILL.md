@@ -1,6 +1,6 @@
 ---
-name: dependency-update
-description: Analyze a dependency update for risk in Gradle (Android, JVM) and Swift Package Manager (iOS) projects. Run `/dependency-update:dependency-update <library> [target version]`, or ask it what is outdated. The report gives a LOW / MEDIUM / HIGH tier with the required code changes, from the release notes and the project's call sites, then proposes the version edit and applies it only after a yes. Not Cowork-ready — needs `gh`/`curl` egress to Maven, GitHub, and OSV registries, plus the project's Gradle or Xcode toolchain.
+name: mobile-dependency-update
+description: Analyze a dependency update for risk in Gradle (Android) and Swift Package Manager (iOS) projects. Run `/mobile-dependency-update:mobile-dependency-update <library> [target version]`, or ask it what is outdated. The report gives a LOW / MEDIUM / HIGH tier with the required code changes, from the release notes and the project's call sites, then proposes the version edit and applies it only after a yes. Not Cowork-ready — needs `gh`/`curl` egress to Maven, GitHub, and OSV registries, plus the project's Gradle or Xcode toolchain.
 argument-hint: "<library> [target version]"
 disable-model-invocation: true
 ---
