@@ -21,7 +21,7 @@ It reads every `.xcodeproj` in the tree (a workspace often has several: the app 
 - **The current version is the pin in `Package.resolved`**, not the rule's minimum: `upToNextMinorVersion from 12.12.0` can resolve to 12.12.1.
 - **SPM resolves one version that satisfies every rule** in every project and manifest, so the strictest rule decides. An `exactVersion 5.10.2` in the app project pins the package even when the framework projects allow `upToNextMajorVersion`.
 - **Products are the module names** to look for in imports (`firebase-ios-sdk` → `FirebaseMessaging`, `FirebaseCrashlytics`, …).
-- **Branch and revision pins** have no version to compare. In scan mode they go under "Not checked". If the user asks, compare the pinned commit with the branch head: `gh api repos/<owner>/<repo>/compare/<sha>...<branch>`.
+- **Branch and revision pins** have no version to compare. In a branch comparison they go under "Not checked". If the user asks, compare the pinned commit with the branch head: `gh api repos/<owner>/<repo>/compare/<sha>...<branch>`.
 - **Local packages and binaries** (`.binaryTarget`, `.xcframework` folders) have no registry. The script shows the bundled version (`CFBundleShortVersionString`) where it can read one; updates come from the vendor.
 - **Transitive pins** move with their parent package. Count their changes as constraints of the parent's update, or as a required change when the resolution conflicts (see `references/scoring.md`).
 

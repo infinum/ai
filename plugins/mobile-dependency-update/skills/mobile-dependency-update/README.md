@@ -1,36 +1,37 @@
 # mobile-dependency-update
 
-Analyze a dependency update for risk and relevance in Gradle (Android) and Swift Package Manager (iOS, Xcode) projects. The skill fetches the release notes for every version between the current and the target, checks security advisories, reads the project's real call sites, and writes a report with a risk tier (LOW / MEDIUM / HIGH) that names the required code changes. It proposes the exact version edit and applies it only after you say yes.
+Analyze dependency updates for risk and relevance in Gradle (Android) and Swift Package Manager (iOS, Xcode) projects. Run it on a branch, for example a Renovate pull request, and it analyzes every dependency that the branch changes against its base branch. Name a library, and it analyzes that one update. The skill fetches the release notes for every version between the current and the target, checks security advisories, reads the project's real call sites, and writes a report with a risk tier (LOW / MEDIUM / HIGH) that names the required code changes. When the branch does not contain the version edit yet, it proposes the exact edit and applies it only after you say yes.
 
 ## Usage
 
 ```
-/mobile-dependency-update:mobile-dependency-update <library> [target version]
+/mobile-dependency-update:mobile-dependency-update [library] [version] [branch or pull request]
 ```
 
 (Plugin-installed skills are namespaced as `/<plugin>:<skill>`.)
 
 The skill runs only when you invoke it; a run is expensive, so it never triggers on plain requests. Examples:
 
-- `/mobile-dependency-update:mobile-dependency-update Alamofire 5.12`
-- `/mobile-dependency-update:mobile-dependency-update AGP`
+- `/mobile-dependency-update:mobile-dependency-update` — on a branch: every dependency that the branch changes against its base branch.
+- `/mobile-dependency-update:mobile-dependency-update PR 4357` — the changes of a pull request, without a checkout.
+- `/mobile-dependency-update:mobile-dependency-update against develop` — another base branch.
+- `/mobile-dependency-update:mobile-dependency-update Alamofire 5.12` — one library, also when the branch does not change it.
 - `/mobile-dependency-update:mobile-dependency-update is Firebase 12.19 ok for us?`
 - `/mobile-dependency-update:mobile-dependency-update what changed in Room between 2.6 and 2.7?`
-- `/mobile-dependency-update:mobile-dependency-update what is outdated?` — scan mode: one report for the whole project.
 
 ## What it does
 
 1. **Detects the ecosystem** — Gradle (`build.gradle(.kts)`, `gradle/libs.versions.toml`) or SPM (`project.pbxproj`, `Package.resolved`, `Package.swift`).
-2. **Finds the current version** and every place that declares it, then picks the target: the version you named, or the newest stable one. For a major bump it also reports the newest version inside the current major.
+2. **Finds what to analyze** — by default the dependencies that the branch changes against its base, which is the target of its open pull request or the default branch, compared where the branch left it; or the library you name. The current version comes from the base. The target is the version you name, else the one on the branch, else the newest stable one; for a major bump to the newest version, the skill also reports the newest version inside the current major.
 3. **Fetches the release notes** for every version in between, from the ecosystem's sources and GitHub, and diffs the public API or the artifact when the notes are terse.
 4. **Checks advisories** with OSV: what the target fixes, what it introduces, what stays open.
 5. **Labels each change** (`removed`, `signature-changed`, `behavior-changed`, `deprecated`, `bugfix`, `additive`, `noise`) and checks whether the project uses the affected API. A change counts only if a real call site uses it.
 6. **Sets the risk tier** (HIGH if code or configuration must change or the target brings a new advisory, MEDIUM if something must be verified, LOW otherwise) and writes the report: verdict first, required changes with `file:line`, behavior changes to verify by hand, automated checks that reveal the rest, constraints such as a raised minimum SDK, and caveats.
-7. **Proposes the edit** — old → new at `file:line`, plus the lockfile or pin entry — and waits for an explicit yes before it edits anything. It never commits or opens a pull request.
+7. **Proposes the edit** when the branch does not contain it yet — old → new at `file:line`, plus the lockfile or pin entry — and waits for an explicit yes before it edits anything. It never commits or opens a pull request.
 
-### Scan mode
+### Several changes on one branch
 
-Ask what is outdated and the skill inventories the direct dependencies, lists the newer stable versions, and runs the analysis per dependency. Long lists fan out to subagents so that release notes do not crowd out the analysis.
+When a branch changes several dependencies, such as a grouped Renovate pull request, the skill lists them first. With more than five, it shows that list and asks before the analysis, because each dependency costs a full run. Long lists fan out to subagents so that release notes do not crowd out the analysis. The report is one table, plus a block for each dependency that needs work.
 
 ### Policy file
 
@@ -54,7 +55,8 @@ The skill keeps library facts that earlier runs learned — where the notes live
 | Update, upgrade, or bump a library, SDK, or Gradle plugin | Yes |
 | Decide whether an update is safe or what it breaks | Yes |
 | Find out what changed between two versions of a dependency | Yes |
-| List the outdated dependencies of a project | Yes — scan mode |
+| Review a dependency-update branch or pull request, for example from Renovate | Yes |
+| Find outdated dependencies | No — Renovate or Dependabot do that; run this skill on their pull requests |
 | npm, PyPI, CocoaPods, or another ecosystem | Not yet — see `references/adding-an-ecosystem.md` |
 | Vet a brand-new dependency before adopting it | No — use `security-check:dependency-adoption-review` |
 

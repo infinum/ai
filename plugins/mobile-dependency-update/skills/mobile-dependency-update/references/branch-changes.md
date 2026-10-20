@@ -1,17 +1,21 @@
-# Scan mode
+# Branch changes
 
-Goal: for every outdated dependency, tell the user what they have to do — not only that an update exists. A row that says HIGH and nothing else sends the user back to do the analysis themselves.
+Section 1 applies to every branch comparison from "What to analyze" in `SKILL.md`. The rest applies when more than one dependency changed, for example on a grouped Renovate branch.
+
+Goal: for every dependency that the branch changes, tell the user what they have to do — not only that the version moved. A row that says HIGH and nothing else sends the user back to do the analysis themselves.
 
 ## 1. Inventory (main agent)
 
-1. List the direct dependencies with the ecosystem reference (`spm_deps.py` for SPM).
-2. Run `list_versions.py` for each one; parallel calls are fine. Keep those with a newer stable version.
-3. Apply the policy: a `disabled: true` match goes to "Blocked by policy" with its `reason`; note each `group`, `riskFloor`, `minimumReleaseAge`, and `alwaysEscalate` match, and the `ci` list.
-4. Put what has no version to compare under "Not checked", with the reason: branch or revision pins, local packages, binaries outside a package manager (with their bundled version, if known), and lookups that failed.
+1. Diff the dependency declarations between the base and the head ("What to analyze" in `SKILL.md` says how), over every place that the ecosystem reference lists under "Extract": for Gradle the version catalogs, the build files, `buildSrc/`, and `build-logic/`; for SPM `Package.resolved`, `project.pbxproj`, and `Package.swift`.
+2. Turn each changed line into dependencies, as the ecosystem reference counts them: libraries that share a version key are one dependency, a BoM is one dependency, and a transitive pin counts with its parent package. Keys of one library family that move to the same release, such as the JUnit modules, can share one row. Record the coordinate, the base and the head version, and the declaring lines on the head.
+3. Run `list_versions.py` with the base version as the current one, to get the bump type and the release date of the head version; pass `--pre` for a pre-release head. For a head below the base (a rollback), pass the head as the current version instead. Parallel calls are fine.
+4. Apply the policy: a `disabled: true` match goes to "Blocked by policy" with its `reason`, because the branch moves a package that the policy pins, and the user can still ask for its analysis (step 3 of `SKILL.md`); note each `group`, `riskFloor`, `minimumReleaseAge`, and `alwaysEscalate` match, and the `ci` list.
+5. Put what has no version to compare under "Not checked" (in a report on one dependency: in its caveats), with the reason: branch or revision pins, local packages, binaries outside a package manager (with their bundled version, if known), changes that no ecosystem reference covers (for example the Gradle wrapper, GitHub Actions, or CI images), and lookups that failed.
+6. If more than five dependencies changed, show the inventory as a table (coordinate, from → to, type, released, declared in), sorted by bump type (major first) and then by release date (newest first), and ask before the analysis: each dependency costs a full run of the workflow. The user can also name a subset.
 
 ## 2. Analysis
 
-With five or fewer outdated dependencies, analyze them yourself, one after another, the way the "Subagent task" below describes (triage included).
+With five or fewer changed dependencies, analyze them yourself, one after another, the way the "Subagent task" below describes (triage included).
 
 With more, fan out with the Agent tool so that each dependency's release notes stay in their own context — forty release-note pages in one context crowd out the analysis:
 
@@ -19,13 +23,13 @@ With more, fan out with the Agent tool so that each dependency's release notes s
 - the rest in batches of up to five per subagent;
 - up to eight subagents per message; send the next wave when a wave returns.
 
-Brief each subagent with `<skill-dir>`, the project root, the ecosystem, and, per dependency, the coordinate, current and target version, bump type, release date, declared-in lines, and whether a policy rule sets `alwaysEscalate` for it; add the policy `ci` list once. Tell it to read `<skill-dir>/SKILL.md`, the ecosystem reference, `references/scoring.md`, and the "Subagent task" section of this file, and to return only the result blocks. Give facts about the project and the dependency, not method: do not add instructions such as "check usage for every bug fix" to a brief, because the triage decides the path and `SKILL.md` decides which clusters get a usage check.
+Brief each subagent with `<skill-dir>`, the project root, the ecosystem, and, per dependency, the coordinate, the base and the head version, bump type, release date, declared-in lines, and whether a policy rule sets `alwaysEscalate` for it; add the base and head references and the policy `ci` list once. Tell it to read `<skill-dir>/SKILL.md`, the ecosystem reference, `references/scoring.md`, and the "Subagent task" section of this file, and to return only the result blocks. Give facts about the project and the dependency, not method: do not add instructions such as "check usage for every bug fix" to a brief, because the triage decides the path and `SKILL.md` decides which clusters get a usage check.
 
 ### Subagent task
 
 For each dependency in the batch:
 
-1. Run steps 5–8 of `SKILL.md`: replacement check, release notes, hard evidence where needed, advisories.
+1. Run steps 5–8 of `SKILL.md` over the range from the base to the head (for a rollback, from the head up to the base, as step 4 says): replacement check, release notes, hard evidence where needed, advisories.
 2. **Triage** (below). On the quick path, skip the usage check: the tier is LOW unless an unmet minimum or a conflict makes it HIGH.
 3. On the full path, run step 9: labels, clusters, usage check, tier.
 4. Update the guide cache (step 11). Do not propose or make edits.
@@ -33,7 +37,7 @@ For each dependency in the batch:
 
 ```
 coord: <coordinate>
-from: <current>  to: <target>  type: <bump type>  released: <YYYY-MM-DD | unknown>
+from: <base version>  to: <head version>  type: <bump type>  released: <YYYY-MM-DD | unknown>
 tier: <LOW | MEDIUM | HIGH> [(low confidence)]  path: <quick | full: reason>
 urgency: <advisory IDs and severity: they affect the current version, and the target fixes them>
 advisory: <ID> (<severity>) affects the target, not the current version -> <what to do> (<URL>)
@@ -68,7 +72,7 @@ If unsure, take the full path: a missed breaking change costs far more than one 
 
 ## 3. Report (main agent)
 
-Render in the shape of `assets/scan-report.example.md`:
+Render in the shape of `assets/branch-report.example.md`, with the base and the head in the title. Propose no edit: the branch already holds the version changes.
 
 - Sort rows by tier (HIGH first). Inside a tier, rows with a required change come first, then rows with a manual behavior item, then rows with only automated checks, then the rest; in each of these groups, a row whose items all concern internal builds only comes last. Then sort by the number of required changes (most first), by release date (newest first), and by coordinate. The user reads the table from the top, so a build break must not sit below a change in a debug tool.
 - Rows that share a policy `group` sit together under the group name; the group shows its highest tier.
@@ -79,4 +83,4 @@ Render in the shape of `assets/scan-report.example.md`:
 - `dropped` lines go into the "Caveats" section, one line each.
 - Then "Blocked by policy", "Not checked", and "Caveats".
 
-One failure never stops the scan: record a caveat for that dependency and continue.
+One failure never stops the analysis: record a caveat for that dependency and continue.

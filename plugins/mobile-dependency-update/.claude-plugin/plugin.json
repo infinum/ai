@@ -1,7 +1,7 @@
 {
   "name": "mobile-dependency-update",
   "version": "1.0.0",
-  "description": "Analyze a dependency update in Gradle (Android) and Swift Package Manager (iOS) projects: fetched release notes, security advisories, and the project's real call sites feed a LOW / MEDIUM / HIGH risk report with the required code changes, then the exact version edit on request. Also scans a project for outdated dependencies.",
+  "description": "Analyze dependency updates in Gradle (Android) and Swift Package Manager (iOS) projects: fetched release notes, security advisories, and the project's real call sites feed a LOW / MEDIUM / HIGH risk report with the required code changes. Run it on a branch or pull request to analyze every dependency that it changes, or name one library to analyze its update.",
   "keywords": [
     "dependencies",
     "upgrade",

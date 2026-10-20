@@ -14,6 +14,8 @@ change that breaks the build is a required change. Items that a command
 reveals go into the one "Automated checks" line.
 
 Formats for the lines that this example does not need:
+  Title for a branch: # play-services-auth 21.6.0 → 22.0.0 (`renovate/play-services-auth-22` against `main`, merge base `3f2a1c4`)
+  Last line when the branch already holds the edit: **No edit to propose:** the branch already changes `playServicesAuth` to 22.0.0. It still lacks the two required changes.
   > **Update soon — security:** GHSA-3cqm-mf7h-prrj (CVE-2021-0341, HIGH) affects 4.9.0; 4.12.0 fixes it.
   > **DEFERRED:** 2.10.2 is 1 day old; the policy asks for 7 days (clears on 2026-09-30). Say "go ahead" to override.
   **Risk: MEDIUM** (low confidence: notes missing for 2 of 5 versions) — 1 behavior change to verify by hand: …

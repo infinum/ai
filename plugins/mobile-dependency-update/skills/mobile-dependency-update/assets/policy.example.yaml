@@ -27,11 +27,11 @@ rules:
   - match: { packagePattern: "^com\\.example\\.payments" }
     riskFloor: high
 
-  # Kotlin and KSP must move together: the scan report lists them as one group.
+  # Kotlin and KSP must move together: the branch report lists them as one group.
   - match: { packagePattern: "^org\\.jetbrains\\.kotlin|^com\\.google\\.devtools\\.ksp" }
     group: kotlin
 
-  # UI and rendering libraries: always take the full analysis in scan mode.
+  # UI and rendering libraries: always take the full analysis when a branch changes several dependencies.
   # Quiet behavior changes hide in notes that read like routine fixes.
   - match: { packagePattern: "^(io\\.coil-kt|com\\.airbnb\\.android)|github\\.com/airbnb/lottie-ios" }
     alwaysEscalate: true
@@ -54,7 +54,7 @@ rules:
 # Action fields:
 #   riskFloor          low | medium | high  - raises the tier, never lowers it
 #   minimumReleaseAge  <n>d | <n>w          - hard floor for matching packages
-#   alwaysEscalate     true                 - scan mode always runs the full analysis
-#   group              <name>               - the scan report lists matching packages together
+#   alwaysEscalate     true                 - always the full analysis, also on a branch with several changes
+#   group              <name>               - the branch report lists matching packages together
 #   disabled           true                 - no analysis; listed under "Blocked by policy"
 #   reason             <text>               - shown next to a disabled package

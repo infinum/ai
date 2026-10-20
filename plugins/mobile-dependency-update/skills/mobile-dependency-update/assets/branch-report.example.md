@@ -1,11 +1,12 @@
 <!--
-Example scan report. Follow this shape, and leave out empty sections.
-Package names, versions, and paths are invented.
+Example report for a branch that changes several dependencies. Follow this
+shape, and leave out empty sections. Package names, versions, branch names,
+and paths are invented.
 -->
 
-# Dependency scan — ExampleApp (SPM), 2026-09-24
+# Dependency changes — ExampleApp (SPM), `update-dependencies` against `main` (merge base `3f2a1c4`), 2026-09-24
 
-**1 package needs code changes, 1 needs a manual test, and 4 can update as they are; rerun the advisory check for ImageKit first.** Start with NetKit: 6.0 removes the request API that 41 files use.
+**1 package needs code changes, 1 needs a manual test, and 4 need nothing more; rerun the advisory check for ImageKit first.** Start with NetKit: 6.0 removes the request API that 41 files use.
 
 Policy: `.claude/dependency-update-policy.yaml` (1 group, 1 blocked package).
 
@@ -45,16 +46,16 @@ Suggestions:
 
 ## Blocked by policy
 
-| Package | Current → Latest | Reason |
+| Package | From → To | Reason |
 |---|---|---|
-| `github.com/example/vendor-sdk` | 4.2.0 → 5.1.0 | Pinned until the vendor certifies 5.x |
+| `github.com/example/vendor-sdk` | 4.2.0 → 5.1.0 | The branch moves a package that the policy pins: "Pinned until the vendor certifies 5.x" |
 
 ## Not checked
 
 | Item | Why |
 |---|---|
-| `github.com/example/EmptyState` | Pinned to branch `master`: no version to compare |
-| `Vendors/ScanSDK` (ScanSDK.xcframework 9.1.2) | Local binary package: ask the vendor for updates |
+| `github.com/example/EmptyState` | The branch moves its pin to a newer commit of branch `master`: no version to compare |
+| `Vendors/ScanSDK` (ScanSDK.xcframework 9.1.2 → 9.2.0) | Local binary package: no registry and no release notes; ask the vendor what changed |
 
 ## Caveats
 
@@ -62,4 +63,4 @@ Suggestions:
 
 ---
 
-For the release notes and the full reasons of one package, run a single-package analysis.
+For the release notes and the full reasons of one package, name it in a new run.

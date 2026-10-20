@@ -1,7 +1,7 @@
 ---
 name: mobile-dependency-update
-description: Analyze a dependency update for risk in Gradle (Android) and Swift Package Manager (iOS) projects. Run `/mobile-dependency-update:mobile-dependency-update <library> [target version]`, or ask it what is outdated. The report gives a LOW / MEDIUM / HIGH tier with the required code changes, from the release notes and the project's call sites, then proposes the version edit and applies it only after a yes. Not Cowork-ready — needs `gh`/`curl` egress to Maven, GitHub, and OSV registries, plus the project's Gradle or Xcode toolchain.
-argument-hint: "<library> [target version]"
+description: Analyze dependency updates for risk in Gradle (Android) and Swift Package Manager (iOS) projects. Run `/mobile-dependency-update:mobile-dependency-update` on a branch to analyze every dependency that it changes against its base branch, or name a library to look at that one only. The report gives a LOW / MEDIUM / HIGH tier with the required code changes, from the release notes and the project's call sites; when the branch does not contain the version edit yet, the skill proposes it and applies it only after a yes. Not Cowork-ready — needs `gh`/`curl` egress to Maven, GitHub, and OSV registries, plus the project's Gradle or Xcode toolchain.
+argument-hint: "[library] [version] [branch or pull request]"
 disable-model-invocation: true
 ---
 
@@ -23,8 +23,8 @@ Two things make the answer trustworthy, and the workflow protects both:
 | `references/gradle.md` | Gradle projects (Android, JVM) |
 | `references/spm.md` | Swift Package Manager projects (Xcode or `Package.swift`) |
 | `references/scoring.md` | Before you set the tier (step 9) |
-| `references/scan-mode.md` | The user asks what is outdated |
-| `assets/report.example.md`, `assets/scan-report.example.md` | Before you write the report: the shape to follow |
+| `references/branch-changes.md` | Every branch comparison: section 1 lists the changes; the rest applies when more than one dependency changed |
+| `assets/report.example.md`, `assets/branch-report.example.md` | Before you write the report: the shape to follow |
 | `assets/policy.example.yaml` | The project has a policy file: what each field does |
 | `references/adding-an-ecosystem.md` | Only for an ecosystem that this skill does not cover yet |
 
@@ -35,20 +35,28 @@ The scripts give exact data, so do not redo their work by hand. They need only P
 - `osv_check.py` — security advisories for the current and the target version.
 - `html_to_text.py` — the text of an HTML release-notes page.
 
-## Modes
+## What to analyze
 
-- **Single dependency** — the user names a library, maybe with a target version. Follow the workflow below.
-- **Scan** — the user asks what is outdated. Follow `references/scan-mode.md`; it reuses this workflow per dependency and, for long lists, fans the work out to subagents.
+Pick the narrowest reading of the request:
+
+- By default, analyze every dependency that the current branch changes. Compare it with the base of its open pull request (`gh pr view --json baseRefName`) or, without one, with the remote default branch. Fetch the base, then diff from the merge base: `git diff --merge-base origin/<base>`, which also shows edits that are not committed yet. Name the base and the head in the report, so that the user can correct them.
+- If the user names a base branch, another branch, or a pull request, compare that instead, and fetch what they name. A pull request brings its own base: `gh pr diff <number>`.
+- If the user names a library, look only at that library: an update to the version that the user names, else its change on the branch, else an update to the newest stable version.
+- If the comparison changes no dependency and the user named no library, say so, name the other changes (for example the Gradle wrapper or a GitHub Action), and stop.
+
+List the changed dependencies with section 1 of `references/branch-changes.md`. When more than one dependency changed, follow the rest of that file: it runs this workflow per dependency and, for long lists, fans the work out to subagents.
+
+Read the code at the head of the comparison. When the head is not the current checkout, fetch it, export it to a temporary directory (`git archive <ref> | tar -x -C <dir>`), and read it there. Propose edits only for the current checkout.
 
 ## Workflow
 
 1. **Detect the ecosystem.** Gradle: `settings.gradle(.kts)`, `build.gradle(.kts)`, or `gradle/libs.versions.toml`. SPM: a `project.pbxproj` with package references, a `Package.resolved`, or a root `Package.swift` (Xcode app projects usually have no root `Package.swift`). Read the matching reference. If both match, ask which one, unless the library exists in only one. If none matches, stop: name the files you checked and point to `references/adding-an-ecosystem.md`.
 
-2. **Find the current version** and every place that declares it (file:line). The ecosystem reference says how. The version that ships is the resolved one — the SPM pin, the catalog value behind a `version.ref` — not a rule's minimum.
+2. **Find the current version** and every place that declares it (file:line). The ecosystem reference says how. The version that ships is the resolved one — the SPM pin, the catalog value behind a `version.ref` — not a rule's minimum. When the branch changes the dependency, the current version is the one at the base, and the declarations are the lines on the head.
 
 3. **Load the policy** from `dependency-update-policy.yaml` at the repo root or in `.claude/`, if present (fields: `assets/policy.example.yaml`). Warn about fields you do not recognize and continue; if the file does not parse, name the line and use the defaults. If a rule sets `disabled: true` for this dependency, say so and ask whether to analyze it anyway.
 
-4. **Pick the target.** Take the version the user named, else the newest stable version from `list_versions.py`. If the newest is a major bump, also report the newest version inside the current major: it is often the safe first step. Skip pre-releases unless the user asks for one or already uses one. If no newer version exists, run only steps 5, 8, and 11, then stop. If step 5 found a successor, call the current version the final release and ask whether to analyze the migration; otherwise, say that the project is on the newest version. Report any open advisory.
+4. **Pick the target.** Take the version that the user named; else, when the branch changes the dependency, the version on the head; else the newest stable version from `list_versions.py`. If you pick the newest version and it is a major bump, also report the newest version inside the current major: it is often the safe first step. Skip pre-releases unless the user asks for one or already uses one. Whatever the source of the target, `list_versions.py` gives the versions and dates in the range; pass `--pre` when the target is a pre-release. If the target is lower than the current version (a rollback), pass the target as the current version, so that the script lists the range up to the current version, and report what the project loses. If you look for the newest version and none exists, run only steps 5, 8, and 11, then stop. If step 5 found a successor, call the current version the final release and ask whether to analyze the migration; otherwise, say that the project is on the newest version. Report any open advisory.
 
 5. **Check for a replacement.** If a source fetched in this run says that the library is superseded, the update is a `replacement`: name the successor and link the source. Signs: an archived repository; an end-of-life, deprecation, or successor notice in the README, the release notes, or the docs; a moved coordinate.
 
@@ -69,7 +77,7 @@ The scripts give exact data, so do not redo their work by hand. They need only P
 
 11. **Update the guide cache.**
 
-12. **Propose the edit** if the user asked to update: the exact change (file:line, old → new, plus the pin or lockfile entry that follows). If required changes exist, say what the version edit alone breaks until they are done: the build, or the behavior at the listed sites. Ask, and wait. Edit only after an explicit yes, and only the listed lines; then offer the verification step from the ecosystem reference. The user decides because a version bump can break the build or change runtime behavior in ways that the report can only predict.
+12. **Propose the edit** if the user asked to update, the head is the current checkout, and the branch does not contain the edit yet: the exact change (file:line, old → new, plus the pin or lockfile entry that follows). If required changes exist, say what the version edit alone breaks until they are done: the build, or the behavior at the listed sites. Ask, and wait. Edit only after an explicit yes, and only the listed lines; then offer the verification step from the ecosystem reference. The user decides because a version bump can break the build or change runtime behavior in ways that the report can only predict. When the branch already contains the version change, propose nothing: the required changes list what the branch still lacks, and a fix that the branch already makes counts as done.
 
 ## Labels
 
