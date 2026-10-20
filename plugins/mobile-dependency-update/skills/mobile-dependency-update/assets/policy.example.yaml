@@ -9,8 +9,8 @@
 # the global value for the packages it matches (so a rule can also relax it).
 
 # Hard minimum age for every target version, as <n>d or <n>w. A younger target
-# makes the report DEFERRED. Without this field there is no hard floor; young
-# releases still get age points in the score.
+# makes the report DEFERRED. Without this field there is no hard floor; a young
+# release gets only a timing line under the verdict.
 minimumReleaseAge: 3d
 
 # Commands that CI runs on every pull request. The report adds "CI runs it"

@@ -23,7 +23,7 @@ It reads every `.xcodeproj` in the tree (a workspace often has several: the app 
 - **Products are the module names** to look for in imports (`firebase-ios-sdk` → `FirebaseMessaging`, `FirebaseCrashlytics`, …).
 - **Branch and revision pins** have no version to compare. In scan mode they go under "Not checked". If the user asks, compare the pinned commit with the branch head: `gh api repos/<owner>/<repo>/compare/<sha>...<branch>`.
 - **Local packages and binaries** (`.binaryTarget`, `.xcframework` folders) have no registry. The script shows the bundled version (`CFBundleShortVersionString`) where it can read one; updates come from the vendor.
-- **Transitive pins** move with their parent package. Count their changes as constraints of the parent's update.
+- **Transitive pins** move with their parent package. Count their changes as constraints of the parent's update, or as a required change when the resolution conflicts (see `references/scoring.md`).
 
 ## Versions and dates
 

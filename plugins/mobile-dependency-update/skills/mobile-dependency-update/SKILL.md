@@ -22,7 +22,7 @@ Two things make the answer trustworthy, and the workflow protects both:
 |---|---|
 | `references/gradle.md` | Gradle projects (Android, JVM) |
 | `references/spm.md` | Swift Package Manager projects (Xcode or `Package.swift`) |
-| `references/scoring.md` | Before you score (step 9) |
+| `references/scoring.md` | Before you set the tier (step 9) |
 | `references/scan-mode.md` | The user asks what is outdated |
 | `assets/report.example.md`, `assets/scan-report.example.md` | Before you write the report: the shape to follow |
 | `assets/policy.example.yaml` | The project has a policy file: what each field does |
@@ -57,19 +57,19 @@ The scripts give exact data, so do not redo their work by hand. They need only P
    2. the sources in the ecosystem reference;
    3. GitHub (see "GitHub sources").
 
-   Fetch raw text with `curl`, `gh api`, and `html_to_text.py`. Use WebFetch only when these fail, and ask it for verbatim text: it returns a model-written summary, and exact API names get lost in summaries. Note each version whose notes you could not find — the score counts gaps.
+   Fetch raw text with `curl`, `gh api`, and `html_to_text.py`. Use WebFetch only when these fail, and ask it for verbatim text: it returns a model-written summary, and exact API names get lost in summaries. Note each version whose notes you could not find — the verdict marks gaps as low confidence.
 
 7. **Collect hard evidence** when the notes are terse, the bump is major, or an entry claims a removal or a signature change: diff the public API, the minimum platform or SDK, and the transitive dependencies of the two versions. The ecosystem reference shows how. When the artifact and the release notes disagree, trust the artifact.
 
 8. **Check advisories** with `osv_check.py`. It reports what the target fixes, what it introduces, and what stays open. If OSV is unreachable, write "advisory check unavailable" in the caveats and continue.
 
-9. **Label, cluster, and check usage** (sections below), then **score** with `references/scoring.md`.
+9. **Label, cluster, and check usage** (sections below), then **set the tier** with `references/scoring.md`.
 
 10. **Write the report** in the shape of `assets/report.example.md`.
 
 11. **Update the guide cache.**
 
-12. **Propose the edit** if the user asked to update: the exact change (file:line, old → new, plus the pin or lockfile entry that follows). If required code changes exist, say that the version edit alone breaks the build until they are done. Ask, and wait. Edit only after an explicit yes, and only the listed lines; then offer the verification step from the ecosystem reference. The user decides because a version bump can break the build or change runtime behavior in ways that the report can only predict.
+12. **Propose the edit** if the user asked to update: the exact change (file:line, old → new, plus the pin or lockfile entry that follows). If required changes exist, say what the version edit alone breaks until they are done: the build, or the behavior at the listed sites. Ask, and wait. Edit only after an explicit yes, and only the listed lines; then offer the verification step from the ecosystem reference. The user decides because a version bump can break the build or change runtime behavior in ways that the report can only predict.
 
 ## Labels
 
@@ -94,9 +94,9 @@ Cases that keyword matching gets wrong:
 - "Revert the default of X to fix a regression" → `behavior-changed`: a changed default changes the runtime result, also when the release calls it a fix or when it restores the behavior of an older version.
 - "Renamed `Foo.bar` to `Foo.baz`; `bar` is deprecated" → `deprecated`: old code still compiles.
 - "`Session.request(_:)` is now `async`" → `signature-changed`.
-- "Raised minSdk to 24" or "requires iOS 15" → no label: it is a constraint (see `references/scoring.md`).
+- "Raised minSdk to 24" or "requires iOS 15" → no label: it is a constraint. If the project does not meet it, it is also a required change with the tag `[minimum]` (see `references/scoring.md`).
 
-**Clusters.** Entries that describe one change — the same PR or issue, or one feature within one release — form one cluster. Label and score the cluster once, at its most severe label: ten bullets about one rewrite are still one change.
+**Clusters.** Entries that describe one change — the same PR or issue, or one feature within one release — form one cluster. Label the cluster once, at its most severe label: ten bullets about one rewrite are still one change. After the usage check, a cluster that the project uses only in part takes the most severe label among the members that it uses.
 
 ## Usage check
 
@@ -104,32 +104,35 @@ For each cluster above `noise`, find out whether the project uses the affected A
 
 1. List the source files that import the library. The ecosystem reference gives the import forms and file globs. Skip build output, vendored code, and generated code.
 2. Search those files for the symbol: the type, member, function, or resource name.
-3. Read each hit and confirm that it is a real use of this library's API — not a comment, a string, or a same-named symbol from somewhere else. Also note whether the site ships in production or only in internal builds (`#if DEBUG`, a target or scheme that the release build does not link, `debugImplementation`): the score weighs internal-only usage lower. For a `behavior-changed` cluster, also confirm the use on a path that this project can run. A project fact decides: a setting that the project overrides, a mode that it never turns on, an SDK or OS level that it is past. A trace through the library's internals does not decide; if the judgment needs one, the site stays confirmed. The project fact must decide on its own: if it needs an assumption about how a library or a tool treats that fact, the site stays confirmed. Before you drop a site, search the project for code that contradicts the fact. When this removes every site of a `behavior-changed` cluster, write a `dropped:` line: the cluster, the sites, the project fact, and what would make the path run. The report lists these lines under the caveats.
+3. Read each hit and confirm that it is a real use of this library's API — not a comment, a string, or a same-named symbol from somewhere else. Also note whether the site ships in production or only in internal builds (`#if DEBUG`, a target or scheme that the release build does not link, `debugImplementation`): the report marks internal-only items. For a `behavior-changed` cluster, also confirm the use on a path that this project can run. A project fact decides: a setting that the project overrides, a mode that it never turns on, an SDK or OS level that it is past. A trace through the library's internals does not decide; if the judgment needs one, the site stays confirmed. The project fact must decide on its own: if it needs an assumption about how a library or a tool treats that fact, the site stays confirmed. Before you drop a site, search the project for code that contradicts the fact. When this removes every site of a `behavior-changed` cluster, write a `dropped:` line: the cluster, the sites, the project fact, and what would make the path run. The report lists these lines under the caveats.
 
 Classify each cluster as `used` (at least one confirmed site), `ambiguous` (hits you cannot confirm, typically generic names such as `Result`, `Session`, or `Configuration`), or `unused`. An import alone proves nothing: Swift imports whole modules, and Kotlin calls members without naming them in an import.
 
-**Bug fixes.** A `bugfix` gets no check: it keeps the documented behavior. If the project depends on the old behavior — a workaround, a comment or an issue link about the bug, a test that asserts the old output, code that parses or stores the old format — relabel the cluster `behavior-changed` and cite that site.
+**What the change does at each site.** For each confirmed site of a `behavior-changed` cluster, state what the new behavior does there: what fails, which value changes, or which code no longer runs. When the notes do not say, read the library's source at both versions.
 
-**How the change shows.** For each `used` or `ambiguous` cluster that is `behavior-changed`, decide what reveals the change:
+**Bug fixes.** A `bugfix` gets no item to verify: it keeps the documented behavior. If the project depends on the old behavior — a workaround, a comment or an issue link about the bug, a test that asserts the old output, code that parses or stores the old format — relabel the cluster `behavior-changed` and cite that site.
+
+**How the change shows.** For each `used` cluster that is `behavior-changed`, decide what reveals the change (an `ambiguous` cluster goes under Manual review instead):
 
 - `build` — any build fails: a compiler, annotation-processor, resource, or shrinker error.
 - `check` — a named command fails: a linter or static-analysis task, or a test that runs the site. A test counts only if it runs the library's real code at the site, not a fake, and the task fails on a finding (for example detekt `maxIssues: 0`, lint `abortOnError`). Name the test file.
 - `manual` — only a person who runs the app sees it: runtime behavior, UI, timing, network behavior, device-specific behavior, the behavior of a minified release build.
 
-Take `manual` if you cannot name the command, or, for a test, the test file. The ecosystem reference lists the usual commands and where CI config lives. When you already know the exact sites and the fix, the item is a required change, not a check: list it under the required changes with its sites.
+Take `manual` if you cannot name the command, or, for a test, the test file. The ecosystem reference lists the usual commands and where CI config lives. If the code at a confirmed site fails for certain with the new behavior (an error, a crash, or a call that never completes), and the library's source or artifacts at both versions show it, the item is a required change: list it under the required changes with its sites and the fix. If the effect depends on a race between threads, on data, or on device state, it stays an item to verify, even when you know a likely fix. Decide per site: one cluster can give a required change at one site and an item to verify at another.
 
 For an `additive` cluster, search instead for code that does by hand what the new API offers (a custom retry loop, a hand-written date parser). Report it only when the match is clear; a vague "you could use X" is noise.
 
 ## Report rules
 
-- Verdict first: the tier and one sentence that says what the user must do.
+- Verdict first, below only an urgency or DEFERRED line: the tier, what set it with counts, and one sentence that says what the user must do (see "Verdict line" in `references/scoring.md`).
+- Section order: the urgency or DEFERRED line, the verdict, the replacement and timing lines, then Required changes, Behavior changes to verify, Automated checks, Suggestions, Constraints, Manual review, Release notes, advisories and caveats, and the Apply question.
 - Leave out sections that have no items.
 - Each required change names its usage sites (file:line), says what to change, and links its source (release note, changelog file, or diff).
 - Summarize release notes in your own words and link them. Do not paste them: pasted notes bury the findings, and Claude limits verbatim quotes from fetched pages.
 - Keep `unused` clusters out of the main sections. The changelog summary lists them only if they are `removed` or `signature-changed`, because those show how disruptive the release is.
-- "Behavior changes to verify" lists only `manual` items: the checks that a person must do. Each item names the trigger in the project's normal use and the symptom that a person sees. Without both, the item is a precaution: leave it out.
-- `build` and `check` items go into one "Automated checks" line: each command once, with the items that it covers. Add "(CI runs it)" when the policy `ci` field or a CI config file in the repository runs that task. If you found neither, add one caveat line instead: "CI coverage unknown: run the automated checks once if CI does not."
-- **Manual review** holds `ambiguous` clusters whose use depends on a fact outside the repository — a dashboard, server, or CI setting: one question each, with what follows from each answer.
+- "Behavior changes to verify" lists only `manual` items: what a person must try by hand. Each item names the trigger in the project's normal use and the symptom that a person sees. Without both, the item is a precaution: leave it out.
+- `build` items are required changes: list them under Required changes with their sites and the build command that shows them. `check` items go into one "Automated checks" line: each command once, with the items that it covers. Add "(CI runs it)" when the policy `ci` field or a CI config file in the repository runs that task. If the report has `check` items and you found neither, add one caveat line instead: "CI coverage unknown: run the automated checks once if CI does not."
+- **Manual review** holds `ambiguous` clusters above `deprecated`: hits that you could not confirm (name each hit and what would confirm it), and uses that depend on a fact outside the repository, such as a dashboard, server, or CI setting (one question each, with what follows from each answer). An unconfirmed `deprecated` cluster goes under Suggestions, marked "unconfirmed".
 - If the target is younger than a policy `minimumReleaseAge`, mark the report **DEFERRED** at the top and say when the version clears the floor. The user can override it.
 - End with the caveats: versions without notes, failed fetches, checks you could not run.
 
@@ -139,7 +142,7 @@ Most libraries publish on GitHub, and GitHub is the fallback for every ecosystem
 
 - **Releases**: one tag with `gh api repos/<owner>/<repo>/releases/tags/<tag> --jq '.published_at, .body'`, or the list with `gh api 'repos/<owner>/<repo>/releases?per_page=100' --jq '.[] | [.tag_name, .published_at] | @tsv'`. Tag forms vary — `1.2.3`, `v1.2.3`, `<artifact>-v1.2.3`, `<artifact>/1.2.3` — so record the form that worked in the guide cache.
 - **Changelog files**: `CHANGELOG.md`, `CHANGES.md`, `HISTORY.md`, `RELEASE_NOTES.md`, `docs/CHANGELOG.md`, with `gh api 'repos/<owner>/<repo>/contents/<path>?ref=<tag>' -H 'Accept: application/vnd.github.raw'`. Read the file at the target tag: the top of the default branch can describe unreleased work.
-- **Last resort**: `gh api repos/<owner>/<repo>/compare/<old-tag>...<new-tag> --jq '.commits[].commit.message'`. Commit messages are not release notes: score the notes as not found.
+- **Last resort**: `gh api repos/<owner>/<repo>/compare/<old-tag>...<new-tag> --jq '.commits[].commit.message'`. Commit messages are not release notes: count the notes as not found.
 
 Monorepos publish several artifacts per release: keep only the entries for this artifact. Without `gh`, call the same `https://api.github.com/...` URLs with `curl` (60 requests per hour without a token).
 

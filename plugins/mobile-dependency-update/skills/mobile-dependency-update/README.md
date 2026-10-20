@@ -1,6 +1,6 @@
 # mobile-dependency-update
 
-Analyze a dependency update for risk and relevance in Gradle (Android) and Swift Package Manager (iOS, Xcode) projects. The skill fetches the release notes for every version between the current and the target, checks security advisories, reads the project's real call sites, and writes a risk-scored report (LOW / MEDIUM / HIGH) that names the required code changes. It proposes the exact version edit and applies it only after you say yes.
+Analyze a dependency update for risk and relevance in Gradle (Android) and Swift Package Manager (iOS, Xcode) projects. The skill fetches the release notes for every version between the current and the target, checks security advisories, reads the project's real call sites, and writes a report with a risk tier (LOW / MEDIUM / HIGH) that names the required code changes. It proposes the exact version edit and applies it only after you say yes.
 
 ## Usage
 
@@ -25,7 +25,7 @@ The skill runs only when you invoke it; a run is expensive, so it never triggers
 3. **Fetches the release notes** for every version in between, from the ecosystem's sources and GitHub, and diffs the public API or the artifact when the notes are terse.
 4. **Checks advisories** with OSV: what the target fixes, what it introduces, what stays open.
 5. **Labels each change** (`removed`, `signature-changed`, `behavior-changed`, `deprecated`, `bugfix`, `additive`, `noise`) and checks whether the project uses the affected API. A change counts only if a real call site uses it.
-6. **Scores the risk** and writes the report: verdict first, required changes with `file:line`, behavior changes to verify by hand, automated checks that reveal the rest, constraints such as a raised minimum SDK, and caveats.
+6. **Sets the risk tier** (HIGH if code or configuration must change or the target brings a new advisory, MEDIUM if something must be verified, LOW otherwise) and writes the report: verdict first, required changes with `file:line`, behavior changes to verify by hand, automated checks that reveal the rest, constraints such as a raised minimum SDK, and caveats.
 7. **Proposes the edit** — old → new at `file:line`, plus the lockfile or pin entry — and waits for an explicit yes before it edits anything. It never commits or opens a pull request.
 
 ### Scan mode

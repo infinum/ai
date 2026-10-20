@@ -6,7 +6,7 @@ Goal: for every outdated dependency, tell the user what they have to do — not 
 
 1. List the direct dependencies with the ecosystem reference (`spm_deps.py` for SPM).
 2. Run `list_versions.py` for each one; parallel calls are fine. Keep those with a newer stable version.
-3. Apply the policy: a `disabled: true` match goes to "Blocked by policy" with its `reason`; note each `group`.
+3. Apply the policy: a `disabled: true` match goes to "Blocked by policy" with its `reason`; note each `group`, `riskFloor`, `minimumReleaseAge`, and `alwaysEscalate` match, and the `ci` list.
 4. Put what has no version to compare under "Not checked", with the reason: branch or revision pins, local packages, binaries outside a package manager (with their bundled version, if known), and lookups that failed.
 
 ## 2. Analysis
@@ -19,36 +19,38 @@ With more, fan out with the Agent tool so that each dependency's release notes s
 - the rest in batches of up to five per subagent;
 - up to eight subagents per message; send the next wave when a wave returns.
 
-Brief each subagent with `<skill-dir>`, the project root, the ecosystem, and, per dependency, the coordinate, current and target version, bump type, release date, and declared-in lines. Tell it to read `<skill-dir>/SKILL.md`, the ecosystem reference, `references/scoring.md`, and the "Subagent task" section of this file, and to return only the result blocks. Give facts about the project and the dependency, not method: do not add instructions such as "check usage for every bug fix" to a brief, because the triage decides the path and `SKILL.md` decides which clusters get a usage check.
+Brief each subagent with `<skill-dir>`, the project root, the ecosystem, and, per dependency, the coordinate, current and target version, bump type, release date, declared-in lines, and whether a policy rule sets `alwaysEscalate` for it; add the policy `ci` list once. Tell it to read `<skill-dir>/SKILL.md`, the ecosystem reference, `references/scoring.md`, and the "Subagent task" section of this file, and to return only the result blocks. Give facts about the project and the dependency, not method: do not add instructions such as "check usage for every bug fix" to a brief, because the triage decides the path and `SKILL.md` decides which clusters get a usage check.
 
 ### Subagent task
 
 For each dependency in the batch:
 
 1. Run steps 5–8 of `SKILL.md`: replacement check, release notes, hard evidence where needed, advisories.
-2. **Triage** (below). On the quick path, skip the usage check, and score only bump type, age, release-note quality, constraints, and advisories.
-3. On the full path, run step 9: labels, clusters, usage check, score.
+2. **Triage** (below). On the quick path, skip the usage check: the tier is LOW unless an unmet minimum or a conflict makes it HIGH.
+3. On the full path, run step 9: labels, clusters, usage check, tier.
 4. Update the guide cache (step 11). Do not propose or make edits.
 5. Return one block per dependency, and nothing else:
 
 ```
 coord: <coordinate>
 from: <current>  to: <target>  type: <bump type>  released: <YYYY-MM-DD | unknown>
-tier: <LOW | MEDIUM | HIGH>  score: <n>  path: <quick | full: reason>
-urgency: <security: advisory IDs>
+tier: <LOW | MEDIUM | HIGH> [(low confidence)]  path: <quick | full: reason>
+urgency: <advisory IDs and severity: they affect the current version, and the target fixes them>
+advisory: <ID> (<severity>) affects the target, not the current version -> <what to do> (<URL>)
 replacement: <successor coordinate> (<URL of the source that says so>)
-derivation: <one line, e.g. "minor +1, age 12d +1, deprecated cluster used +1 = 3">
-required: [<label>] <symbol> at <file:line, ...> -> <change> (<version>, <URL>)
-behavior: <summary> -> <how to verify> (<version>, <URL>)
-automated: <command> [(CI runs it)] -> <items it covers> (<version>, <URL>)
+drivers: <what set the tier, with counts, e.g. "2 required changes: removed API at 3 sites, minSdk 24" | none>
+required: [<label> | minimum | conflict] <symbol or setting> at <file:line, ...> [(internal builds only)] -> <change> (<version>, <URL>)
+behavior: <summary> [(internal builds only)] -> <how to verify> (<version>, <URL>)
+automated: <command> [(CI runs it)] -> <items it covers> [(internal builds only)] (<version>, <URL>)
+deprecated: <symbol> at <file:line, ...> -> <replacement> (<version>, <URL>)
 additive: <symbol> can replace <file:line> -> <note> (<version>, <URL>)
-constraints: <raised minimums and transitive majors, with the project impact>
-question: <a fact outside the repository that decides an ambiguous cluster> -> <what follows from each answer> (<version>, <URL>)
+constraints: <minimums that the project meets, tools that no project file pins, runtime minimums that only internal code uses, and transitive moves without a conflict, with the project impact>
+question: <an unconfirmed hit, or a fact outside the repository, that decides an ambiguous cluster> -> <what follows from each answer> (<version>, <URL>)
 dropped: <behavior-changed cluster> at <sites> -> <the project fact> ; <what would make the path run>
 caveats: <gaps and checks that failed>
 ```
 
-Repeat a `required`, `behavior`, `automated`, `question`, `dropped`, or `additive` line once per item. A `behavior` line holds only a `manual` item; `build` and `check` items go on `automated` lines, one line per command (see "How the change shows" in `SKILL.md`). Leave out lines that have nothing to say.
+Repeat an `advisory`, `required`, `behavior`, `automated`, `deprecated`, `additive`, `question`, or `dropped` line once per item. A `behavior` line holds only a `manual` item; a `build` item goes on a `required` line, and `check` items go on `automated` lines, one line per command (see "How the change shows" in `SKILL.md`). Leave out lines that have nothing to say.
 
 ### Triage
 
@@ -68,9 +70,12 @@ If unsure, take the full path: a missed breaking change costs far more than one 
 
 Render in the shape of `assets/scan-report.example.md`:
 
-- Sort rows by tier (HIGH first). Inside a tier, rows with a required change come first, then rows with a manual behavior check, then rows with only automated checks, then the rest; then sort by score (highest first) and by release date (newest first). The user reads the table from the top, so a build break must not sit below a change in a debug tool.
+- Sort rows by tier (HIGH first). Inside a tier, rows with a required change come first, then rows with a manual behavior item, then rows with only automated checks, then the rest; in each of these groups, a row whose items all concern internal builds only comes last. Then sort by the number of required changes (most first), by release date (newest first), and by coordinate. The user reads the table from the top, so a build break must not sit below a change in a debug tool.
 - Rows that share a policy `group` sit together under the group name; the group shows its highest tier.
-- Each row with a `replacement`, `required`, `behavior`, `automated`, `question`, or `additive` item gets a block below the table, in row order. In the block, the replacement comes first: one line that names the successor and links its source. "Automated checks" is one line after "Behavior to verify", and "Manual review" (the `question` lines) follows it.
+- Apply the policy to each row after the subagents return, and sort by the result: raise the tier to a matching `riskFloor` and show both in the Risk column, for example `LOW; floor → MEDIUM`. When the target is younger than a matching `minimumReleaseAge`, show `DEFERRED until <date>` in the Risk column.
+- In the Released column, add the age in days when the target is younger than 7 days, for example `2026-09-19 (5 days)`.
+- In the Risk column, add `· security` when the row has an `urgency` line, and `(low confidence)` when its tier line has it.
+- Each row with an `urgency`, `advisory`, `replacement`, `required`, `behavior`, `automated`, `deprecated`, `additive`, or `question` item gets a block below the table, in row order. The block heading carries the tier and what set it, as the verdict line does; a LOW heading names the items of the block instead. Inside the block, follow the section order of a single report ("Report rules" in `SKILL.md`): the urgency first, then the replacement (one line that names the successor and links its sources) and the timing, then Required, Behavior to verify, Automated checks, Suggestions (the `deprecated` and `additive` lines), Constraints, Manual review (the `question` lines), and last the new advisories.
 - `dropped` lines go into the "Caveats" section, one line each.
 - Then "Blocked by policy", "Not checked", and "Caveats".
 

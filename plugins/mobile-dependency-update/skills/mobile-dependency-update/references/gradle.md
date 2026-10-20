@@ -70,7 +70,7 @@ Use it when the notes are terse, the bump is major, or a removal needs proof. Wo
 
 - **Public API**: download both artifacts (`<repo>/<group-path>/<artifact>/<v>/<artifact>-<v>.aar` or `.jar`). For an AAR, `unzip -p <file>.aar classes.jar > classes.jar`. List the classes with `unzip -Z1 classes.jar | grep '\.class$' | sort` and `comm -3` the two lists; skip obfuscated names such as `zz*`. For each class that the project uses, compare `javap -public -cp classes.jar <class>` between the versions.
 - **Minimum SDK**: `minSdkVersion` in the AAR's `AndroidManifest.xml`. Compare it with the project's `minSdk`, which can come from a constant (for example `ApplicationSpec.Sdk.min`).
-- **Transitive dependencies**: diff the POM `<dependencies>` between the versions. A transitive library that moves to a new major version is a constraint.
+- **Transitive dependencies**: diff the POM `<dependencies>` between the versions. A transitive library that moves to a new major version is a constraint, or a required change when the resolution conflicts (see `references/scoring.md`).
 - **Umbrella artifacts**: some artifacts are thin and depend on sub-modules (for example `android-maps-utils` 5.x); diff the sub-module artifacts.
 
 ## Usage check

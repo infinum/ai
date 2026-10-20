@@ -4,16 +4,23 @@ every section that has no items. The release facts are real
 (play-services-auth 22.0.0); the project paths and settings are invented.
 
 Full section order:
-  urgency or DEFERRED line · Required changes · Behavior changes to verify ·
-  Automated checks · Suggestions · Constraints · Manual review · Score ·
-  Release notes · advisories and caveats · Apply
+  urgency or DEFERRED line · verdict · replacement and timing lines ·
+  Required changes · Behavior changes to verify · Automated checks ·
+  Suggestions · Constraints · Manual review · Release notes ·
+  advisories and caveats · Apply
 
-"Behavior changes to verify" holds only checks that a person must do. Checks
-that a build or a command reveals go into the one "Automated checks" line.
+"Behavior changes to verify" holds only what a person must try by hand. A
+change that breaks the build is a required change. Items that a command
+reveals go into the one "Automated checks" line.
 
 Formats for the lines that this example does not need:
   > **Update soon — security:** GHSA-3cqm-mf7h-prrj (CVE-2021-0341, HIGH) affects 4.9.0; 4.12.0 fixes it.
   > **DEFERRED:** 2.10.2 is 1 day old; the policy asks for 7 days (clears on 2026-09-30). Say "go ahead" to override.
+  **Risk: MEDIUM** (low confidence: notes missing for 2 of 5 versions) — 1 behavior change to verify by hand: …
+  > **Replacement:** 0.36.0 is the last `accompanist-pager` release; the successor is `androidx.compose.foundation.pager`. [docs](URL) · [removal](URL)
+  > **Timing:** 2.10.2 was released 2 days ago; fresh releases get hotfixes, so consider a week's wait.
+  - **[minimum]** Gradle 9.6.0 or newer: `gradle/wrapper/gradle-wrapper.properties:3` has 9.5.0 → change it to `gradle-9.6.0-bin.zip`.  _9.4.0 · [compatibility table](URL)_
+  Advisories: GHSA-xxxx-xxxx-xxxx (HIGH) affects 3.2.0 but not 3.1.4 (OSV). Wait for the fix, or stay on 3.1.4.
   - Default animation duration drops from 0.35 s to 0.2 s (used in `DashboardView.swift:40`) → check the charts visually.  _3.6.0 · [release](URL)_
   **Automated checks:** `./gradlew detekt` shows the findings of the two new default rules. `./gradlew testDebugUnitTest` (CI runs it) covers the changed parser through `ParserTest.kt`.
   **Manual review:** Is session replay on in the Amplitude project settings? If yes, check the replay masking on the login screen; if no, nothing to do.
@@ -22,7 +29,7 @@ Formats for the lines that this example does not need:
 
 # play-services-auth 21.6.0 → 22.0.0
 
-**Risk: HIGH** — 22.0.0 removes the Google Sign-In API that the login flow calls. Move sign-in to Credential Manager first; after that, the bump is a one-line change.
+**Risk: HIGH** — 2 required changes: 22.0.0 removes the Google Sign-In API that the login flow calls. Move sign-in to Credential Manager first; after that, the bump is a one-line change.
 
 ## Required changes (2)
 
@@ -40,16 +47,6 @@ Formats for the lines that this example does not need:
 
 - `minSdkVersion` rises from 23 to 24 (AAR manifest). The project's `minSdk` is 26: no action.
 - Transitive dependencies: the 21.6.0 and 22.0.0 POMs declare the same versions.
-
-## Score
-
-```
-Major bump                                               +3
-Age: released 30 days ago                                 0
-removed cluster "Google Sign-In API", used at 3 sites    +3
-minSdk 23 → 24; the project has 26                        0
-= 6 → HIGH
-```
 
 ## Release notes
 

@@ -1,87 +1,64 @@
-# Risk score
+# Risk tier
 
-Every analysis ends in one tier — LOW, MEDIUM, or HIGH — computed from the points below. Show the derivation in the report, so that the user can check each line and disagree with a specific point instead of with a verdict.
+Every analysis ends in one tier: LOW, MEDIUM, or HIGH. The tier says what kind of attention the update needs; the report's sections say what exactly. Apply the rules in order; the first that matches decides:
 
-The score measures the risk of taking the update. Reasons to update soon go on a separate **urgency** line: a security fix makes an update more urgent, not less risky, so it never lowers the score.
+1. **HIGH**: code or configuration must change before or with the bump, or the target introduces a security advisory.
+2. **MEDIUM**: nothing must change, but something must be verified.
+3. **LOW**: everything else.
 
-## Points
+A run that stops in step 4, because no newer version exists, has no tier.
 
-**Bump type** (from `list_versions.py`)
+The tier measures the risk of taking the update, nothing else. Urgency, a replacement, the age of the release, and gaps in the notes go beside the tier (see "Beside the tier"): a security fix makes an update more urgent, not less risky.
 
-| Type | Points |
-|---|---|
-| patch | 0 |
-| minor | +1 |
-| major, or a minor bump below 1.0 (`major (0.x)`) | +3 |
-| rollback | +2 |
-| replacement (successor coordinate) | +4 |
+## What counts
 
-**Age of the target.** Fresh releases get hotfixes and, now and then, withdrawals.
+**HIGH: a required change.** Each item needs confirmed usage, unless noted:
 
-| Released | Points |
-|---|---|
-| less than 3 days ago | +3 |
-| 3–6 days ago | +2 |
-| 7–29 days ago | +1 |
-| 30 days ago or more | 0 |
-| unknown | 0 (say so in the caveats) |
+- a `removed` or `signature-changed` cluster;
+- a `behavior-changed` cluster that shows as `build` (see "How the change shows" in `SKILL.md`): the build fails until the sites are fixed;
+- a `behavior-changed` cluster whose code at a confirmed site fails for certain: an error, a crash, or a call that never completes, as the library's source or artifacts at both versions show. If the effect depends on a race between threads, on data, or on device state, it is an item to verify (MEDIUM), even when you know a likely fix. Decide per site: one cluster can give a required change at one site and an item to verify at another;
+- a raised minimum above the value in a project file: `minSdk`, `compileSdk`, iOS deployment target, Swift tools version, Kotlin, JDK, Gradle, AGP. It needs no usage check, because it applies to the whole project. List it under Required changes with the tag `[minimum]`. A minimum that the project already meets, and a tool that no project file pins, such as Android Studio, go under Constraints;
+- a transitive dependency that moves to a new major (a 0.x minor counts as a major) while the project or another direct dependency pins the old major, so the resolution conflicts (`./gradlew dependencies`, `Package.resolved`). List it under Required changes with the tag `[conflict]`. A dependency of a build tool or a plugin does not count: its effect belongs to the tool's own clusters;
+- a used `deprecated` cluster in a project that treats warnings as errors (for example `allWarningsAsErrors`, `-Werror`, or `SWIFT_TREAT_WARNINGS_AS_ERRORS`): the build fails.
 
-**Clusters with confirmed usage.** Score each cluster once, at its label. `unused` clusters score 0.
+**HIGH: a new advisory.** An OSV advisory affects the target but not the current version. Name it in the verdict and in the advisories line.
 
-| Label | Points |
-|---|---|
-| `removed` | +3 |
-| `signature-changed` | +3 |
-| `behavior-changed` | +2 |
-| `deprecated` | +1 |
-| `bugfix` | 0 |
-| `additive`, `noise` | 0 |
+**MEDIUM: something to verify.**
 
-A bug fix keeps the documented behavior, so it adds no risk points, and the report asks for no check. If the project depends on the old behavior, the cluster is `behavior-changed` (see "Bug fixes" in `SKILL.md`).
+- an item to verify that the report lists: a `manual` item under "Behavior changes to verify", with its trigger and symptom, or a `check` item under "Automated checks", with its command;
+- an `ambiguous` cluster above `deprecated`, listed under Manual review: hits that you could not confirm, or a use that depends on a fact outside the repository.
 
-**Usage only in internal builds.** Production users cannot see a runtime change in code that the release build does not contain. That code sits inside `#if DEBUG` or a similar compile condition, in a target or configuration that the release build does not link (for example a debug menu that only internal schemes link), or behind `debugImplementation` in Gradle. If every confirmed site of a cluster is in such code, `behavior-changed` scores +1, and a raised runtime minimum that only that code meets scores 0. `removed` and `signature-changed` keep their full points, because the internal builds still fail to compile.
+**Not a tier driver:** `deprecated` clusters, unless the project treats warnings as errors (they compile; list them under Suggestions with the replacement), `bugfix`, `additive`, `noise`, every `unused` cluster, the bump type, the age of the release, the quality of the release notes, and a replacement. They shape the report, not the tier.
 
-**Changes that a command reveals.** A build or a named check turns a silent change into a visible failure before release, so what is left is the work to fix it, not a surprise in production. If every confirmed site of a `behavior-changed` cluster is `build` or `check` (see "How the change shows" in `SKILL.md`), the cluster scores +1. `manual` sites keep the full points.
+**Internal builds only.** A `behavior-changed` cluster whose every site sits in code that the release build does not contain (`#if DEBUG`, `debugImplementation`, a target that only internal schemes link) still gives MEDIUM when the report lists it as a `manual` item: someone must still look. Mark the item "internal builds only", so that the reader can rank it. `removed` and `signature-changed` keep HIGH: the internal builds still fail to compile. A certain failure (see above) also stays a required change in internal-only code. A raised runtime minimum (an API that needs a newer OS) that only internal code uses goes under Constraints; a raised package or SDK minimum still breaks the internal build and stays a required change.
 
-**Ambiguous usage:** +1 per cluster, at most +2 in total, so that a release full of generic names cannot dominate the score.
+**Bug fixes.** A `bugfix` keeps the documented behavior and drives nothing. If the project depends on the old behavior, the cluster is `behavior-changed` (see "Bug fixes" in `SKILL.md`) and counts like one.
 
-**Release-note quality**
+## Beside the tier
 
-| Condition | Points |
-|---|---|
-| Notes for every version in the range | 0 |
-| Some versions without notes | +1 |
-| No notes: only commit messages or artifact diffs | +2 |
+These facts are not risk, so they do not move the tier. Urgency goes at the top, above the verdict; Confidence goes on the verdict line; Replacement and Timing get their own lines under the verdict:
 
-**Constraints.** Count only what the project must act on.
+- **Urgency**: "Update soon — security:" when an advisory affects the current version and the target fixes it, with the advisory IDs and their severity. It goes at the top, whatever the tier.
+- **Replacement**: when step 5 finds a successor, name it and link the source. The move to the successor is a separate decision; the tier covers only the bump.
+- **Timing**: when the target is younger than 7 days: "Released N days ago; fresh releases get hotfixes, so consider a week's wait." If the policy sets `minimumReleaseAge` and the target is younger, the report is DEFERRED instead.
+- **Confidence**: when notes are missing for some versions, only commit messages or artifact diffs were available, or a check could not run (for example the advisory check), add "(low confidence: …)" after the tier on the verdict line, for example "(low confidence: notes missing for 2 of 5 versions)", and the details in the caveats.
 
-| Condition | Points |
-|---|---|
-| A raised minimum above the project's current setting: `minSdk`, iOS deployment target, Swift tools version, Kotlin, JDK, Gradle, AGP | +2 each |
-| A transitive dependency moves to a new major version (a 0.x minor counts as a major), and the project also declares that library or another direct dependency pins the old major, so the resolution conflicts (`./gradlew dependencies`, `Package.resolved`) | +2 each |
+## Policy
 
-A dependency of a build tool or a plugin is not a project constraint: its effect belongs to the tool's own clusters and scores once there. Any other transitive major scores 0; list it under the constraints.
+- `riskFloor` raises the tier to at least the floor and never lowers it. Show both: "LOW; policy floor → MEDIUM".
+- `minimumReleaseAge`: see Timing.
 
-A raised minimum that the project already meets scores 0; list it as checked.
+## Verdict line
 
-**Advisories** (`osv_check.py`)
+The verdict names the tier, what set it with counts, and in one sentence what the user must do. Count the items that the report lists in each section; the verdict and the section headings use the same counts, so that the reader can check each item. There is no score, so do not invent points.
 
-| Condition | Points |
-|---|---|
-| An advisory affects the target but not the current version | +3 each |
+```
+**Risk: HIGH** — 2 required changes: 22.0.0 removes the Google Sign-In API that the login flow calls. Move sign-in to Credential Manager first; after that, the bump is a one-line change.
 
-## Urgency
+**Risk: MEDIUM** — 1 behavior change to verify by hand: the new default animation duration. Nothing to change in code; check the dashboard charts once after the bump.
 
-- **Update soon — security:** an advisory affects the current version, and the target fixes it. Put this line at the top of the report, with the advisory IDs and their severity, whatever the tier.
-- Otherwise leave the urgency line out.
-
-## Tiers
-
-| Score | Tier |
-|---|---|
-| 0–1 | LOW |
-| 2–4 | MEDIUM |
-| 5 or more | HIGH |
+**Risk: LOW** — no used API changes. One deprecation is listed under Suggestions.
+```
 
 ## Clusters
 
@@ -91,39 +68,16 @@ Put entries into one cluster when they:
 2. sit under one heading of one release and describe the same feature or component;
 3. describe one change that the notes split across bullets ("rewrote the renderer", "the renderer now uses X", "renderer: set a minimum height").
 
-Otherwise keep them apart. Example: three Balloon 1.7.6 bullets about the new popup-window rendering (PRs #965–#967) are one `behavior-changed` cluster — +2, not +6.
-
-## Policy
-
-Apply these after the points (fields: `assets/policy.example.yaml`):
-
-- `riskFloor` raises the tier to at least the floor and never lowers it. Show both the computed tier and the floor.
-- `minimumReleaseAge` is a hard floor: a younger target makes the report DEFERRED. It does not change the points — the age table always applies.
-
-## Derivation format
-
-```
-Minor bump                                                      +1
-Age: released 12 days ago                                       +1
-deprecated cluster "Balloon() composable", used at 3 sites      +1
-= 3 → MEDIUM
-```
-
-With a policy floor:
-
-```
-= 3 → MEDIUM
-Policy floor (packagePattern "^com\.example\.payments") → HIGH
-Final: HIGH
-```
+Otherwise keep them apart. Example: three Balloon 1.7.6 bullets about the new popup-window rendering (PRs #965–#967) are one `behavior-changed` cluster: one item to verify, not three.
 
 ## Worked examples
 
-The library names in examples 1 and 2 are placeholders; examples 3 and 4 use real release facts.
+The library names in examples 1, 2, and 7 are placeholders; the others use real release facts.
 
-1. **Routine patch.** `netkit` 4.12.0 → 4.12.1, released 60 days ago, one bug fix in a code path that the project does not reach. 0 + 0 + 0 = **0 → LOW**.
-2. **Fresh minor with a deprecation.** `navkit` 2.9.6 → 2.10.0, released 1 day ago, one deprecated API used at two sites. +1 +3 +1 = **5 → HIGH**. The age drives the tier: a week later the same update is MEDIUM. Say so in the verdict.
-3. **Major with a removal.** play-services-auth 21.6.0 → 22.0.0, released 30 days ago. 22.0.0 removes the Google Sign-In API, which the project calls at three sites, and raises `minSdk` from 23 to 24, which the project (at 26) already meets. +3 + 0 + 3 + 0 = **6 → HIGH**.
-4. **Security fix.** okhttp 4.9.0 → 4.12.0, released 90 days ago, no used API changes; the target fixes GHSA-3cqm-mf7h-prrj (CVE-2021-0341, HIGH). +1 = **1 → LOW**, with "Update soon — security" at the top.
-5. **Library for internal builds only.** Pulse 5.1.4 → 5.2.3, released 106 days ago, in a project where only internal schemes link the Pulse console and the logging calls sit inside `#if DEBUG`. The console redesign and the new store format (it deletes the old logs) are behavior changes in internal-only code: +1 each. Five bug fixes score 0, as every bug fix does, and the console's new iOS 18 runtime minimum scores 0. +1 + 0 + 1 + 1 = **3 → MEDIUM**. Without the internal-build rule, the same update scored 12 and topped a scan, above two updates that break the build.
-6. **A change that a linter reveals.** A lint plugin 1.4.0 → 1.5.0, released 40 days ago, turns on two new rules by default. The project's lint task fails on any finding, so the new findings are `check` items for the lint command: +1 for the cluster. +1 + 0 + 1 = **2 → MEDIUM**, and the report lists the lint command under "Automated checks" instead of asking for a manual test.
+1. **Routine patch.** `netkit` 4.12.0 → 4.12.1, released 60 days ago, one bug fix in a code path that the project does not reach. Nothing to change and nothing to verify: **LOW**.
+2. **Fresh minor with a deprecation.** `navkit` 2.9.6 → 2.10.0, released 1 day ago, one deprecated API used at two sites. Deprecations compile: **LOW**, with the two sites under Suggestions and a timing line.
+3. **Major with a removal.** play-services-auth 21.6.0 → 22.0.0, released 30 days ago. 22.0.0 removes the Google Sign-In API, which the project calls at three sites, and raises `minSdk` from 23 to 24, which the project (at 26) already meets. Required changes: **HIGH**. The `minSdk` line goes under Constraints as met.
+4. **Security fix.** okhttp 4.9.0 → 4.12.0, released 90 days ago, no used API changes; the target fixes GHSA-3cqm-mf7h-prrj (CVE-2021-0341, HIGH). Nothing to change or verify: **LOW**, with "Update soon — security" at the top.
+5. **Internal builds only.** Pulse 5.1.4 → 5.2.3 in a project where only internal schemes link the Pulse console and the logging calls sit inside `#if DEBUG`. The console redesign and the new store format (it deletes the old logs) are `manual` behavior changes in internal-only code: **MEDIUM**, with both items marked "internal builds only". Five bug fixes drive nothing, and the console's iOS 18 minimum applies to internal code only, so it goes under Constraints.
+6. **A change that a linter reveals.** A lint plugin 1.4.0 → 1.5.0 turns on two new rules by default, and the project's lint task fails on any finding. Whether the new rules flag existing code is unknown until the task runs, so they are `check` items: the task must run, and its findings must be read: **MEDIUM**, with the lint command under "Automated checks".
+7. **A change that fails for certain.** `queuekit` 4.2 → 4.3: from 4.3, the session keeps a reference to a request only after `resume()`, as the session source at both versions shows. The project's request queue keeps each new request only in a `weak` property and resumes it later, so the property is `nil` and the queued calls never start. A certain failure at a confirmed site: **HIGH**, as a required change with the fix.

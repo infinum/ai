@@ -10,7 +10,7 @@ Add an ecosystem deliberately, from a real project that uses it, rather than gue
    - Go: `https://proxy.golang.org/<module>/@v/list`, then `/@v/<version>.info` for the date
    - CocoaPods: `https://trunk.cocoapods.org/api/v1/pods/<name>` (`versions[].created_at`)
 
-   Without release dates, the age is unknown and scores 0.
+   Without release dates, the age is unknown, and the report can give no timing line.
 3. Find the OSV ecosystem name for `osv_check.py`: `npm`, `PyPI`, `crates.io`, `Go`, `Packagist`, `RubyGems`, `NuGet`, `Pub`, `Hex`.
 4. Add eval cases for the ecosystem to a local `evals/evals.json` next to the skill. Evals are not part of the plugin: each case runs against a real project on your machine.
 5. If the new ecosystem is not a mobile one, rename the plugin and its skill from `mobile-dependency-update` back to `dependency-update` in the same PR: the plugin and skill directories, the skill `name`, `plugin.json`, the `marketplace.json` entry, and the `MARKETPLACE.md` row, with a rename note there for existing installs. The guide cache path and the policy file name stay as they are.
