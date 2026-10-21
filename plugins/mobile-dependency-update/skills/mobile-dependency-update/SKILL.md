@@ -1,6 +1,6 @@
 ---
 name: mobile-dependency-update
-description: Analyze dependency updates for risk in Gradle (Android) and Swift Package Manager (iOS) projects. Run `/mobile-dependency-update:mobile-dependency-update` on a branch to analyze every dependency that it changes against its base branch, or name a library to look at that one only. The report gives a LOW / MEDIUM / HIGH tier with the required code changes, from the release notes and the project's call sites; when the branch does not contain the version edit yet, the skill proposes it and applies it only after a yes. Not Cowork-ready — needs `gh`/`curl` egress to Maven, GitHub, and OSV registries, plus the project's Gradle or Xcode toolchain.
+description: Analyze dependency updates for risk in Gradle (Android) and Swift Package Manager (iOS) projects. Run `/mobile-dependency-update:mobile-dependency-update` on a branch to analyze every dependency that it changes against its base branch, or name a library to look at that one only. The report gives a LOW / MEDIUM / HIGH tier with the required code changes, from the release notes and the project's call sites; when you ask to update and the branch does not contain the version edit yet, the skill proposes it and applies it only after a yes. Not Cowork-ready — needs `gh`/`curl` egress to Maven, GitHub, and OSV registries, plus the project's Gradle or Xcode toolchain.
 argument-hint: "[library] [version] [branch or pull request]"
 disable-model-invocation: true
 ---

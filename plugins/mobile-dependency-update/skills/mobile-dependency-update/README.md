@@ -1,6 +1,6 @@
 # mobile-dependency-update
 
-Analyze dependency updates for risk and relevance in Gradle (Android) and Swift Package Manager (iOS, Xcode) projects. Run it on a branch, for example a Renovate pull request, and it analyzes every dependency that the branch changes against its base branch. Name a library, and it analyzes that one update. The skill fetches the release notes for every version between the current and the target, checks security advisories, reads the project's real call sites, and writes a report with a risk tier (LOW / MEDIUM / HIGH) that names the required code changes. When the branch does not contain the version edit yet, it proposes the exact edit and applies it only after you say yes.
+Analyze dependency updates for risk and relevance in Gradle (Android) and Swift Package Manager (iOS, Xcode) projects. Run it on a branch, for example a Renovate pull request, and it analyzes every dependency that the branch changes against its base branch. Name a library, and it analyzes that one update. The skill fetches the release notes for every version between the current and the target, checks security advisories, reads the project's real call sites, and writes a report with a risk tier (LOW / MEDIUM / HIGH) that names the required code changes. When you ask to update and the branch does not contain the version edit yet, it proposes the exact edit and applies it only after you say yes.
 
 ## Usage
 
@@ -28,7 +28,7 @@ The skill runs only when you invoke it; a run is expensive, so it never triggers
 5. **Checks advisories** with OSV: what the target fixes, what it introduces, what stays open.
 6. **Labels each change** (`removed`, `signature-changed`, `behavior-changed`, `deprecated`, `bugfix`, `additive`, `noise`) and checks whether the project uses the affected API. A change counts only if a real call site uses it.
 7. **Sets the risk tier** (HIGH if code or configuration must change or the target brings a new advisory, MEDIUM if something must be verified, LOW otherwise) and writes the report: verdict first, required changes with `file:line`, behavior changes to verify by hand, automated checks that reveal the rest, suggestions (deprecations, and improvements that the update allows, such as a new API that replaces hand-written code), constraints such as a raised minimum SDK, and caveats.
-8. **Proposes the edit** when the branch does not contain it yet — old → new at `file:line`, plus the lockfile or pin entry — and waits for an explicit yes before it edits anything. It never commits or opens a pull request.
+8. **Proposes the edit** when you ask to update and the branch does not contain it yet — old → new at `file:line`, plus the lockfile or pin entry — and waits for an explicit yes before it edits anything. It never commits or opens a pull request.
 
 ### Several changes on one branch
 
