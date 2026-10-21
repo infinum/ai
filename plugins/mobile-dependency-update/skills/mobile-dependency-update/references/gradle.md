@@ -66,7 +66,7 @@ For a **BoM**, diff the BoM POM's `<dependencyManagement>` between the two versi
 
 ## Evidence
 
-Use it when the notes are terse, the bump is major, or a removal needs proof. Work in a scratch directory, never in the project.
+Use it when the notes are terse, the bump is major, or a removal needs proof. After a passed CI run, diff the public API only if the notes are terse (step 7 of `SKILL.md`). Work in a scratch directory, never in the project.
 
 - **Public API**: download both artifacts (`<repo>/<group-path>/<artifact>/<v>/<artifact>-<v>.aar` or `.jar`). For an AAR, `unzip -p <file>.aar classes.jar > classes.jar`. List the classes with `unzip -Z1 classes.jar | grep '\.class$' | sort` and `comm -3` the two lists; skip obfuscated names such as `zz*`. For each class that the project uses, compare `javap -public -cp classes.jar <class>` between the versions.
 - **Minimum SDK**: `minSdkVersion` in the AAR's `AndroidManifest.xml`. Compare it with the project's `minSdk`, which can come from a constant (for example `ApplicationSpec.Sdk.min`).
@@ -75,21 +75,22 @@ Use it when the notes are terse, the bump is major, or a removal needs proof. Wo
 
 ## Usage check
 
-- Files: `**/*.kt`, `**/*.kts`, `**/*.java`, and `**/*.xml` for views, attributes, and manifest entries. Skip `build/`, `.gradle/`, and generated sources.
+- Files: `**/*.kt`, `**/*.kts`, `**/*.java`, `**/*.xml` for views, attributes, and manifest entries, and `**/*.pro` (or the files that `proguardFiles` names) for keep rules. Skip `build/`, `.gradle/`, and generated sources.
 - Imports: `import <package>.<Class>`, `import <package>.*`, and aliases (`import … as X`). Kotlin calls members and extension functions without an import that names them: search for member names inside the files that import the package.
 
 ## How changes show
 
 | What reveals it | Outcome | Command |
 |---|---|---|
-| Kotlin or Java compile error, KSP or kapt error, AAPT resource error, R8 missing-class error | `build` | any build, for example `./gradlew assembleDebug` |
+| Kotlin or Java compile error, KSP or kapt error, AAPT resource error | `build` | any build, for example `./gradlew assembleDebug` |
+| R8 missing-class error | `build` | a minified build, usually the release build, for example `./gradlew assembleRelease` |
 | detekt, ktlint (through detekt-formatting), Android lint — only if the task fails on a finding (`maxIssues: 0`, `abortOnError`) | `check` | `./gradlew detekt`, `./gradlew lint<Variant>` |
 | A unit test in `src/test` that runs the library's real code at the site (not a fake) | `check` | `./gradlew test<Variant>UnitTest`, with the test file named |
 | A screenshot test (Paparazzi, Roborazzi, Compose Preview Screenshot Testing) that renders the screen with the site | `check` | the project's record or verify task, with the test file named |
 | An instrumented test in `src/androidTest` that runs the site | `check` | `./gradlew connected<Variant>AndroidTest`, with the test file named |
 | Changed dex or R8 output, runtime defaults, threading, timing, UI, network behavior | `manual` | – |
 
-CI config, when the repository holds it: `.github/workflows/*.yml`, `bitrise.yml`, `.gitlab-ci.yml`, `Jenkinsfile`, `fastlane/Fastfile`. Many Android projects keep the CI workflow outside the repository (for example in the Bitrise web UI), so without the policy `ci` field you cannot say which commands CI runs. Match by task name, not by the whole command line: `./gradlew detekt lintDebug` runs both `detekt` and `lintDebug`.
+CI config, when the repository holds it: `.github/workflows/*.yml`, `bitrise.yml`, `.gitlab-ci.yml`, `Jenkinsfile`, `fastlane/Fastfile`. Many Android projects keep the CI workflow outside the repository (for example in the Bitrise web UI): then you cannot say which commands CI runs, but the CI result still says whether the build passed (step 3 of `SKILL.md`). Match by task name, not by the whole command line: `./gradlew detekt lintDebug` runs both `detekt` and `lintDebug`.
 
 ## Advisories
 
@@ -101,4 +102,4 @@ A BoM has no advisories of its own: check the members that moved.
 
 ## Apply (only after the user says yes)
 
-Change the version at the listed `declaredIn` line — usually one value in `gradle/libs.versions.toml` — and nothing else. Then name the check to run (for example `./gradlew :app:dependencies`, or a full build). Run it only if the user asks: Gradle builds take long and change local build state.
+Change the version at the listed `declaredIn` line — usually one value in `gradle/libs.versions.toml` — and nothing else. Then name the check to run (for example `./gradlew :app:dependencies`, or a full build). Run it only if the user asks: Gradle builds take long and change local build state, and CI builds the branch once the user pushes it.

@@ -8,7 +8,7 @@ and paths are invented.
 
 **1 package needs code changes, 1 needs a manual test, and 4 need nothing more; rerun the advisory check for ImageKit first.** Start with NetKit: 6.0 removes the request API that 41 files use.
 
-Policy: `.claude/dependency-update-policy.yaml` (1 group, 1 blocked package).
+CI: `build-and-test` failed on `9c4e2b7`; the NetKit required changes are the likely cause. [check](https://ci.example.com/builds/1874)
 
 | Package | From → To | Type | Released | Risk | Details |
 |---|---|---|---|---|---|
@@ -16,7 +16,6 @@ Policy: `.claude/dependency-update-policy.yaml` (1 group, 1 blocked package).
 | `github.com/example/ChartKit` | 3.4.0 → 3.6.0 | minor | 2026-09-19 (5 days) | MEDIUM | ↓ ChartKit |
 | `github.com/example/ImageKit` | 5.21.5 → 5.22.0 | minor | 2026-07-30 | LOW (low confidence) | — |
 | `github.com/example/Keychain` | 4.2.1 → 4.2.2 | patch | 2026-06-01 | LOW | — |
-| **group `rx`** | | | | **LOW** | |
 | `github.com/example/RxCore` | 6.9.1 → 6.10.2 | minor | 2026-03-02 | LOW | ↓ RxCore |
 | `github.com/example/RxKeys` | 2.0.1 → 2.1.0 | minor | 2026-02-11 | LOW | — |
 
@@ -43,12 +42,6 @@ Automated checks: `xcodebuild test` (CI runs it) covers the new axis-label round
 
 Suggestions:
 - **[deprecated]** `catchErrorJustReturn(_:)` at `Modules/Home/HomeInteractor.swift:88` → `catchAndReturn(_:)`. _6.10.0 · [release](https://github.com/example/RxCore/releases/tag/6.10.0)_
-
-## Blocked by policy
-
-| Package | From → To | Reason |
-|---|---|---|
-| `github.com/example/vendor-sdk` | 4.2.0 → 5.1.0 | The branch moves a package that the policy pins: "Pinned until the vendor certifies 5.x" |
 
 ## Not checked
 

@@ -4,7 +4,7 @@ every section that has no items. The release facts are real
 (play-services-auth 22.0.0); the project paths and settings are invented.
 
 Full section order:
-  urgency or DEFERRED line · verdict · replacement and timing lines ·
+  urgency line · verdict · CI, replacement, and timing lines ·
   Required changes · Behavior changes to verify · Automated checks ·
   Suggestions · Constraints · Manual review · Release notes ·
   advisories and caveats · Apply
@@ -17,7 +17,8 @@ Formats for the lines that this example does not need:
   Title for a branch: # play-services-auth 21.6.0 → 22.0.0 (`renovate/play-services-auth-22` against `main`, merge base `3f2a1c4`)
   Last line when the branch already holds the edit: **No edit to propose:** the branch already changes `playServicesAuth` to 22.0.0. It still lacks the two required changes.
   > **Update soon — security:** GHSA-3cqm-mf7h-prrj (CVE-2021-0341, HIGH) affects 4.9.0; 4.12.0 fixes it.
-  > **DEFERRED:** 2.10.2 is 1 day old; the policy asks for 7 days (clears on 2026-09-30). Say "go ahead" to override.
+  > **CI:** Bitrise passed on `9c4e2b7`, so the build compiles; this report covers what a build does not show.
+  > **CI:** Bitrise failed on `9c4e2b7`; the `[minimum]` compileSdk change below is the likely cause. [check](URL)
   **Risk: MEDIUM** (low confidence: notes missing for 2 of 5 versions) — 1 behavior change to verify by hand: …
   > **Replacement:** 0.36.0 is the last `accompanist-pager` release; the successor is `androidx.compose.foundation.pager`. [docs](URL) · [removal](URL)
   > **Timing:** 2.10.2 was released 2 days ago; fresh releases get hotfixes, so consider a week's wait.

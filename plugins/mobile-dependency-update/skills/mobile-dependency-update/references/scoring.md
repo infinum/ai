@@ -21,12 +21,14 @@ The tier measures the risk of taking the update, nothing else. Urgency, a replac
 - a transitive dependency that moves to a new major (a 0.x minor counts as a major) while the project or another direct dependency pins the old major, so the resolution conflicts (`./gradlew dependencies`, `Package.resolved`). List it under Required changes with the tag `[conflict]`. A dependency of a build tool or a plugin does not count: its effect belongs to the tool's own clusters;
 - a used `deprecated` cluster in a project that treats warnings as errors (for example `allWarningsAsErrors`, `-Werror`, or `SWIFT_TREAT_WARNINGS_AS_ERRORS`): the build fails.
 
+After a passed CI run (step 3 of `SKILL.md`), the code that CI builds compiles. A required change can then come only from what a pass does not prove: a reference by name, code that CI does not build, a change that only a release build shows, a minimum, a conflict, or a certain failure at runtime.
+
 **HIGH: a new advisory.** An OSV advisory affects the target but not the current version. Name it in the verdict and in the advisories line.
 
 **MEDIUM: something to verify.**
 
-- an item to verify that the report lists: a `manual` item under "Behavior changes to verify", with its trigger and symptom, or a `check` item under "Automated checks", with its command;
-- an `ambiguous` cluster above `deprecated`, listed under Manual review: hits that you could not confirm, or a use that depends on a fact outside the repository.
+- an item to verify that the report lists: a `manual` item under "Behavior changes to verify", with its trigger and symptom, or a `check` item under "Automated checks", with its command, unless it passed in CI;
+- a question under Manual review: an `ambiguous` cluster above `deprecated` (hits that you could not confirm, or a use that depends on a fact outside the repository), or, in a single report, a CI failure that no finding explains.
 
 **Not a tier driver:** `deprecated` clusters, unless the project treats warnings as errors (they compile; list them under Suggestions with the replacement), `bugfix`, `additive`, `noise`, every `unused` cluster, the bump type, the age of the release, the quality of the release notes, and a replacement. They shape the report, not the tier.
 
@@ -40,13 +42,8 @@ These facts are not risk, so they do not move the tier. Urgency goes at the top,
 
 - **Urgency**: "Update soon — security:" when an advisory affects the current version and the target fixes it, with the advisory IDs and their severity. It goes at the top, whatever the tier.
 - **Replacement**: when step 5 finds a successor, name it and link the source. The move to the successor is a separate decision; the tier covers only the bump.
-- **Timing**: when the target is younger than 7 days: "Released N days ago; fresh releases get hotfixes, so consider a week's wait." If the policy sets `minimumReleaseAge` and the target is younger, the report is DEFERRED instead.
+- **Timing**: when the target is younger than 7 days: "Released N days ago; fresh releases get hotfixes, so consider a week's wait."
 - **Confidence**: when notes are missing for some versions, only commit messages or artifact diffs were available, or a check could not run (for example the advisory check), add "(low confidence: …)" after the tier on the verdict line, for example "(low confidence: notes missing for 2 of 5 versions)", and the details in the caveats.
-
-## Policy
-
-- `riskFloor` raises the tier to at least the floor and never lowers it. Show both: "LOW; policy floor → MEDIUM".
-- `minimumReleaseAge`: see Timing.
 
 ## Verdict line
 
@@ -72,7 +69,7 @@ Otherwise keep them apart. Example: three Balloon 1.7.6 bullets about the new po
 
 ## Worked examples
 
-The library names in examples 1, 2, and 7 are placeholders; the others use real release facts.
+The library names in examples 1, 2, 7, and 8 are placeholders; the others use real release facts.
 
 1. **Routine patch.** `netkit` 4.12.0 → 4.12.1, released 60 days ago, one bug fix in a code path that the project does not reach. Nothing to change and nothing to verify: **LOW**.
 2. **Fresh minor with a deprecation.** `navkit` 2.9.6 → 2.10.0, released 1 day ago, one deprecated API used at two sites. Deprecations compile: **LOW**, with the two sites under Suggestions and a timing line.
@@ -81,3 +78,4 @@ The library names in examples 1, 2, and 7 are placeholders; the others use real 
 5. **Internal builds only.** Pulse 5.1.4 → 5.2.3 in a project where only internal schemes link the Pulse console and the logging calls sit inside `#if DEBUG`. The console redesign and the new store format (it deletes the old logs) are `manual` behavior changes in internal-only code: **MEDIUM**, with both items marked "internal builds only". Five bug fixes drive nothing, and the console's iOS 18 minimum applies to internal code only, so it goes under Constraints.
 6. **A change that a linter reveals.** A lint plugin 1.4.0 → 1.5.0 turns on two new rules by default, and the project's lint task fails on any finding. Whether the new rules flag existing code is unknown until the task runs, so they are `check` items: the task must run, and its findings must be read: **MEDIUM**, with the lint command under "Automated checks".
 7. **A change that fails for certain.** `queuekit` 4.2 → 4.3: from 4.3, the session keeps a reference to a request only after `resume()`, as the session source at both versions shows. The project's request queue keeps each new request only in a `weak` property and resumes it later, so the property is `nil` and the queued calls never start. A certain failure at a confirmed site: **HIGH**, as a required change with the fix.
+8. **A passed CI run.** `imagekit` 3.4.0 → 4.0.0 on a branch whose CI passed on the head commit. 4.0.0 removes `ImageLoader.load(url:)`. The build compiles, so no compiled code calls it, and a search of the XML finds no reference by name: no required change. 4.0.0 also lowers the default disk cache from 250 MB to 50 MB, and the photo feed keeps the default: when a user scrolls back through a long feed, the images load from the network again. A `manual` item, so **MEDIUM**.

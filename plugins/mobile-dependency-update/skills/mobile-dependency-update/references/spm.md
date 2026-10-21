@@ -52,7 +52,7 @@ Check the guide cache first, then GitHub releases and changelog files ("GitHub s
 
 ## Evidence
 
-Use it when the notes are terse, the bump is major, or a removal needs proof.
+Use it when the notes are terse, the bump is major, or a removal needs proof. After a passed CI run, diff the public API only if the notes are terse (step 7 of `SKILL.md`).
 
 - **Public API of a source package**: `gh api repos/<owner>/<repo>/compare/<old-tag>...<new-tag> --jq '.files[] | [.status, .filename] | @tsv'` lists the changed files. Read the `public` and `open` declarations that changed in the files that define the APIs the project uses. For an exact list, run `swift package diagnose-api-breaking-changes <old-tag>` in a scratch clone at the new tag; it builds the package, so ask first.
 - **Binary targets and XCFrameworks**: diff the `.swiftinterface` files (Swift) or the public headers (Objective-C) of the two versions.
@@ -62,7 +62,7 @@ Use it when the notes are terse, the bump is major, or a removal needs proof.
 
 ## Usage check
 
-- Files: `**/*.swift`, plus `**/*.m`, `**/*.mm`, and `**/*.h` for Objective-C. Skip `.build/`, `DerivedData/`, `SourcePackages/`, `Pods/`, and vendored code.
+- Files: `**/*.swift`, plus `**/*.m`, `**/*.mm`, and `**/*.h` for Objective-C, and `**/*.storyboard`, `**/*.xib`, and `**/*.plist` for class names without an import. Skip `.build/`, `DerivedData/`, `SourcePackages/`, `Pods/`, and vendored code.
 - Imports: `import <Module>`, `@testable import <Module>`, `@_exported import <Module>`, `@import <Module>;`, `#import <Module/…>`. Module names can contain digits (`SwiftI18n`): use `[A-Za-z_][A-Za-z0-9_]*` in search patterns.
 - Swift imports a whole module, so an import only says that the file can use the library. Search the importing files for the symbol, then read each hit. A module that re-exports a library (`@_exported import`) lets its importers use that library without importing it.
 
@@ -76,7 +76,7 @@ Use it when the notes are terse, the bump is major, or a removal needs proof.
 | A snapshot test (for example swift-snapshot-testing) that renders the view with the site | `check` | `xcodebuild test`, with the test file named |
 | Runtime defaults, threading, timing, UI, network behavior | `manual` | – |
 
-CI config, when the repository holds it: `.github/workflows/*.yml`, `bitrise.yml`, `.gitlab-ci.yml`, `Jenkinsfile`, `fastlane/Fastfile`, `ci_scripts/` (Xcode Cloud). Without it and without the policy `ci` field, you cannot say which commands CI runs. Match by action and scheme, not by the whole command line.
+CI config, when the repository holds it: `.github/workflows/*.yml`, `bitrise.yml`, `.gitlab-ci.yml`, `Jenkinsfile`, `fastlane/Fastfile`, `ci_scripts/` (Xcode Cloud). Without it, you cannot say which commands CI runs, but the CI result still says whether the build passed (step 3 of `SKILL.md`). Match by action and scheme, not by the whole command line.
 
 ## Advisories
 
