@@ -26,7 +26,6 @@ Two things make the answer trustworthy, and the workflow protects both:
 | `references/branch-changes.md` | Every branch comparison: section 1 lists the changes; the rest applies when more than one dependency changed |
 | `assets/report.example.md`, `assets/branch-report.example.md` | Before you write the report: the shape to follow |
 | `assets/policy.example.yaml` | The project has a policy file: what each field does |
-| `references/adding-an-ecosystem.md` | Only for an ecosystem that this skill does not cover yet |
 
 The scripts give exact data, so do not redo their work by hand. They need only Python 3.9+ and the standard library: `python3 <skill-dir>/scripts/<name>.py`.
 
@@ -50,7 +49,7 @@ Read the code at the head of the comparison. When the head is not the current ch
 
 ## Workflow
 
-1. **Detect the ecosystem.** Gradle: `settings.gradle(.kts)`, `build.gradle(.kts)`, or `gradle/libs.versions.toml`. SPM: a `project.pbxproj` with package references, a `Package.resolved`, or a root `Package.swift` (Xcode app projects usually have no root `Package.swift`). Read the matching reference. If both match, ask which one, unless the library exists in only one. If none matches, stop: name the files you checked and point to `references/adding-an-ecosystem.md`.
+1. **Detect the ecosystem.** Gradle: `settings.gradle(.kts)`, `build.gradle(.kts)`, or `gradle/libs.versions.toml`. SPM: a `project.pbxproj` with package references, a `Package.resolved`, or a root `Package.swift` (Xcode app projects usually have no root `Package.swift`). Read the matching reference. If both match, ask which one, unless the library exists in only one. If none matches, stop: name the files that you checked, and say that the skill covers only Gradle and SPM.
 
 2. **Find the current version** and every place that declares it (file:line). The ecosystem reference says how. The version that ships is the resolved one — the SPM pin, the catalog value behind a `version.ref` — not a rule's minimum. When the branch changes the dependency, the current version is the one at the base, and the declarations are the lines on the head.
 

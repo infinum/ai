@@ -57,7 +57,7 @@ The skill keeps library facts that earlier runs learned — where the notes live
 | Find out what changed between two versions of a dependency | Yes |
 | Review a dependency-update branch or pull request, for example from Renovate | Yes |
 | Find outdated dependencies | No — Renovate or Dependabot do that; run this skill on their pull requests |
-| npm, PyPI, CocoaPods, or another ecosystem | Not yet — see `references/adding-an-ecosystem.md` |
+| npm, PyPI, CocoaPods, or another ecosystem | Not yet — the plugin's [CONTRIBUTING.md](../../CONTRIBUTING.md) says how to add one |
 | Vet a brand-new dependency before adopting it | No — use `security-check:dependency-adoption-review` |
 
 ## Environment compatibility
