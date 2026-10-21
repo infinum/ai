@@ -30,7 +30,7 @@ Brief each subagent with `<skill-dir>`, the project root, the ecosystem, and, pe
 For each dependency in the batch:
 
 1. Run steps 5–8 of `SKILL.md` over the range from the base to the head (for a rollback, from the head up to the base, as step 4 says): replacement check, release notes, hard evidence where needed, advisories. Apply the CI result from the brief (step 3 of `SKILL.md`), but do not report a CI failure: the main agent does.
-2. **Triage** (below). On the quick path, skip the usage check: the tier is LOW unless an unmet minimum or a conflict makes it HIGH.
+2. **Triage** (below). On the quick path, skip the usage check, but still look for improvements ("Improvements" in `SKILL.md`): one search per `additive` entry or recommended API, and one search of the project for the issue links of the fixes. If a search finds code that depends on the old behavior, take the full path. On the quick path, the tier is LOW unless an unmet minimum or a conflict makes it HIGH.
 3. On the full path, run step 9: labels, clusters, usage check, tier.
 4. Update the guide cache (step 11). Do not propose or make edits.
 5. Return one block per dependency, and nothing else:
@@ -47,14 +47,14 @@ required: [<label> | minimum | conflict] <symbol or setting> at <file:line, ...>
 behavior: <summary> [(internal builds only)] -> <how to verify> (<version>, <URL>)
 automated: <command> [(CI runs it) | (passed in CI)] -> <items it covers> [(internal builds only)] (<version>, <URL>)
 deprecated: <symbol> at <file:line, ...> -> <replacement> (<version>, <URL>)
-additive: <symbol> can replace <file:line> -> <note> (<version>, <URL>)
+improvement: <what the update offers> at <file:line, ...> -> <the change, and what the project gains> (<version>, <URL>)
 constraints: <minimums that the project meets, tools that no project file pins, runtime minimums that only internal code uses, and transitive moves without a conflict, with the project impact>
 question: <an unconfirmed hit, or a fact outside the repository, that decides an ambiguous cluster> -> <what follows from each answer> (<version>, <URL>)
 dropped: <behavior-changed cluster> at <sites> -> <the project fact> ; <what would make the path run>
 caveats: <gaps and checks that failed>
 ```
 
-Repeat an `advisory`, `required`, `behavior`, `automated`, `deprecated`, `additive`, `question`, or `dropped` line once per item. A `behavior` line holds only a `manual` item; a `build` item goes on a `required` line, and `check` items go on `automated` lines, one line per command (see "How the change shows" in `SKILL.md`). Leave out lines that have nothing to say.
+Repeat an `advisory`, `required`, `behavior`, `automated`, `deprecated`, `improvement`, `question`, or `dropped` line once per item. A `behavior` line holds only a `manual` item; a `build` item goes on a `required` line, and `check` items go on `automated` lines, one line per command (see "How the change shows" in `SKILL.md`). Leave out lines that have nothing to say.
 
 ### Triage
 
@@ -76,7 +76,7 @@ Render in the shape of `assets/branch-report.example.md`, with the base and the 
 - Sort rows by tier (HIGH first). Inside a tier, rows with a required change come first, then rows with a manual behavior item, then rows with only automated checks, then the rest; in each of these groups, a row whose items all concern internal builds only comes last. Then sort by the number of required changes (most first), by release date (newest first), and by coordinate. The user reads the table from the top, so a build break must not sit below a change in a debug tool.
 - In the Released column, add the age in days when the target is younger than 7 days, for example `2026-09-19 (5 days)`.
 - In the Risk column, add `· security` when the row has an `urgency` line, and `(low confidence)` when its tier line has it.
-- Each row with an `urgency`, `advisory`, `replacement`, `required`, `behavior`, `automated`, `deprecated`, `additive`, or `question` item gets a block below the table, in row order. The block heading carries the tier and what set it, as the verdict line does; a LOW heading names the items of the block instead. Inside the block, follow the section order of a single report ("Report rules" in `SKILL.md`): the urgency first, then the replacement (one line that names the successor and links its sources) and the timing, then Required, Behavior to verify, Automated checks, Suggestions (the `deprecated` and `additive` lines), Constraints, Manual review (the `question` lines), and last the new advisories.
+- Each row with an `urgency`, `advisory`, `replacement`, `required`, `behavior`, `automated`, `deprecated`, `improvement`, or `question` item gets a block below the table, in row order. The block heading carries the tier and what set it, as the verdict line does; a LOW heading names the items of the block instead. Inside the block, follow the section order of a single report ("Report rules" in `SKILL.md`): the urgency first, then the replacement (one line that names the successor and links its sources) and the timing, then Required, Behavior to verify, Automated checks, Suggestions (the `deprecated` and `improvement` lines), Constraints, Manual review (the `question` lines), and last the new advisories.
 - `dropped` lines go into the "Caveats" section, one line each.
 - Then "Not checked" and "Caveats".
 

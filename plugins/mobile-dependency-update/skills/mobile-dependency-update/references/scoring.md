@@ -30,7 +30,7 @@ After a passed CI run (step 3 of `SKILL.md`), the code that CI builds compiles. 
 - an item to verify that the report lists: a `manual` item under "Behavior changes to verify", with its trigger and symptom, or a `check` item under "Automated checks", with its command, unless it passed in CI;
 - a question under Manual review: an `ambiguous` cluster above `deprecated` (hits that you could not confirm, or a use that depends on a fact outside the repository), or, in a single report, a CI failure that no finding explains.
 
-**Not a tier driver:** `deprecated` clusters, unless the project treats warnings as errors (they compile; list them under Suggestions with the replacement), `bugfix`, `additive`, `noise`, every `unused` cluster, the bump type, the age of the release, the quality of the release notes, and a replacement. They shape the report, not the tier.
+**Not a tier driver:** `deprecated` clusters, unless the project treats warnings as errors (they compile; list them under Suggestions with the replacement), `bugfix`, `additive`, improvements (see "Improvements" in `SKILL.md`), `noise`, every `unused` cluster, the bump type, the age of the release, the quality of the release notes, and a replacement. They shape the report, not the tier.
 
 **Internal builds only.** A `behavior-changed` cluster whose every site sits in code that the release build does not contain (`#if DEBUG`, `debugImplementation`, a target that only internal schemes link) still gives MEDIUM when the report lists it as a `manual` item: someone must still look. Mark the item "internal builds only", so that the reader can rank it. `removed` and `signature-changed` keep HIGH: the internal builds still fail to compile. A certain failure (see above) also stays a required change in internal-only code. A raised runtime minimum (an API that needs a newer OS) that only internal code uses goes under Constraints; a raised package or SDK minimum still breaks the internal build and stays a required change.
 
@@ -54,7 +54,7 @@ The verdict names the tier, what set it with counts, and in one sentence what th
 
 **Risk: MEDIUM** — 1 behavior change to verify by hand: the new default animation duration. Nothing to change in code; check the dashboard charts once after the bump.
 
-**Risk: LOW** — no used API changes. One deprecation is listed under Suggestions.
+**Risk: LOW** — no used API changes. One deprecation and one improvement are listed under Suggestions.
 ```
 
 ## Clusters
@@ -72,7 +72,7 @@ Otherwise keep them apart. Example: three Balloon 1.7.6 bullets about the new po
 The library names in examples 1, 2, 7, and 8 are placeholders; the others use real release facts.
 
 1. **Routine patch.** `netkit` 4.12.0 → 4.12.1, released 60 days ago, one bug fix in a code path that the project does not reach. Nothing to change and nothing to verify: **LOW**.
-2. **Fresh minor with a deprecation.** `navkit` 2.9.6 → 2.10.0, released 1 day ago, one deprecated API used at two sites. Deprecations compile: **LOW**, with the two sites under Suggestions and a timing line.
+2. **Fresh minor with a deprecation and an improvement.** `navkit` 2.9.6 → 2.10.0, released 1 day ago: one deprecated API used at two sites, and a new `popUpTo(route, inclusive)` option that replaces a hand-written back-stack loop at one site. Deprecations compile, and improvements never set the tier: **LOW**, with the three sites under Suggestions and a timing line.
 3. **Major with a removal.** play-services-auth 21.6.0 → 22.0.0, released 30 days ago. 22.0.0 removes the Google Sign-In API, which the project calls at three sites, and raises `minSdk` from 23 to 24, which the project (at 26) already meets. Required changes: **HIGH**. The `minSdk` line goes under Constraints as met.
 4. **Security fix.** okhttp 4.9.0 → 4.12.0, released 90 days ago, no used API changes; the target fixes GHSA-3cqm-mf7h-prrj (CVE-2021-0341, HIGH). Nothing to change or verify: **LOW**, with "Update soon — security" at the top.
 5. **Internal builds only.** Pulse 5.1.4 → 5.2.3 in a project where only internal schemes link the Pulse console and the logging calls sit inside `#if DEBUG`. The console redesign and the new store format (it deletes the old logs) are `manual` behavior changes in internal-only code: **MEDIUM**, with both items marked "internal builds only". Five bug fixes drive nothing, and the console's iOS 18 minimum applies to internal code only, so it goes under Constraints.

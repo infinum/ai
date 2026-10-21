@@ -25,6 +25,7 @@ Formats for the lines that this example does not need:
   - **[minimum]** Gradle 9.6.0 or newer: `gradle/wrapper/gradle-wrapper.properties:3` has 9.5.0 → change it to `gradle-9.6.0-bin.zip`.  _9.4.0 · [compatibility table](URL)_
   Advisories: GHSA-xxxx-xxxx-xxxx (HIGH) affects 3.2.0 but not 3.1.4 (OSV). Wait for the fix, or stay on 3.1.4.
   - Default animation duration drops from 0.35 s to 0.2 s (used in `DashboardView.swift:40`) → check the charts visually.  _3.6.0 · [release](URL)_
+  - **[improvement]** `retry(maxAttempts:)`, new in 5.4.0, replaces the hand-written retry loop at `Network/ApiClient.swift:88`: less code, and it also retries on timeouts.  _5.4.0 · [release](URL)_
   **Automated checks:** `./gradlew detekt` shows the findings of the two new default rules. `./gradlew testDebugUnitTest` (CI runs it) covers the changed parser through `ParserTest.kt`.
   **Manual review:** Is session replay on in the Amplitude project settings? If yes, check the replay masking on the login screen; if no, nothing to do.
   Caveat line for a drop: `dropped:` behavior-changed "offline cache default" at `Api.kt:40` — the project sets `cacheEnabled = false`; it applies again if the project turns the cache on.

@@ -93,7 +93,7 @@ Give each release-note entry that can touch the project exactly one label, by wh
 | `behavior-changed` | Same signature, different runtime result: defaults, threading, errors, timing, rendering, persistence, network behavior. |
 | `deprecated` | Still works, but is marked for removal. Note the replacement. |
 | `bugfix` | A defect fix that keeps the documented behavior. |
-| `additive` | A new API. It matters only if the project does the same thing by hand today. |
+| `additive` | A new API. It matters only if it can improve the project's code (see "Improvements"). |
 | `noise` | Docs, tests, CI, internal refactors, build changes with no visible effect. |
 
 If an entry fits more than one label, use the most severe: removed > signature-changed > behavior-changed > deprecated > bugfix > additive > noise.
@@ -121,7 +121,7 @@ Classify each cluster as `used` (at least one confirmed site), `ambiguous` (hits
 
 **What the change does at each site.** For each confirmed site of a `behavior-changed` cluster, state what the new behavior does there: what fails, which value changes, or which code no longer runs. When the notes do not say, read the library's source at both versions.
 
-**Bug fixes.** A `bugfix` gets no item to verify: it keeps the documented behavior. If the project depends on the old behavior — a workaround, a comment or an issue link about the bug, a test that asserts the old output, code that parses or stores the old format — relabel the cluster `behavior-changed` and cite that site.
+**Bug fixes.** A `bugfix` gets no item to verify: it keeps the documented behavior. Look for project code that the fix touches: a workaround, a comment or an issue link about the bug, a test that asserts the old output, code that parses or stores the old format. If that code gives a different result after the fix, relabel the cluster `behavior-changed` and cite that site. If the code only becomes unnecessary, it is an improvement (see "Improvements").
 
 **How the change shows.** For each `used` cluster that is `behavior-changed`, decide what reveals the change (an `ambiguous` cluster goes under Manual review instead):
 
@@ -131,7 +131,13 @@ Classify each cluster as `used` (at least one confirmed site), `ambiguous` (hits
 
 Take `manual` if you cannot name the command, or, for a test, the test file. The ecosystem reference lists the usual commands and where CI config lives. After a passed CI run (step 3), only a build that CI does not run, such as a release build with R8, can give a `build` outcome. If the code at a confirmed site fails for certain with the new behavior (an error, a crash, or a call that never completes), and the library's source or artifacts at both versions show it, the item is a required change: list it under the required changes with its sites and the fix. If the effect depends on a race between threads, on data, or on device state, it stays an item to verify, even when you know a likely fix. Decide per site: one cluster can give a required change at one site and an item to verify at another.
 
-For an `additive` cluster, search instead for code that does by hand what the new API offers (a custom retry loop, a hand-written date parser). Report it only when the match is clear; a vague "you could use X" is noise.
+**Improvements.** An update can also let the project simplify or improve its code. Look for three cases in the notes of the range:
+
+- a new API that replaces code that the project wrote by hand: a custom retry loop, a hand-written date parser, a custom coverage task;
+- an API that the release notes recommend in place of one that the project uses, before any deprecation;
+- a fix or a new default that makes project code unnecessary: a workaround that still works after the fix, or a setting that now repeats the default.
+
+For an `additive` cluster, this search replaces the usage check. Report an improvement only for a clear match at a confirmed site: name the site, what to change, what the project gains, and the source. "You could use X" without a site is noise. Improvements go under Suggestions and never set the tier.
 
 ## Report rules
 
@@ -142,6 +148,7 @@ For an `additive` cluster, search instead for code that does by hand what the ne
 - Summarize release notes in your own words and link them. Do not paste them: pasted notes bury the findings, and Claude limits verbatim quotes from fetched pages.
 - Keep `unused` clusters out of the main sections. The changelog summary lists them only if they are `removed` or `signature-changed`, because those show how disruptive the release is.
 - "Behavior changes to verify" lists only `manual` items: what a person must try by hand. Each item names the trigger in the project's normal use and the symptom that a person sees. Without both, the item is a precaution: leave it out.
+- **Suggestions** holds the `deprecated` clusters that are used or unconfirmed, each with its replacement, and the improvements. Each item names its sites and links its source.
 - `build` items are required changes: list them under Required changes with their sites and the build command that shows them. `check` items go into one "Automated checks" line: each command once, with the items that it covers. Add "(CI runs it)" when a CI config file in the repository runs that task. If the check that runs it also passed on the head (step 3), write "(passed in CI)" instead: that item is done. If the report has `check` items and no CI config file runs them, add one caveat line instead: "CI coverage unknown: run the automated checks once if CI does not."
 - **Manual review** holds `ambiguous` clusters above `deprecated`: hits that you could not confirm (name each hit and what would confirm it), and uses that depend on a fact outside the repository, such as a dashboard, server, or CI setting (one question each, with what follows from each answer). In a single report, it also holds a CI failure that no finding explains (step 3). An unconfirmed `deprecated` cluster goes under Suggestions, marked "unconfirmed".
 - End with the caveats: versions without notes, failed fetches, checks you could not run.

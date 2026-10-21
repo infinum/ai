@@ -27,7 +27,7 @@ The skill runs only when you invoke it; a run is expensive, so it never triggers
 4. **Fetches the release notes** for every version in between, from the ecosystem's sources and GitHub, and diffs the public API or the artifact when the notes are terse.
 5. **Checks advisories** with OSV: what the target fixes, what it introduces, what stays open.
 6. **Labels each change** (`removed`, `signature-changed`, `behavior-changed`, `deprecated`, `bugfix`, `additive`, `noise`) and checks whether the project uses the affected API. A change counts only if a real call site uses it.
-7. **Sets the risk tier** (HIGH if code or configuration must change or the target brings a new advisory, MEDIUM if something must be verified, LOW otherwise) and writes the report: verdict first, required changes with `file:line`, behavior changes to verify by hand, automated checks that reveal the rest, constraints such as a raised minimum SDK, and caveats.
+7. **Sets the risk tier** (HIGH if code or configuration must change or the target brings a new advisory, MEDIUM if something must be verified, LOW otherwise) and writes the report: verdict first, required changes with `file:line`, behavior changes to verify by hand, automated checks that reveal the rest, suggestions (deprecations, and improvements that the update allows, such as a new API that replaces hand-written code), constraints such as a raised minimum SDK, and caveats.
 8. **Proposes the edit** when the branch does not contain it yet — old → new at `file:line`, plus the lockfile or pin entry — and waits for an explicit yes before it edits anything. It never commits or opens a pull request.
 
 ### Several changes on one branch

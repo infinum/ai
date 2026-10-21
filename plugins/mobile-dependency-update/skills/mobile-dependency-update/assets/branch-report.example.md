@@ -15,7 +15,7 @@ CI: `build-and-test` failed on `9c4e2b7`; the NetKit required changes are the li
 | `github.com/example/NetKit` | 5.10.2 → 6.0.1 | major | 2026-09-10 | HIGH | ↓ NetKit |
 | `github.com/example/ChartKit` | 3.4.0 → 3.6.0 | minor | 2026-09-19 (5 days) | MEDIUM | ↓ ChartKit |
 | `github.com/example/ImageKit` | 5.21.5 → 5.22.0 | minor | 2026-07-30 | LOW (low confidence) | — |
-| `github.com/example/Keychain` | 4.2.1 → 4.2.2 | patch | 2026-06-01 | LOW | — |
+| `github.com/example/Keychain` | 4.2.1 → 4.2.2 | patch | 2026-06-01 | LOW | ↓ Keychain |
 | `github.com/example/RxCore` | 6.9.1 → 6.10.2 | minor | 2026-03-02 | LOW | ↓ RxCore |
 | `github.com/example/RxKeys` | 2.0.1 → 2.1.0 | minor | 2026-02-11 | LOW | — |
 
@@ -37,6 +37,14 @@ Behavior to verify:
 - The default animation duration drops from 0.35 s to 0.2 s (used in `Dashboard/ChartView.swift:40`) → check the dashboard charts visually. _3.6.0 · [release](https://github.com/example/ChartKit/releases/tag/3.6.0)_
 
 Automated checks: `xcodebuild test` (CI runs it) covers the new axis-label rounding through `ChartFormatterTests.swift`.
+
+Suggestions:
+- **[improvement]** `AxisFormatter.compact`, new in 3.5.0, replaces the hand-written number abbreviation at `Dashboard/ChartView+Format.swift:12`: one formatter for every chart. _3.5.0 · [release](https://github.com/example/ChartKit/releases/tag/3.5.0)_
+
+### ↓ Keychain — LOW (1 suggestion)
+
+Suggestions:
+- **[improvement]** 4.2.2 fixes lost items after a restore from a backup, so the workaround at `Storage/KeychainStore.swift:61`, which writes each item twice, can go. _4.2.2 · [release](https://github.com/example/Keychain/releases/tag/4.2.2)_
 
 ### ↓ RxCore — LOW (1 suggestion)
 
