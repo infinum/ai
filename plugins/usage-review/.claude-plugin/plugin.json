@@ -1,0 +1,11 @@
+{
+  "name": "usage-review",
+  "version": "1.0.0",
+  "description": "Review how you use Claude Code: hours Claude works vs. waits for you, parallelism across sessions, and prompting habits to keep or change. Builds on the built-in /insights report.",
+  "keywords": [
+    "usage",
+    "review",
+    "productivity",
+    "claude"
+  ]
+}
