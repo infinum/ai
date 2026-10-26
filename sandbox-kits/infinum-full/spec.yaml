@@ -5,8 +5,9 @@ displayName: Infinum Full Setup
 description: >-
   Baseline Infinum setup for a Claude sandbox: disables commit/PR
   attribution, allows Maven Central egress, installs the Infinum plugin
-  marketplace, house rules and superpowers skills, and registers the
-  context7 MCP server via OAuth login. See README.
+  marketplace, house rules and the Caliber plugin, and registers the
+  context7 MCP server via OAuth login (Caliber's own MCP server signs in
+  the same way). See README.
 requires:
   agent: claude
 
@@ -21,6 +22,7 @@ permissions:
       - api.github.com
       - "*.context7.com"
       - context7.com
+      - app.caliberhq.io
       - otlp-gateway-prod-eu-west-2.grafana.net
       - pypi.org
       - crates.io
@@ -128,29 +130,37 @@ setup:
         }
 
     - user: "agent"
-      description: "superpowers: register the official marketplace and install the superpowers plugin from it"
+      description: "caliber: register the infinum/caliber-plugin marketplace and install the caliber plugin from it"
       command: |
         set -eu
 
-        # Auto-registers only on an interactive first launch
-        # (anthropics/claude-code#66750), so a headless run needs this.
-        if out=$(claude plugin marketplace add anthropics/claude-plugins-official 2>&1); then
+        if out=$(claude plugin marketplace add infinum/caliber-plugin 2>&1); then
           echo "$out"
         elif echo "$out" | grep -qi "already"; then
-          echo "infinum-full kit: marketplace 'claude-plugins-official' already registered."
+          echo "infinum-full kit: marketplace 'caliber' already registered."
         else
-          echo "infinum-full kit: ERROR: could not add the 'claude-plugins-official' marketplace (network policy likely blocking github.com): $out" >&2
+          echo "infinum-full kit: ERROR: could not add the 'caliber' marketplace (network policy likely blocking github.com): $out" >&2
           exit 1
         fi
 
-        if out=$(claude plugin install superpowers@claude-plugins-official 2>&1); then
+        if out=$(claude plugin install caliber@caliber 2>&1); then
           echo "$out"
         elif echo "$out" | grep -qi "already"; then
-          echo "infinum-full kit: 'superpowers' already installed."
+          echo "infinum-full kit: 'caliber' already installed."
         else
-          echo "infinum-full kit: ERROR: could not install 'superpowers' (network policy likely blocking github.com): $out" >&2
+          echo "infinum-full kit: ERROR: could not install 'caliber' (network policy likely blocking github.com): $out" >&2
           exit 1
         fi
+
+        cat >&2 <<EOF
+        infinum-full kit: NOTE: the plugin's MCP server 'plugin:caliber:caliber'
+          (https://app.caliberhq.io/mcp/plugin) signs in with OAuth. Finish it
+          once, from inside this sandbox:
+            claude mcp login plugin:caliber:caliber
+          or, with no browser reachable from the session:
+            claude mcp login plugin:caliber:caliber --no-browser
+          Then run /caliber:setup once in each repository that should use Caliber.
+        EOF
 
     - user: "agent"
       description: "context7: register the context7 MCP server (remote HTTP, OAuth) at user scope"
@@ -233,18 +243,29 @@ agentInstructions:
     stub. If so, don't treat its placeholder example as fact about the
     user.
 
-    ## Superpowers skills library
+    ## Caliber
 
-    `superpowers` (`obra/superpowers`, third-party, unpinned) is installed
-    at user scope via the built-in `claude-plugins-official` marketplace.
-    Its skills are already listed by the `Skill` tool, and its SessionStart
-    hook injects an orientation skill every session.
+    The `caliber` plugin (`infinum/caliber-plugin`) is installed at user
+    scope. Its `/caliber:*` commands and its MCP server
+    `plugin:caliber:caliber` (`https://app.caliberhq.io/mcp/plugin`) are
+    the way into Caliber, Infinum's AI delivery platform: specs (PRD,
+    brief, tech spec, plan) reviewed and approved in the portal, PR
+    checks, and usage telemetry. Follow the instructions the MCP server
+    itself provides.
 
-    Its `brainstorming` skill can start a local server whose page embeds an
-    `<img>` pointing at `primeradiant.com`, fetched by whatever browser
-    opens the page rather than by this sandbox, unless
-    `SUPERPOWERS_DISABLE_TELEMETRY`, `DISABLE_TELEMETRY` or
-    `CLAUDE_CODE_DISABLE_NONESSENTIAL_TRAFFIC` disables it.
+    Tool calls fail with an auth error until a human runs
+    `claude mcp login plugin:caliber:caliber` (or `--no-browser` with no
+    browser reachable) inside the sandbox. That's an expected gap, not a
+    broken install. Don't re-register the server.
+
+    `/caliber:setup` joins a repository to a Caliber project by writing
+    the Caliber block into its `CLAUDE.md`/`AGENTS.md`. It is a
+    per-repository step the human confirms; the plugin's own session note
+    says when to offer it. A workspace without the block simply hasn't
+    been set up yet.
+
+    Egress is allowed to `app.caliberhq.io` (the MCP endpoint and its
+    OAuth sign-in).
 
     ## `context7` MCP server
 
