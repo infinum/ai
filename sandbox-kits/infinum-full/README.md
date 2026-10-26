@@ -7,6 +7,7 @@ Base Infinum `claude` sandbox setup. It is not team-specific. The kit installs:
 - Install `infinum-ai` plugins and house rules
 - Install `caliber` plugin (Caliber commands and MCP server, OAuth login)
 - Add `context7` MCP using OAuth
+- Rewrite GitHub SSH remotes to HTTPS
 
 ## Requires
 
@@ -29,9 +30,11 @@ exists" are treated as done, not errors.
 | Plugins & house rules      | `infinum-ai` marketplace. `stack-essentials`, `create-prd`, `pr-review-code-simplicity`, `productive-debug`, `claude-setup-audit`, `security-check` skills. House rules are copied to `~/.claude/infinum/` |
 | Caliber                    | `caliber` marketplace (`infinum/caliber-plugin`). `caliber` plugin: `/caliber:*` commands and the `plugin:caliber:caliber` MCP server. Needs manual login, see below for instructions                      |
 | Context7                   | `context7` MCP server with OAuth authentication. Needs manual login, see below for instructions                                                                                                            |
+| Git SSH to HTTPS rewrite   | `git@github.com:` and `ssh://git@ssh.github.com:443/` remotes rewritten to `https://github.com/` in `~/.gitconfig`                                                                                         |
 
 ### Network allow:
 
+- `claude.ai` (claude.ai connectors)
 - `repo.maven.apache.org`, `repo1.maven.org`, `build.shibboleth.net`
 - `github.com`, `api.github.com`
 - `*.context7.com`, `context7.com`
