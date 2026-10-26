@@ -37,7 +37,7 @@ The full flow for a meaningful feature:
 - Start from a PRD or a well-refined task ticket — capture what "done" means before writing any code
 - Understand → design → plan → build, using Caliber's `prd`, `brief`, `tech-spec`, and `plan` commands or your equivalent spec-driven setup
 - Iterate on the UI with the UI validation skill where applicable
-- Run a local PR review before you push; with Caliber connected, the check runs on push and the PR gets its Caliber status
+- Run a local PR review before you push; with Caliber set up in the repository, the check runs on push and the PR gets its Caliber status
 
 **Optional:** layer in cloud PR review (CodeRabbit) on top of the local pass for an additional automated check.
 
