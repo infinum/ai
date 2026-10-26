@@ -13,6 +13,7 @@ requires:
 permissions:
   network:
     allow:
+      - claude.ai
       - repo.maven.apache.org
       - repo1.maven.org
       - build.shibboleth.net
@@ -182,7 +183,8 @@ setup:
       description: "git: rewrite ssh://git@ssh.github.com:443/ to https://github.com/ in ~/.gitconfig"
       command: |
         set -eu
-        git config --global url."https://github.com/".insteadOf "ssh://git@ssh.github.com:443/"
+        git config --global url."https://github.com/".insteadOf git@github.com:
+        git config --global --add url."https://github.com/".insteadOf "ssh://git@ssh.github.com:443/"
 
 agentInstructions:
   content: |
