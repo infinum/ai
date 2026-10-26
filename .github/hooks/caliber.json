@@ -1,0 +1,13 @@
+{
+  "version": 1,
+  "hooks": {
+    "postToolUse": [
+      {
+        "type": "command",
+        "bash": ".caliber/hooks/agent-post-push.sh copilot",
+        "matcher": "bash",
+        "timeoutSec": 10
+      }
+    ]
+  }
+}
