@@ -30,7 +30,7 @@ exists" are treated as done, not errors.
 | Plugins & house rules      | `infinum-ai` marketplace. `stack-essentials`, `create-prd`, `pr-review-code-simplicity`, `productive-debug`, `claude-setup-audit`, `security-check` skills. House rules are copied to `~/.claude/infinum/` |
 | Caliber                    | `caliber` marketplace (`infinum/caliber-plugin`). `caliber` plugin: `/caliber:*` commands and the `plugin:caliber:caliber` MCP server. Needs manual login, see below for instructions                      |
 | Context7                   | `context7` MCP server with OAuth authentication. Needs manual login, see below for instructions                                                                                                            |
-| Git SSH to HTTPS rewrite   | `git@github.com:` and `ssh://git@ssh.github.com:443/` remotes rewritten to `https://github.com/` in `~/.gitconfig`                                                                                         |
+| Git SSH to HTTPS rewrite   | GitHub SSH remotes mapped to `https://github.com/` in `~/.gitconfig`                                                                                                                                       |
 
 ### Network allow:
 

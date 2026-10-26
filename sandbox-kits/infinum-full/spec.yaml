@@ -190,11 +190,13 @@ setup:
         fi
 
     - user: "agent"
-      description: "git: rewrite git@github.com: and ssh://git@ssh.github.com:443/ to https://github.com/ in ~/.gitconfig"
+      description: "git: map GitHub SSH remotes to https://github.com/ in ~/.gitconfig"
       command: |
         set -eu
         git config --global --replace-all url."https://github.com/".insteadOf git@github.com: '^git@github\.com:$'
         git config --global --replace-all url."https://github.com/".insteadOf ssh://git@ssh.github.com:443/ '^ssh://git@ssh\.github\.com:443/$'
+        git config --global --replace-all url."https://github.com/".insteadOf ssh://git@github.com/ '^ssh://git@github\.com/$'
+        git config --global --replace-all url."https://github.com/".insteadOf git+ssh://git@github.com/ '^git\+ssh://git@github\.com/$'
 
 agentInstructions:
   content: |
