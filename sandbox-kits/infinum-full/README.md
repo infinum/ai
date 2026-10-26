@@ -26,7 +26,7 @@ exists" are treated as done, not errors.
 | Step                       | Installs                                                                                                                                                                                                   |
 |----------------------------|------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
 | Disable Claude attribution | `attribution.commit` / `attribution.pr` = `""` in `~/.claude/settings.json`                                                                                                                                |
-| Plugins & house rules      | `infinum-ai` marketplace. `stack-essentials`, `create-prd`, `pr-review-code-simplicity`, `productive-debug`, `claude-setup-audit`, `security-check` skills. House rules are copied to `~/.claude/infinum/` |
+| Plugins & house rules      | `infinum-ai` marketplace. `stack-essentials`, `create-prd`, `pr-review-code-simplicity`, `productive-debug`, `setup-audit`, `security-check` skills. House rules are copied to `~/.claude/infinum/` |
 | Caliber                    | `caliber` marketplace (`infinum/caliber-plugin`). `caliber` plugin: `/caliber:*` commands and the `plugin:caliber:caliber` MCP server. Needs manual login, see below for instructions                      |
 | Context7                   | `context7` MCP server with OAuth authentication. Needs manual login, see below for instructions                                                                                                            |
 
@@ -40,7 +40,7 @@ exists" are treated as done, not errors.
 
 ### Infinum plugins:
 
-- `claude-setup-audit`
+- `setup-audit`
 - `create-prd`
 - `pr-review-code-simplicity`
 - `productive-debug`

@@ -57,7 +57,7 @@ setup:
         REPO="infinum/ai"
         MARKET="infinum-ai"
         MARKET_DIR="$CLAUDE_DIR/plugins/marketplaces/$MARKET"
-        PLUGINS="stack-essentials create-prd pr-review-code-simplicity productive-debug claude-setup-audit security-check"
+        PLUGINS="stack-essentials create-prd pr-review-code-simplicity productive-debug setup-audit security-check"
 
         # Also leaves a clone at $MARKET_DIR, which the rules copy below reads.
         if out=$(claude plugin marketplace add "$REPO" 2>&1); then
@@ -222,7 +222,7 @@ agentInstructions:
       software design.
     - `productive-debug`: investigate a Productive bug task end-to-end;
       needs the Productive Claude connector enabled.
-    - `claude-setup-audit`: audit this Claude Code setup itself (settings,
+    - `setup-audit`: audit this Claude Code setup itself (settings,
       plugins, hooks, MCP config, permissions) for vulnerabilities,
       malicious code, and prompt injection. Reads `~/.claude/` in this
       sandbox, so results only reflect this sandbox's config.
