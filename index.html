@@ -24,6 +24,9 @@
   }
 
   * { margin: 0; padding: 0; box-sizing: border-box; }
+  @media (prefers-reduced-motion: no-preference) {
+    html { scroll-behavior: smooth; }
+  }
 
   body {
     background: var(--white);
@@ -143,6 +146,29 @@
   }
 
   .component-wide { grid-column: 1 / -1; }
+
+  /* Featured component (Caliber) */
+  .component-featured {
+    background: var(--red-light);
+    border-top: 3px solid var(--red);
+    padding-top: 16px;
+  }
+  .component-featured .component-desc { color: var(--gray-90); }
+  .component-featured .component-name { font-size: 18px; }
+
+  .badge-new {
+    display: inline-block;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 10px;
+    font-weight: 700;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    color: var(--white);
+    background: var(--red);
+    padding: 2px 7px;
+    margin-left: 8px;
+    vertical-align: middle;
+  }
 
   .component-num {
     font-family: 'JetBrains Mono', monospace;
@@ -285,6 +311,11 @@
 
   .part-body { padding: 24px; }
 
+  /* Featured part card (Caliber) */
+  .part-card-featured { border-color: var(--red-mid); border-left: 4px solid var(--red); }
+  .part-card-featured .part-head { background: var(--red-light); border-bottom-color: var(--red-mid); }
+  .part-card-featured .part-tag { color: var(--white); background: var(--red); border-color: var(--red); }
+
   .part-intro {
     font-size: 14.5px;
     color: var(--gray-70);
@@ -366,7 +397,7 @@
 
   .skill-text strong { color: var(--black); font-weight: 600; }
 
-  /* Phantom command chips */
+  /* Command chips */
   .cmds {
     display: flex;
     flex-wrap: wrap;
@@ -384,7 +415,7 @@
     font-weight: 500;
   }
 
-  /* Phantom flow strip */
+  /* Flow strip */
   .flow {
     display: grid;
     grid-template-columns: repeat(4, 1fr);
@@ -430,6 +461,34 @@
   }
   a.component-link:hover { background: var(--gray-05); }
   a.component-link .component-name { color: var(--red); }
+  a.component-link.component-featured:hover { background: var(--red-mid); }
+
+  /* Call-to-action row (Caliber) */
+  .cta-row {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 12px 20px;
+    margin-top: 18px;
+    padding-top: 18px;
+    border-top: 1px solid var(--border);
+  }
+  .cta-row a.inline { font-size: 13.5px; }
+  .cta-row .cta-note { font-size: 13.5px; color: var(--gray-70); }
+
+  .btn {
+    display: inline-block;
+    font-family: 'Plus Jakarta Sans', system-ui, sans-serif;
+    font-size: 13.5px;
+    font-weight: 700;
+    color: var(--white);
+    background: var(--red);
+    border: 1px solid var(--red);
+    padding: 9px 16px;
+    text-decoration: none;
+    white-space: nowrap;
+  }
+  .btn:hover { background: var(--black); border-color: var(--black); }
 
   /* Part title as link */
   .part-title-link {
@@ -511,13 +570,13 @@
   <div class="header">
     <div class="eyebrow"><span class="eyebrow-dot"></span>Infinum · Engineering · The Stack</div>
     <h1>Infinum<br>AI Stack.</h1>
-    <p class="tagline">A workflow, a spec engine, a set of skills, and an in-house agent — packaged together and installed per repo with one command — plus an org-wide tracker for how it's all being adopted.</p>
+    <p class="tagline">A workflow, a set of skills, and a delivery platform — packaged together and installed per repo with one command — so specs, quality gates, and measurement live alongside the code.</p>
     <p class="access-note">More details, the full skill catalogue, and install commands are available at <a href="https://github.com/infinum/ai">github.com/infinum/ai</a>.</p>
   </div>
 
   <!-- ANALOGY / INTRO -->
   <div class="analogy">
-    <strong>Why a stack:</strong> building with AI without a shared setup produces inconsistent, hard-to-maintain results. After two years of practice we've packaged that setup — a workflow, a spec engine, skills, and an agent installed per repo, plus an org-wide view of how it's used — living alongside the code it works on.
+    <strong>Why a stack:</strong> building with AI without a shared setup produces inconsistent, hard-to-maintain results. After two years of practice we've packaged that setup — a workflow, skills installed per repo, and a platform that defines what "correct" means before the agent builds, gates every pull request, and measures what AI costs and delivers — living alongside the code it works on.
   </div>
 
   <!-- COMPONENTS OVERVIEW -->
@@ -530,24 +589,19 @@
     </a>
     <div class="component">
       <div class="component-num">02</div>
-      <div class="component-name">Superpowers</div>
-      <div class="component-desc">The spec-driven engine inside PSDD. Brainstorm, plan, TDD, self-review — all as skills.</div>
-    </div>
-    <div class="component">
-      <div class="component-num">03</div>
       <div class="component-name">Skills marketplace</div>
       <div class="component-desc">PRD authoring, security audits, UI validation, local PR review — each one a separate plugin.</div>
     </div>
-    <div class="component">
+    <a href="#caliber" class="component component-wide component-link component-featured">
+      <div class="component-num">03</div>
+      <div class="component-name">Caliber ↓<span class="badge-new">New</span></div>
+      <div class="component-desc">Our AI delivery platform. Defines specs up front, assures quality with audits and a human sign-off on every PR, and measures what AI costs and delivers — through one MCP server.</div>
+    </a>
+    <a href="https://github.com/infinum/ai/tree/main/sandbox-kits" class="component component-wide component-link">
       <div class="component-num">04</div>
-      <div class="component-name">Phantom</div>
-      <div class="component-desc">Our Slack-native AI agent. Drops a fix in your repo from a Slack thread, runs your validation, opens the PR.</div>
-    </div>
-    <div class="component component-wide">
-      <div class="component-num">05</div>
-      <div class="component-name">AI Stats</div>
-      <div class="component-desc">Internal overview of AI-tool usage, cost, and adoption across teams and skills.</div>
-    </div>
+      <div class="component-name">Sandbox kits ↗</div>
+      <div class="component-desc">Reusable kits for a <code>claude</code> Docker Sandbox — one command brings up a sandbox with the Infinum plugins, house rules, Caliber, and MCP servers in place.</div>
+    </a>
   </div>
 
   <!-- SETUP -->
@@ -571,8 +625,8 @@
     </div>
   </div>
 
-  <!-- THE FIVE PARTS -->
-  <div class="section-label">The five parts, in detail</div>
+  <!-- THE THREE PARTS -->
+  <div class="section-label">The four parts, in detail</div>
   <div class="parts">
 
     <!-- 01 PSDD -->
@@ -596,41 +650,15 @@
         </div>
 
         <div class="note">
-          <strong>Three lanes:</strong> small / low-risk compresses all four steps into one prompt; purely technical work skips the PRD for a tight technical brief; large or high-risk work gets every step in full. Read the full guide at <a class="inline" href="https://infinum.github.io/ai/psdd/">infinum.github.io/ai/psdd</a>.
+          <strong>Three lanes:</strong> small / low-risk compresses all four steps into one prompt; purely technical work skips the PRD for a tight technical brief; large or high-risk work gets every step in full. Read the full guide at <a class="inline" href="https://infinum.github.io/ai/psdd/">infinum.github.io/ai/psdd</a>. Caliber's <code>prd</code>, <code>brief</code>, <code>tech-spec</code>, and <code>plan</code> commands (03) produce the artifacts of the Understand, Design and Plan steps.
         </div>
       </div>
     </div>
 
-    <!-- 02 SUPERPOWERS -->
+    <!-- 02 SKILLS -->
     <div class="part-card">
       <div class="part-head">
         <div class="part-num">02</div>
-        <div class="part-meta">
-          <div class="part-title">Superpowers — the spec engine</div>
-          <div class="part-sub">Brainstorm → spec → plan → code → review, all as skills</div>
-        </div>
-        <div class="part-tag">Engine</div>
-      </div>
-      <div class="part-body">
-        <p class="part-intro">PSDD is the workflow. <strong>Superpowers is the engine inside Steps 2 and 3</strong> — the spec-driven development plugin we adopt as the default. It treats spec, plan, and review as first-class skills, not afterthoughts.</p>
-
-        <div class="bullets">
-          <div class="bullet"><span class="bullet-arrow">→</span><span><strong>Brainstorming and exploration</strong> before any plan exists.</span></div>
-          <div class="bullet"><span class="bullet-arrow">→</span><span><strong>Written specs reviewed by independent subagents</strong> — parallel passes to catch ambiguities.</span></div>
-          <div class="bullet"><span class="bullet-arrow">→</span><span><strong>Implementation plans with phases and verification gates</strong> — not "go write the code."</span></div>
-          <div class="bullet"><span class="bullet-arrow">→</span><span><strong>TDD as a default,</strong> not an option. Self-review before "done."</span></div>
-        </div>
-
-        <div class="note">
-          Superpowers is open source by <a class="inline" href="https://github.com/obra/superpowers">@obra</a>. It's the recommended default in our setup, but the stack is agent-agnostic — bring your own equivalent if you prefer.
-        </div>
-      </div>
-    </div>
-
-    <!-- 03 SKILLS -->
-    <div class="part-card">
-      <div class="part-head">
-        <div class="part-num">03</div>
         <div class="part-meta">
           <div class="part-title">Skills — per-repo plugins</div>
           <div class="part-sub">Install only what the project needs</div>
@@ -669,73 +697,87 @@
       </div>
     </div>
 
-    <!-- 04 PHANTOM -->
-    <div class="part-card">
+    <!-- 03 CALIBER -->
+    <div class="part-card part-card-featured" id="caliber">
       <div class="part-head">
-        <div class="part-num">04</div>
+        <div class="part-num">03</div>
         <div class="part-meta">
-          <div class="part-title">Phantom — the Slack-native agent</div>
-          <div class="part-sub">Fix, build, review, explain — from a Slack thread</div>
+          <div class="part-title">Caliber — the delivery platform</div>
+          <div class="part-sub">Define, assure, measure — through one MCP server</div>
         </div>
-        <div class="part-tag">Agent</div>
+        <div class="part-tag">Platform</div>
       </div>
       <div class="part-body">
-        <p class="part-intro">An AI agent we built ourselves and run on real production projects. <strong>Open a Slack thread, drop the context, mention <code>@Phantom</code></strong>, and an isolated, sandboxed agent clones the repo, reads the thread, applies the change, runs your validation, and opens a pull request — assigned to a human owner.</p>
+        <p class="part-intro">Infinum's AI delivery platform for software built with coding agents. <strong>Your agent talks to it through a single MCP server; people use the portal.</strong> It carries a PSDD spec from Step 1 to a merged pull request, and tells you what AI cost and what it delivered.</p>
 
         <div class="cmds">
-          <span class="cmd-chip">@Phantom fix</span>
-          <span class="cmd-chip">@Phantom build</span>
-          <span class="cmd-chip">@Phantom review</span>
-          <span class="cmd-chip">@Phantom explain</span>
-          <span class="cmd-chip">@Phantom vuln-fix</span>
+          <span class="cmd-chip">/caliber:prd</span>
+          <span class="cmd-chip">/caliber:brief</span>
+          <span class="cmd-chip">/caliber:tech-spec</span>
+          <span class="cmd-chip">/caliber:plan</span>
+          <span class="cmd-chip">/caliber:open-pr</span>
+          <span class="cmd-chip">/caliber:check</span>
+          <span class="cmd-chip">/caliber:fix</span>
         </div>
 
         <div class="bullets">
-          <div class="bullet"><span class="bullet-arrow">→</span><span><strong>Sandboxed Docker containers per job.</strong> Per-stack images for Android, Flutter, JVM, .NET, MAUI, Ruby, and a base image. No ambient repo access, no shared state.</span></div>
-          <div class="bullet"><span class="bullet-arrow">→</span><span><strong>Self-registers by DM.</strong> No YAML edits, no setup PR. Open a chat with Phantom, say "set up a project," and it walks you through.</span></div>
-          <div class="bullet"><span class="bullet-arrow">→</span><span><strong>Human ownership on every PR.</strong> Phantom opens; humans review and merge.</span></div>
+          <div class="bullet"><span class="bullet-arrow">→</span><span><strong>Define.</strong> PRD, technical brief, tech spec, and plan — written from the agent following PSDD, reviewed and approved by people in the portal before any code is built.</span></div>
+          <div class="bullet"><span class="bullet-arrow">→</span><span><strong>Assure.</strong> Every pull request gets a Caliber status from the project's audits — code, security, spec conformance — plus a person's sign-off. Runs on push from your machine, by command, or in CI. Only findings leave the machine, never source files.</span></div>
+          <div class="bullet"><span class="bullet-arrow">→</span><span><strong>Measure.</strong> AI cost and code activity per project, repository, team, and person; DORA; finding outcomes; tracked time. AI stats are part of Caliber, on its Insights pages.</span></div>
+          <div class="bullet"><span class="bullet-arrow">→</span><span><strong>Agent-agnostic.</strong> Claude Code through the plugin; Cursor, Copilot, Codex, and others through the MCP URL. Each person signs in with their own account.</span></div>
         </div>
 
         <div class="flow">
           <div class="flow-step">
-            <div class="flow-num">01 thread</div>
-            <div class="flow-text">QA or dev posts the bug, context, screenshots, Figma link.</div>
+            <div class="flow-num">01 spec</div>
+            <div class="flow-text">The agent writes the PRD or brief, then the tech spec and plan. People approve in the portal.</div>
           </div>
           <div class="flow-step">
-            <div class="flow-num">02 mention</div>
-            <div class="flow-text">@Phantom fix — the agent reads the whole thread.</div>
+            <div class="flow-num">02 build</div>
+            <div class="flow-text">The agent implements against the approved plan, in your repo.</div>
           </div>
           <div class="flow-step">
-            <div class="flow-num">03 work</div>
-            <div class="flow-text">Clones, fixes, runs lint / tests / build in a sandbox.</div>
+            <div class="flow-num">03 check</div>
+            <div class="flow-text">Audits run on push or on command. Blocking findings get fixed with a test each.</div>
           </div>
           <div class="flow-step">
             <div class="flow-num">04 PR</div>
-            <div class="flow-text">Opens a pull request, reports back in the thread.</div>
+            <div class="flow-text">The pull request carries its Caliber status. A human signs off and merges.</div>
           </div>
+        </div>
+
+        <div class="note">
+          <strong>Connect Claude Code once:</strong> <code>/plugin marketplace add infinum/caliber-plugin</code>, then <code>/plugin install caliber@caliber</code>, sign in via <code>/mcp</code>, and run <code>/caliber:setup</code> once per repository. Plugin repo: <a class="inline" href="https://github.com/infinum/caliber-plugin">github.com/infinum/caliber-plugin</a>.
+        </div>
+
+        <div class="cta-row">
+          <a class="btn" href="https://caliber.infinum.com/talk-to-us/" target="_blank" rel="noopener noreferrer">Talk to us about Caliber</a>
+          <span class="cta-note">More at <a class="inline" href="https://caliber.infinum.com/" target="_blank" rel="noopener noreferrer">caliber.infinum.com</a> — reach out to see it in action or use it on your project.</span>
         </div>
       </div>
     </div>
 
-    <!-- 05 AI STATS -->
+    <!-- 04 SANDBOX KITS -->
     <div class="part-card">
       <div class="part-head">
-        <div class="part-num">05</div>
+        <div class="part-num">04</div>
         <div class="part-meta">
-          <div class="part-title">AI Stats — the measurement layer</div>
-          <div class="part-sub">Who's adopting AI, on what, at what cost</div>
+          <div class="part-title"><a href="https://github.com/infinum/ai/tree/main/sandbox-kits" class="part-title-link">Sandbox kits — preconfigured sandboxes ↗</a></div>
+          <div class="part-sub">The stack, ready inside an isolated agent run</div>
         </div>
-        <div class="part-tag">Insights</div>
+        <div class="part-tag">Sandboxes</div>
       </div>
       <div class="part-body">
-        <p class="part-intro">The other four help you build with AI. AI Stats measures how much it's used — a web app that aggregates every employee's AI-tool usage into company-wide adoption and spend.</p>
+        <p class="part-intro">A kit packages what a <a class="inline" href="https://docs.docker.com/ai/sandboxes/get-started/">Docker Sandboxes</a> <code>claude</code> sandbox needs — tools to install, network rules to allow, instructions for the agent — so the sandbox comes up ready for Infinum work with one command. <strong>Set up once in the kit, not by hand in every sandbox.</strong></p>
 
         <div class="bullets">
-          <div class="bullet"><span class="bullet-arrow">→</span><span><strong>One schema, many tools.</strong> Cursor, Firebender, Claude Code, and Copilot — normalized into a single database.</span></div>
-          <div class="bullet"><span class="bullet-arrow">→</span><span><strong>Breakdowns by user, tool, model, team, skill, and month.</strong> Filter to the slice you care about.</span></div>
-          <div class="bullet"><span class="bullet-arrow">→</span><span><strong>Skill-level adoption.</strong> Per-skill Claude Code usage — tied back to the skills in 03.</span></div>
-          <div class="bullet"><span class="bullet-arrow">→</span><span><strong>The whole picture, not just spend.</strong> Usage and cost are paired with actual code changes from GitHub / GitLab / Bitbucket — so adoption is measured against what shipped, not tokens alone.</span></div>
-          <div class="bullet"><span class="bullet-arrow">→</span><span><strong>Role-based access.</strong> Viewer, Contributor, Manager, Owner.</span></div>
+          <div class="bullet"><span class="bullet-arrow">→</span><span><strong>infinum-full.</strong> The base Infinum kit: disables commit and PR attribution, installs the Infinum plugins and house rules, installs the Caliber plugin, registers the Context7 MCP server, and allows egress only to the hosts those need.</span></div>
+          <div class="bullet"><span class="bullet-arrow">→</span><span><strong>Mixins.</strong> A kit is applied at sandbox creation, or added to a running sandbox. Applying one twice is safe — what is already installed counts as done.</span></div>
+          <div class="bullet"><span class="bullet-arrow">→</span><span><strong>Sign-ins stay human.</strong> The Caliber and Context7 MCP servers are registered by the kit; a person signs in once inside the sandbox.</span></div>
+        </div>
+
+        <div class="note">
+          <strong>Kits live in the repo</strong> at <a class="inline" href="https://github.com/infinum/ai/tree/main/sandbox-kits">github.com/infinum/ai/tree/main/sandbox-kits</a>, with usage and a README per kit.
         </div>
       </div>
     </div>
@@ -748,27 +790,23 @@
     <div class="glossary-head"><div class="section-label">Terms used in the stack</div></div>
     <div class="glossary-row">
       <div class="glossary-term">The Stack</div>
-      <div class="glossary-def">The packaged combination of workflow, spec engine, skills, and agent that Infinum engineers install per-repo, plus AI Stats for measuring adoption across the org. Described in this document.</div>
+      <div class="glossary-def">The packaged combination of workflow, skills, delivery platform, and sandbox kits that Infinum engineers install per-repo. Described in this document.</div>
     </div>
     <div class="glossary-row">
       <div class="glossary-term">PSDD</div>
       <div class="glossary-def">Pragmatic Spec Driven Development — Infinum's 4-step workflow for building with AI. Full guide at <a href="psdd/">infinum.github.io/ai/psdd</a>.</div>
     </div>
     <div class="glossary-row">
-      <div class="glossary-term">Superpowers</div>
-      <div class="glossary-def">Open-source spec-driven development plugin by <a href="https://github.com/obra/superpowers">@obra</a>, adopted as our default. Powers Spec → Plan → Code with brainstorming, planning, TDD, and self-review skills.</div>
-    </div>
-    <div class="glossary-row">
       <div class="glossary-term">Skill</div>
       <div class="glossary-def">A focused, reusable instruction set installed as a plugin. Defined in a SKILL.md file. Each Infinum skill ships as its own plugin so engineers install only what they need.</div>
     </div>
     <div class="glossary-row">
-      <div class="glossary-term">Phantom</div>
-      <div class="glossary-def">Infinum's in-house Slack-native AI agent. Runs jobs in isolated Docker containers; opens PRs assigned to a human owner. Repo: <a href="https://github.com/infinum/ai-phantom">infinum/ai-phantom</a>.</div>
+      <div class="glossary-term">Caliber</div>
+      <div class="glossary-def">Infinum's AI delivery platform. Defines specs (Define), gates every pull request with audits and a human sign-off (Assure), and measures AI cost and delivery (Measure). Agents connect through one MCP server; Claude Code via <a href="https://github.com/infinum/caliber-plugin">infinum/caliber-plugin</a>. More at <a href="https://caliber.infinum.com/">caliber.infinum.com</a>; <a href="https://caliber.infinum.com/talk-to-us/">talk to us</a> to learn more.</div>
     </div>
     <div class="glossary-row">
-      <div class="glossary-term">AI Stats</div>
-      <div class="glossary-def">Infinum's AI-tool usage tracker. Aggregates every employee's usage into adoption and spend by user, tool, model, team, skill, and month.</div>
+      <div class="glossary-term">Sandbox kit</div>
+      <div class="glossary-def">A Docker Sandboxes mixin that configures a <code>claude</code> sandbox at creation — tools, network rules, agent instructions. <code>infinum-full</code> is the base Infinum kit. Kits live at <a href="https://github.com/infinum/ai/tree/main/sandbox-kits">github.com/infinum/ai/tree/main/sandbox-kits</a>.</div>
     </div>
   </div>
 

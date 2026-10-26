@@ -1,6 +1,6 @@
 # Infinum AI Stack
 
-_A workflow, a spec engine, a set of skills, and an in-house agent — packaged together and installed per repo with one command — plus an org-wide tracker for how it's all being adopted._
+_A workflow, a set of skills, and a delivery platform — packaged together and installed per repo with one command — so specs, quality gates, and measurement live alongside the code._
 
 ---
 
@@ -9,11 +9,9 @@ _A workflow, a spec engine, a set of skills, and an in-house agent — packaged 
 | # | Component | What it is |
 |---|-----------|------------|
 | 01 | [**PSDD**](psdd/README.md) | Pragmatic Spec Driven Development — Infinum's 4-step workflow for shipping features with AI. Depth scales with the work. |
-| 02 | [**Superpowers**](https://github.com/obra/superpowers) | Open-source spec-driven development plugin by @obra, adopted as our default. Powers spec → plan → code with brainstorming, TDD, and self-review skills. |
-| 03 | [**Skills marketplace**](MARKETPLACE.md) | Per-repo installable plugins — PRD authoring, security audits, UI validation, local PR review, and more. Install only what the project needs. |
-| 04 | [**Phantom**](https://github.com/infinum/ai-phantom) | Infinum's Slack-native AI agent. Mention `@Phantom` in a thread, it clones the repo, applies the change, runs your validation, and opens a PR. |
-| 05 | **AI Stats** | Infinum's internal AI-tool usage tracker. Aggregates every employee's usage — paired with code changes from GitHub / GitLab / Bitbucket — into org-wide adoption and spend, broken down by user, tool, model, team, skill, and month. |
-| 06 | [**Sandbox kits**](sandbox-kits/README.md) | Docker Sandboxes kits for a `claude` sandbox — reusable mixins that configure sandbox setup (e.g. `infinum-full`: disables commit/PR attribution, installs Infinum plugins, registers the Context7 MCP server). |
+| 02 | [**Skills marketplace**](MARKETPLACE.md) | Per-repo installable plugins — PRD authoring, security audits, UI validation, local PR review, and more. Install only what the project needs. |
+| 03 | [**Caliber**](https://caliber.infinum.com/) | Infinum's AI delivery platform. **Define** specs (PRD, brief, tech spec, plan) following PSDD, reviewed and approved in the portal; **Assure** every PR with code, security, and spec-conformance audits plus a human sign-off; **Measure** AI cost and delivery per project, team, and person. Agents connect through one MCP server — Claude Code via [infinum/caliber-plugin](https://github.com/infinum/caliber-plugin). [Talk to us](https://caliber.infinum.com/talk-to-us/) to learn more. |
+| 04 | [**Sandbox kits**](sandbox-kits/README.md) | Docker Sandboxes kits for a `claude` sandbox — reusable mixins that configure sandbox setup (e.g. `infinum-full`: disables commit/PR attribution, installs Infinum plugins, registers the Context7 MCP server). |
 
 ---
 
@@ -24,7 +22,7 @@ _A workflow, a spec engine, a set of skills, and an in-house agent — packaged 
 Run [`prompts/ai-engineering-setup.md`](prompts/ai-engineering-setup.md) with your AI coding agent of choice — Claude Code, Codex, Cursor, Gemini CLI, Copilot. The prompt is agent-agnostic. It checks what you already have and walks you through whatever's missing across four capabilities:
 
 - A PRD creation skill
-- A spec-driven development plugin (Superpowers, or your own equivalent)
+- A spec-driven development setup (Caliber, or your own equivalent)
 - A local agentic PR-review skill
 - A UI validation skill
 
@@ -37,9 +35,9 @@ The stack pays off on work with real complexity — a new screen, a meaningful r
 The full flow for a meaningful feature:
 
 - Start from a PRD or a well-refined task ticket — capture what "done" means before writing any code
-- Brainstorm → design → plan → implement, using Superpowers or your equivalent spec-driven setup
+- Understand → design → plan → build, using Caliber's `prd`, `brief`, `tech-spec`, and `plan` commands or your equivalent spec-driven setup
 - Iterate on the UI with the UI validation skill where applicable
-- Run a local PR review before you push
+- Run a local PR review before you push; with Caliber set up in the repository, the check runs on push and the PR gets its Caliber status
 
 **Optional:** layer in cloud PR review (CodeRabbit) on top of the local pass for an additional automated check.
 
@@ -55,12 +53,10 @@ To disable the update banner: set `INFINUM_STACK_SKIP_UPDATE_CHECK=1` in your en
 
 | Term                | Meaning                                                                                                                                                                                                                   |
 | ------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| **The Stack**       | The packaged combination of workflow, spec engine, skills, and agent that Infinum engineers install per repo, plus AI Stats for measuring adoption across the org. Described in this document.                            |
+| **The Stack**       | The packaged combination of workflow, skills, and delivery platform that Infinum engineers install per repo. Described in this document.                                                                                  |
 | **PSDD**            | Pragmatic Spec Driven Development — Infinum's 4-step workflow for building with AI. Full guide: [psdd/README.md](psdd/README.md).                                                                                         |
-| **Superpowers**     | Open-source spec-driven development plugin by [@obra](https://github.com/obra/superpowers), adopted as our default. Powers spec → plan → code with brainstorming, planning, TDD, and self-review skills.                 |
 | **Skill**           | A focused, reusable instruction set installed as a plugin. Defined in a `SKILL.md` file. Each Infinum skill ships as its own plugin so engineers install only what they need.                                             |
-| **Phantom**         | Infinum's in-house Slack-native AI agent. Runs jobs in isolated Docker containers; opens PRs assigned to a human owner. Repo: [infinum/ai-phantom](https://github.com/infinum/ai-phantom).                               |
-| **AI Stats**        | Infinum's internal AI-tool usage tracker. Aggregates every employee's usage into adoption and spend by user, tool, model, team, skill, and month.                                                                        |
+| **Caliber**         | Infinum's AI delivery platform. Defines specs (Define), gates every pull request with audits and a human sign-off (Assure), and measures AI cost and delivery (Measure). Agents connect through one MCP server; Claude Code via [infinum/caliber-plugin](https://github.com/infinum/caliber-plugin). More at [caliber.infinum.com](https://caliber.infinum.com/); [talk to us](https://caliber.infinum.com/talk-to-us/) to learn more. |
 
 For PSDD-specific terms (PRD/FRD, Technical brief, Ask mode, Plan mode, Build mode, Agent, Fresh agent, Context window) — see the [PSDD glossary](psdd/README.md#glossary).
 

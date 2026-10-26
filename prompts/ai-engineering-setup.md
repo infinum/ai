@@ -57,19 +57,14 @@ Ask once, run/install on yes.
 
 ## **Step 2 — Spec-driven development**
 
-This forces the agent through brainstorm → design → plan → TDD → review instead of jumping straight to code. Big quality lift on anything non-trivial.
+This forces the agent through understand → design → plan → build, with a reviewed spec (PRD, brief, tech spec, plan) in place before any code gets written. Big quality lift on anything non-trivial.
 
-If I already have Superpowers (Jesse Vincent's plugin) or an equivalent spec-driven workflow available, mark it ✓ and move on.
+If I already have Caliber (`/caliber:*` commands, or the `plugin:caliber:caliber` MCP server) or an equivalent spec-driven workflow available (e.g. Superpowers), mark it ✓ and move on.
 
-If not, propose Superpowers from `git@github.com:obra/superpowers.git`. Use the install command for the agent you're running in:
+If not, propose Caliber — Infinum's AI delivery platform, https://caliber.infinum.com/. It needs a Caliber account (Infinum people, and partners who have been granted access); if I don't have one, share the link and move on. Use the install path for the agent you're running in:
 
-* **Claude Code:** `/plugin marketplace add obra/superpowers-marketplace` then `/plugin install superpowers@superpowers-marketplace`  
-* **Cursor:** `/add-plugin superpowers` in agent chat  
-* **Codex:** fetch and follow `raw.githubusercontent.com/obra/superpowers/main/.codex/INSTALL.md`  
-* **Gemini CLI:** `gemini extensions install https://github.com/obra/superpowers`  
-* **GitHub Copilot CLI:** `copilot plugin marketplace add obra/superpowers-marketplace` then `copilot plugin install superpowers@superpowers-marketplace`  
-* **OpenCode:** fetch and follow `raw.githubusercontent.com/obra/superpowers/main/.opencode/INSTALL.md`  
-* **Other:** share the repo link
+* **Claude Code:** `/plugin marketplace add infinum/caliber-plugin` then `/plugin install caliber@caliber`. Sign in once via `/mcp` (choose `plugin:caliber:caliber`) or `claude mcp login plugin:caliber:caliber`, then run `/caliber:setup` once per repository.  
+* **Other agents:** Caliber is a remote MCP server at `https://app.caliberhq.io/mcp` with OAuth sign-in — add it the way your agent adds a remote MCP server. If that isn't supported, share the link.
 
 ---
 
