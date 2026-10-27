@@ -592,15 +592,15 @@
       <div class="component-name">Skills marketplace</div>
       <div class="component-desc">PRD authoring, security audits, UI validation, local PR review — each one a separate plugin.</div>
     </div>
-    <a href="#caliber" class="component component-wide component-link component-featured">
-      <div class="component-num">03</div>
-      <div class="component-name">Caliber ↓<span class="badge-new">New</span></div>
-      <div class="component-desc">Our AI delivery platform. Defines specs up front, assures quality with audits and a human sign-off on every PR, and measures what AI costs and delivers — through one MCP server.</div>
-    </a>
     <a href="https://github.com/infinum/ai/tree/main/sandbox-kits" class="component component-wide component-link">
-      <div class="component-num">04</div>
+      <div class="component-num">03</div>
       <div class="component-name">Sandbox kits ↗</div>
       <div class="component-desc">Reusable kits for a <code>claude</code> Docker Sandbox — one command brings up a sandbox with the Infinum plugins, house rules, Caliber, and MCP servers in place.</div>
+    </a>
+    <a href="#caliber" class="component component-wide component-link component-featured">
+      <div class="component-num">04</div>
+      <div class="component-name">Caliber ↓<span class="badge-new">New</span></div>
+      <div class="component-desc">Our AI delivery platform. Defines specs up front, assures quality with audits and a human sign-off on every PR, and measures what AI costs and delivers — through one MCP server.</div>
     </a>
   </div>
 
@@ -650,7 +650,7 @@
         </div>
 
         <div class="note">
-          <strong>Three lanes:</strong> small / low-risk compresses all four steps into one prompt; purely technical work skips the PRD for a tight technical brief; large or high-risk work gets every step in full. Read the full guide at <a class="inline" href="https://infinum.github.io/ai/psdd/">infinum.github.io/ai/psdd</a>. Caliber's <code>prd</code>, <code>brief</code>, <code>tech-spec</code>, and <code>plan</code> commands (03) produce the artifacts of the Understand, Design and Plan steps.
+          <strong>Three lanes:</strong> small / low-risk compresses all four steps into one prompt; purely technical work skips the PRD for a tight technical brief; large or high-risk work gets every step in full. Read the full guide at <a class="inline" href="https://infinum.github.io/ai/psdd/">infinum.github.io/ai/psdd</a>. Caliber's <code>prd</code>, <code>brief</code>, <code>tech-spec</code>, and <code>plan</code> commands (04) produce the artifacts of the Understand, Design and Plan steps.
         </div>
       </div>
     </div>
@@ -697,10 +697,35 @@
       </div>
     </div>
 
-    <!-- 03 CALIBER -->
-    <div class="part-card part-card-featured" id="caliber">
+    <!-- 03 SANDBOX KITS -->
+    <div class="part-card">
       <div class="part-head">
         <div class="part-num">03</div>
+        <div class="part-meta">
+          <div class="part-title"><a href="https://github.com/infinum/ai/tree/main/sandbox-kits" class="part-title-link">Sandbox kits — preconfigured sandboxes ↗</a></div>
+          <div class="part-sub">The stack, ready inside an isolated agent run</div>
+        </div>
+        <div class="part-tag">Sandboxes</div>
+      </div>
+      <div class="part-body">
+        <p class="part-intro">A kit packages what a <a class="inline" href="https://docs.docker.com/ai/sandboxes/get-started/">Docker Sandboxes</a> <code>claude</code> sandbox needs — tools to install, network rules to allow, instructions for the agent — so the sandbox comes up ready for Infinum work with one command. <strong>Set up once in the kit, not by hand in every sandbox.</strong></p>
+
+        <div class="bullets">
+          <div class="bullet"><span class="bullet-arrow">→</span><span><strong>infinum-full.</strong> The base Infinum kit: disables commit and PR attribution, installs the Infinum plugins and house rules, installs the Caliber plugin, registers the Context7 MCP server, and allows egress only to the hosts those need.</span></div>
+          <div class="bullet"><span class="bullet-arrow">→</span><span><strong>Mixins.</strong> A kit is applied at sandbox creation, or added to a running sandbox. Applying one twice is safe — what is already installed counts as done.</span></div>
+          <div class="bullet"><span class="bullet-arrow">→</span><span><strong>Sign-ins stay human.</strong> The Caliber and Context7 MCP servers are registered by the kit; a person signs in once inside the sandbox.</span></div>
+        </div>
+
+        <div class="note">
+          <strong>Kits live in the repo</strong> at <a class="inline" href="https://github.com/infinum/ai/tree/main/sandbox-kits">github.com/infinum/ai/tree/main/sandbox-kits</a>, with usage and a README per kit.
+        </div>
+      </div>
+    </div>
+
+    <!-- 04 CALIBER -->
+    <div class="part-card part-card-featured" id="caliber">
+      <div class="part-head">
+        <div class="part-num">04</div>
         <div class="part-meta">
           <div class="part-title">Caliber — the delivery platform</div>
           <div class="part-sub">Define, assure, measure — through one MCP server</div>
@@ -757,31 +782,6 @@
       </div>
     </div>
 
-    <!-- 04 SANDBOX KITS -->
-    <div class="part-card">
-      <div class="part-head">
-        <div class="part-num">04</div>
-        <div class="part-meta">
-          <div class="part-title"><a href="https://github.com/infinum/ai/tree/main/sandbox-kits" class="part-title-link">Sandbox kits — preconfigured sandboxes ↗</a></div>
-          <div class="part-sub">The stack, ready inside an isolated agent run</div>
-        </div>
-        <div class="part-tag">Sandboxes</div>
-      </div>
-      <div class="part-body">
-        <p class="part-intro">A kit packages what a <a class="inline" href="https://docs.docker.com/ai/sandboxes/get-started/">Docker Sandboxes</a> <code>claude</code> sandbox needs — tools to install, network rules to allow, instructions for the agent — so the sandbox comes up ready for Infinum work with one command. <strong>Set up once in the kit, not by hand in every sandbox.</strong></p>
-
-        <div class="bullets">
-          <div class="bullet"><span class="bullet-arrow">→</span><span><strong>infinum-full.</strong> The base Infinum kit: disables commit and PR attribution, installs the Infinum plugins and house rules, installs the Caliber plugin, registers the Context7 MCP server, and allows egress only to the hosts those need.</span></div>
-          <div class="bullet"><span class="bullet-arrow">→</span><span><strong>Mixins.</strong> A kit is applied at sandbox creation, or added to a running sandbox. Applying one twice is safe — what is already installed counts as done.</span></div>
-          <div class="bullet"><span class="bullet-arrow">→</span><span><strong>Sign-ins stay human.</strong> The Caliber and Context7 MCP servers are registered by the kit; a person signs in once inside the sandbox.</span></div>
-        </div>
-
-        <div class="note">
-          <strong>Kits live in the repo</strong> at <a class="inline" href="https://github.com/infinum/ai/tree/main/sandbox-kits">github.com/infinum/ai/tree/main/sandbox-kits</a>, with usage and a README per kit.
-        </div>
-      </div>
-    </div>
-
   </div>
 
   <!-- GLOSSARY -->
@@ -790,7 +790,7 @@
     <div class="glossary-head"><div class="section-label">Terms used in the stack</div></div>
     <div class="glossary-row">
       <div class="glossary-term">The Stack</div>
-      <div class="glossary-def">The packaged combination of workflow, skills, delivery platform, and sandbox kits that Infinum engineers install per-repo. Described in this document.</div>
+      <div class="glossary-def">The packaged combination of workflow, skills, sandbox kits, and delivery platform that Infinum engineers install per-repo. Described in this document.</div>
     </div>
     <div class="glossary-row">
       <div class="glossary-term">PSDD</div>
@@ -801,12 +801,12 @@
       <div class="glossary-def">A focused, reusable instruction set installed as a plugin. Defined in a SKILL.md file. Each Infinum skill ships as its own plugin so engineers install only what they need.</div>
     </div>
     <div class="glossary-row">
-      <div class="glossary-term">Caliber</div>
-      <div class="glossary-def">Infinum's AI delivery platform. Defines specs (Define), gates every pull request with audits and a human sign-off (Assure), and measures AI cost and delivery (Measure). Agents connect through one MCP server; Claude Code via <a href="https://github.com/infinum/caliber-plugin">infinum/caliber-plugin</a>. More at <a href="https://caliber.infinum.com/">caliber.infinum.com</a>; <a href="https://caliber.infinum.com/talk-to-us/">talk to us</a> to learn more.</div>
-    </div>
-    <div class="glossary-row">
       <div class="glossary-term">Sandbox kit</div>
       <div class="glossary-def">A Docker Sandboxes mixin that configures a <code>claude</code> sandbox at creation — tools, network rules, agent instructions. <code>infinum-full</code> is the base Infinum kit. Kits live at <a href="https://github.com/infinum/ai/tree/main/sandbox-kits">github.com/infinum/ai/tree/main/sandbox-kits</a>.</div>
+    </div>
+    <div class="glossary-row">
+      <div class="glossary-term">Caliber</div>
+      <div class="glossary-def">Infinum's AI delivery platform. Defines specs (Define), gates every pull request with audits and a human sign-off (Assure), and measures AI cost and delivery (Measure). Agents connect through one MCP server; Claude Code via <a href="https://github.com/infinum/caliber-plugin">infinum/caliber-plugin</a>. More at <a href="https://caliber.infinum.com/">caliber.infinum.com</a>; <a href="https://caliber.infinum.com/talk-to-us/">talk to us</a> to learn more.</div>
     </div>
   </div>
 
