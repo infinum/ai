@@ -1,0 +1,16 @@
+{
+  "hooks": {
+    "PostToolUse": [
+      {
+        "matcher": "Bash",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "h=\"$(git rev-parse --show-toplevel)/.caliber/hooks/agent-post-push.sh\"; [ ! -x \"$h\" ] || \"$h\" codex",
+            "timeout": 10
+          }
+        ]
+      }
+    ]
+  }
+}

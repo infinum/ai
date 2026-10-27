@@ -1,0 +1,1723 @@
+#!/bin/sh
+# Caliber check on push: the git hook. caliber-hooks-version: 12
+# Written by /caliber:setup. Do not edit: the next version replaces the file whole.
+#
+# git runs this before a push, from the clone's pre-push hook as `--install` sets it
+# up (a hook that was there is kept and runs first). It never blocks, delays or fails a push: it starts the check of the
+# pushed commit in the background (check-on-push.sh) and returns at once. In a clone of a
+# virtual repository (one Caliber has no access to) it starts the activity sync instead.
+#
+#   .caliber/hooks/pre-push --install               turn it on for this clone (it also
+#                                                   records the Caliber endpoint the
+#                                                   repository's MCP config names now,
+#                                                   or with none CALIBER_URL's or the
+#                                                   plugin's default; only a check with
+#                                                   CALIBER_TOKEN uses it)
+#   git config --local caliber.checkOnPush false    turn it off (true: on again)
+#
+# Nothing starts without `caliber.checkOnPush = true` in the clone's git config. The
+# check runs with CALIBER_TOKEN when it is set, otherwise with the Caliber plugin of
+# Claude Code (installed for your user, enabled, and signed in once).
+#
+# The activity sync of a virtual repository (set up by /caliber:setup-usage):
+#
+#   <this file> --install --virtual [--repository host/owner/name]
+#                                   the sync token on stdin: kept in <git common dir>/
+#                                   caliber/sync-token (only you can read it); copies
+#                                   the three hook files to <git common dir>/caliber/
+#                                   hooks/ (when this is not that copy); installs the
+#                                   git hook; turns the sync on (caliber.syncActivity)
+#                                   and never the check. It reports to the clone's
+#                                   caliber.mcpUrl (setup sets it first), else to
+#                                   CALIBER_URL's endpoint or the plugin's default,
+#                                   never to one the working tree's MCP configs name
+#   <this file> --install --virtual --session-only [--repository host/owner/name]
+#                                   the same without the copy and without a git hook:
+#                                   the Caliber plugin's session hook starts the sync
+#                                   with the plugin's own copy of this file
+#   "$(git rev-parse --git-common-dir)/caliber/hooks/pre-push" --sync
+#                                   send what is new now (--full: the whole history)
+#   git config --local caliber.syncActivity false    turn it off
+#
+# In such a clone the working tree is the client's to change: a merge or a checkout may
+# put any file at any path of it. So only a copy outside the working tree sends the token:
+# the one in the git directory, where no checkout writes, or the Caliber plugin's. A copy in
+# the working tree hands --sync to the git directory's copy, or ends.
+#
+# The sync sends the clone's commits of the repository's branches, the pull requests the
+# default branch's history names, a fingerprint of each unmerged branch's change and, only
+# where the organisation allows it and gh or glab is signed in, the provider's pull
+# requests (otherwise no gh, glab or provider API runs at all), to the endpoint the clone
+# was set up with, with every author hashed by a secret of the organisation; a commit's message and a pull request's
+# text only when the organisation keeps them. It starts after a push and at the start of
+# a Claude Code session (at most once an hour), runs in the background, prints nothing
+# and keeps one line per run in <git common dir>/caliber/sync.log (no email, login or text).
+# Deleting <git common dir>/caliber/ removes the token and what the sync remembers.
+
+MARK='# caliber:check-on-push'
+
+say() { printf 'Caliber: %s\n' "$*" >&2; }
+
+root=$(git rev-parse --show-toplevel 2>/dev/null) || exit 0
+# The directory of this file: .caliber/hooks/ of the working tree, or in a clone of a
+# virtual repository the copy in the git directory.
+here=$(cd "$(dirname "$0")" 2>/dev/null && pwd -P) || exit 0
+
+# The endpoint --install records: the Caliber server of the repository's MCP configs, or,
+# with none, CALIBER_URL's or the plugin's default. `endpoint virtual` never reads the
+# MCP configs: a virtual repository's working tree is the client's, and must not choose
+# where the sync token goes. The clone's endpoint (`pinned`), when it has one, must be a
+# plain URL too: `bad-pin`, as the sync sends nothing to any other. (Each Python script of
+# this hook is the body of a function: bash 3.2 misreads a here-document inside $(...).)
+endpoint() {
+  CALIBER_BASE=${CALIBER_URL:-https://app.caliberhq.io} CALIBER_CONFIGS=${1:-repository} \
+    CALIBER_PINNED=${pinned:-} python3 -I - <<'PY'
+import json
+import os
+import re
+from urllib.parse import urlsplit
+
+
+def plain(url):
+    """A plain URL only: it is stored, printed and sent a token."""
+    try:
+        parts = urlsplit(url)
+    except ValueError:
+        return False
+    host = parts.hostname or ""
+    local = host in ("localhost", "127.0.0.1", "::1")
+    return bool(re.fullmatch(r"https?://[A-Za-z0-9.\-:\[\]]+(/[A-Za-z0-9._~/%\-]*)?", url)) \
+        and (parts.scheme == "https" or (parts.scheme == "http" and local)) and bool(host) \
+        and parts.username is None and parts.password is None
+
+
+def shown(url):
+    """Shown without a user and password, should it carry them. A value whose `@` the rule
+    misses (a password with a `/` in it) is not shown at all."""
+    bare = re.sub(r"^([A-Za-z][A-Za-z0-9+.-]*://)[^/]*@", r"\1", url)
+    return "not shown: it holds an @" if "@" in bare else bare
+
+
+pinned = os.environ["CALIBER_PINNED"]
+if pinned and not plain(pinned):
+    print("bad-pin " + shown(pinned))
+    raise SystemExit(0)
+named = False
+# The project MCP files setup writes the URL into (the support table), and Gemini CLI's,
+# which a clone set up before it may still carry. None in a virtual repository.
+configs = () if os.environ["CALIBER_CONFIGS"] == "virtual" else (
+    (".mcp.json", "mcpServers"), (".cursor/mcp.json", "mcpServers"),
+    (".vscode/mcp.json", "servers"), (".github/mcp.json", "mcpServers"),
+    (".pi/mcp.json", "mcpServers"), (".omp/mcp.json", "mcpServers"),
+    (".junie/mcp/mcp.json", "mcpServers"), (".gemini/settings.json", "mcpServers"))
+for path, key in configs:
+    try:
+        with open(path) as fh:
+            server = (json.load(fh).get(key) or {}).get("caliber") or {}
+        url = server.get("url") or server.get("serverUrl") or server.get("httpUrl")
+    except (OSError, ValueError, AttributeError, TypeError):
+        continue
+    if not isinstance(url, str):
+        continue                        # no Caliber server here: the next config
+    if plain(url):
+        print("config " + url)
+        raise SystemExit(0)
+    named = True
+if named:
+    print("refused")
+else:
+    url = os.environ["CALIBER_BASE"].rstrip("/") + "/mcp"
+    print(("default " + url) if plain(url) else "bad-env " + shown(os.environ["CALIBER_BASE"]))
+PY
+}
+
+# Where --install puts the line that starts the check: keep <hook> <mark> <where>, with
+# the line in CALIBER_LINE; prints what it did.
+keep() {
+  python3 -I - "$@" <<'PY'
+import os
+import re
+import sys
+
+path, mark, where = sys.argv[1], sys.argv[2], sys.argv[3]
+line = os.environ["CALIBER_LINE"]
+previous = path + ".caliber-previous"
+#: The wrapper's version: an older wrapper of ours (one of version 5 has no version line)
+#: is replaced, so it gates on the check or the sync (6) and says why no check starts in a
+#: clone whose sync has no copy in the git directory (7).
+VERSION = 7
+# In the own hooks directory of the clone the hook that was there is not edited at all:
+# it is kept under another name and run first, with what git sent, whatever it is
+# written in and however it ends. Its result decides the push.
+WRAPPER = """#!/bin/sh
+%s
+# caliber-wrapper: %d
+# Written by .caliber/hooks/pre-push --install. The hook that was here before, if any,
+# is pre-push.caliber-previous: it runs first, with what git sent, and decides the push.
+# After a success, in a clone that turned it on, the Caliber check of the pushed commit
+# starts in the background, and in a clone of a virtual repository the activity sync.
+# To undo: delete this file and rename pre-push.caliber-previous back to pre-push.
+here=$(dirname "$0")
+refs=$(cat)
+feed() { [ -z "$refs" ] || printf "%%s\\n" "$refs"; }
+if [ -x "$here/pre-push.caliber-previous" ]; then
+  feed | "$here/pre-push.caliber-previous" "$@" || exit $?
+fi
+on() { [ "$(git config --local --type=bool --get "caliber.$1" 2>/dev/null)" = true ]; }
+on checkOnPush || on syncActivity || exit 0
+# While the sync is on (a clone of a virtual repository) no file of the working tree runs:
+# it is the client's, and a merge may put a file of theirs at .caliber/hooks/pre-push. The
+# copy in the git directory starts the sync, and the check when that is on too.
+if on syncActivity; then
+  common=$(cd "$(git rev-parse --git-common-dir)" 2>/dev/null && pwd -P) || exit 0
+  caliber_hook="$common/caliber/hooks/pre-push"
+  if [ ! -x "$caliber_hook" ] && on checkOnPush; then
+    # The Caliber plugin syncs this clone and left no copy here: the check would need the
+    # working tree's file.
+    echo "Caliber: no background check from this hook: this clone's activity sync is on, and it runs no file of the working tree. Once Caliber reads this repository: git config --local caliber.syncActivity false" >&2
+    exit 0
+  fi
+else
+  caliber_hook="$(git rev-parse --show-toplevel)/.caliber/hooks/pre-push"
+fi
+if [ -x "$caliber_hook" ]; then feed | "$caliber_hook" "$@" || true; fi
+exit 0
+""" % (mark, VERSION)
+# A hook that asks for its own name or place would not find it under another name.
+# (Best effort, by the words such a hook uses.)
+DOLLAR = b"\x24"
+ITSELF = (DOLLAR + b"0", DOLLAR + b"\x7b0", b"BASH_SOURCE", b"BASH_ARGV0", b"ZSH_ARGZERO",
+          b"argv", b"__file__", b"__FILE__", b"__filename", b"import.meta", b"PROGRAM_NAME",
+          b"os.Args", b"PSCommandPath", b"MyInvocation")
+
+
+def write(text):
+    with open(path, "w") as fh:
+        fh.write(text)
+    os.chmod(path, 0o755)
+
+
+exists = os.path.lexists(path)
+link = os.path.islink(path)
+data = None
+if exists and not link and os.path.isfile(path):
+    with open(path, "rb") as fh:
+        data = fh.read()
+# Ours, of an older version or another text of this one: the wrapper this install writes
+# in the clone's own hooks directory, or a versioned hook it created with its one line. A
+# line a team's own hook carries is the team's and stays as it is.
+OURS = b"# Written by .caliber/hooks/pre-push --install."
+if data is not None and mark.encode() in data and where != "shared":
+    found = re.search(rb"^# caliber-wrapper: ([0-9]+)$", data, re.M)
+    version = int(found.group(1)) if found else 5
+    if where == "own" and data.startswith(b"#!/bin/sh\n" + mark.encode() + b"\n") \
+            and OURS in data and (version < VERSION
+                                  or (version == VERSION and data != WRAPPER.encode())):
+        write(WRAPPER)
+        print("updated")
+        sys.exit(0)
+    created = data.decode("utf-8", "replace").split("\n")
+    if where == "versioned" and len(created) == 3 and created[0] == "#!/bin/sh" \
+            and created[1].endswith(mark) and created[1] != line and created[2] == "":
+        with open(path, "w") as fh:
+            fh.write("#!/bin/sh\n" + line + "\n")
+        print("updated")
+        sys.exit(0)
+if data is not None and mark.encode() in data:
+    print("already")                    # also in a shared directory: somebody added the line
+    sys.exit(0)
+if where == "shared":
+    print("shared")
+    sys.exit(0)
+if not exists:
+    write(WRAPPER if where == "own" else "#!/bin/sh\n" + line + "\n")
+    print("created")
+    sys.exit(0)
+if data is None:
+    print("special")                    # a symbolic link, a directory: not ours to move
+    sys.exit(0)
+try:
+    text = data.decode("utf-8")
+except UnicodeDecodeError:
+    text = None
+if where == "own":
+    if os.path.lexists(previous):
+        print("taken")
+    elif text is None or "\0" in text or any(word in data for word in ITSELF):
+        print("itself")
+    else:
+        os.rename(path, previous)       # as it is: its mode too, so a hook that was off stays off
+        write(WRAPPER)
+        print("wrapped")
+    sys.exit(0)
+# A versioned hook is the file of the team: a line is added only where it is plainly reached.
+if text is None or "\0" in text:
+    print("foreign")
+    sys.exit(0)
+lines = text.split("\n")
+if lines[0].startswith("#!") and not re.search(r"(^|[/\s])(sh|bash|dash|zsh|ksh)(\s|$)", lines[0][2:]):
+    print("foreign")
+    sys.exit(0)
+while lines and not lines[-1].strip():
+    lines.pop()
+code = [text_line for text_line in lines if not text_line.lstrip().startswith("#")]
+if any(re.search(r"\b(exec|exit)\b", text_line) for text_line in code) \
+        or (lines and lines[-1].rstrip().endswith("\\")):
+    print("flow")
+    sys.exit(0)
+lines.append(line)
+with open(path, "w") as fh:
+    fh.write("\n".join(lines) + "\n")
+print("added")
+PY
+}
+
+# The activity sync of a virtual repository (`--sync`): its arguments are those of the
+# git hook (the remote and the pushed shas), or none. Everything that reads an author
+# hashes it here, in this program, before a line is made: a clear email or login leaves
+# the machine only where the developer named it as their own or the organisation names
+# its domain. One line per run in sync.log; nothing on the terminal.
+sync_run() {
+  python3 -I - "$@" <<'PY'
+import base64
+import hashlib
+import json
+import os
+import re
+import shutil
+import subprocess
+import sys
+import time
+import urllib.error
+import urllib.parse
+import urllib.request
+from collections import deque
+from datetime import datetime, timezone
+from urllib.parse import urlsplit
+
+VERSION = 12
+STATE = os.environ["CALIBER_SYNC_STATE"]
+TRIGGER = os.environ.get("CALIBER_SYNC_TRIGGER") or "manual"
+FULL = TRIGGER == "full"
+SHA = re.compile(r"[0-9a-f]{40}(?:[0-9a-f]{24})?")
+PUSHED = [a for a in sys.argv[1:] if SHA.fullmatch(a)] if TRIGGER == "push" else []
+#: A part: at most `max` lines (hello's answer) and this many bytes; a run at most this
+#: many requests; pull requests: pages of 100, at most 5 a run.
+PART_BYTES, MAX_REQUESTS, PAGE, PAGES = 900 * 1024, 500, 100, 5
+#: MESSAGE_CHARS: the server's `COMMIT_MESSAGE_MAX`; the hook sends one character more.
+MESSAGE_CHARS, HOUR, LOCK_AGE, WAIT = 4096, 3600, 2 * 3600, 120
+UPPER = str.maketrans("ABCDEFGHIJKLMNOPQRSTUVWXYZ", "abcdefghijklmnopqrstuvwxyz")
+SPACE = " \t\n\r\v\f"
+#: Git, gh and glab never ask: no terminal prompt, no askpass, ssh in batch mode.
+QUIET = dict(os.environ, GIT_TERMINAL_PROMPT="0", GIT_ASKPASS="", SSH_ASKPASS="",
+             SSH_ASKPASS_REQUIRE="never", GCM_INTERACTIVE="never", GH_PROMPT_DISABLED="1",
+             GH_NO_UPDATE_NOTIFIER="1", GLAB_NO_PROMPT="1", NO_PROMPT="1")
+counts = {"commits": 0, "prs": 0, "history": 0, "branches": 0, "parts": 0, "skipped": 0}
+os.umask(0o077)
+
+
+def where(name):
+    return os.path.join(STATE, name)
+
+
+def log(result, **fields):
+    """The run's one line: time, trigger, counts, HTTP status. Words and numbers only."""
+    stamp = datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
+    words = " ".join(f"{k}={v}" for k, v in {**counts, **fields}.items())
+    try:
+        path = where("sync.log")
+        lines = []
+        if os.path.exists(path):
+            with open(path, encoding="utf-8", errors="replace") as fh:
+                lines = fh.read().splitlines()[-499:]
+        lines.append(f"{stamp} trigger={TRIGGER} result={result} {words}")
+        with open(path + ".new", "w") as fh:
+            fh.write("\n".join(lines) + "\n")
+        os.replace(path + ".new", path)
+    except OSError:
+        pass
+
+
+def read(name):
+    try:
+        with open(where(name), encoding="utf-8") as fh:
+            return fh.read()
+    except (OSError, UnicodeDecodeError):
+        return None
+
+
+def save(name, text):
+    if moved():                        # the old server's state: not saved after a move
+        return
+    with open(where(name) + ".new", "w") as fh:
+        fh.write(text)
+    os.replace(where(name) + ".new", where(name))
+
+
+def run(args, stdin=None, timeout=120, env=QUIET, raw=False):
+    """What a command printed, or None when it failed, is missing or took too long
+    (`raw`: its bytes as they are)."""
+    try:
+        proc = subprocess.run(args, input=stdin, capture_output=True, timeout=timeout,
+                              env=env, stdin=None if stdin is not None else subprocess.DEVNULL)
+    except (OSError, subprocess.SubprocessError, ValueError):
+        return None
+    if proc.returncode != 0:
+        return None
+    return proc.stdout if raw else proc.stdout.decode("utf-8", "replace")
+
+
+def git(*args, timeout=120):
+    return run(["git", *args], timeout=timeout)
+
+
+def config(key):
+    return (git("config", "--get", key) or "").strip()
+
+
+# ssh as the clone runs it (GIT_SSH_COMMAND, else core.sshCommand), in batch mode.
+QUIET["GIT_SSH_COMMAND"] = (os.environ.get("GIT_SSH_COMMAND") or config("core.sshCommand")
+                            or "ssh") + " -o BatchMode=yes"
+
+
+def norm(value):
+    """Trimmed, ASCII letters lower-cased, nothing else changed (the server's rule)."""
+    return value.strip(SPACE).translate(UPPER)
+
+
+def hashed(kind, value):
+    return hashlib.sha256(f"{SALT}:{kind}:{norm(value)}".encode()).hexdigest()
+
+
+def b64(text):
+    return base64.urlsafe_b64encode(text.encode("utf-8")).decode().rstrip("=")
+
+
+def field(value):
+    """A ref or a label as one field: no tab, no line break."""
+    return re.sub(r"[\t\r\n]", " ", value or "")
+
+
+def when(value):
+    """An ISO date of a CLI's answer, or empty (GitHub's zero date is none)."""
+    return value if isinstance(value, str) and value and not value.startswith("0001-") else ""
+
+
+def count(value):
+    return str(value) if isinstance(value, int) and not isinstance(value, bool) else ""
+
+
+def plain(url):
+    """A plain URL only, as --install records it."""
+    try:
+        parts = urlsplit(url)
+    except ValueError:
+        return False
+    host = parts.hostname or ""
+    local = host in ("localhost", "127.0.0.1", "::1")
+    return bool(re.fullmatch(r"https?://[A-Za-z0-9.\-:\[\]]+(/[A-Za-z0-9._~/%\-]*)?", url)) \
+        and (parts.scheme == "https" or (parts.scheme == "http" and local)) and bool(host) \
+        and parts.username is None and parts.password is None
+
+
+def repository_of(url):
+    """`host/owner/name` of a remote's URL: no scheme, no user, no port, no `.git`; None
+    for a local path or anything else."""
+    url = (url or "").strip()
+    if "://" in url:
+        try:
+            parts = urlsplit(url)
+            host, path = parts.hostname or "", parts.path
+        except ValueError:
+            return None
+    else:
+        found = re.fullmatch(r"(?:[^@/:]+@)?([^@/:]+):(.+)", url)
+        if not found:
+            return None
+        host, path = found.group(1), found.group(2)
+    path = path.strip("/")
+    path = path[:-4] if path.endswith(".git") else path
+    host = host.lower()
+    host = host[4:] if host.startswith("www.") else host
+    key = f"{host}/{path}"
+    return key if re.fullmatch(r"[a-z0-9.-]+(?:/[A-Za-z0-9._-]+){2,}", key) else None
+
+
+class Stay(urllib.request.HTTPRedirectHandler):
+    """A redirect is answered as it is: the token goes to the recorded endpoint only."""
+
+    def redirect_request(self, *args, **kwargs):
+        return None
+
+
+OPENER = urllib.request.build_opener(Stay())
+
+
+def post(path, body, kind):
+    request = urllib.request.Request(BASE + path, data=body, method="POST", headers={
+        "Authorization": "Bearer " + TOKEN, "Content-Type": kind,
+        "User-Agent": f"caliber-hooks/{VERSION}"})
+    try:
+        with OPENER.open(request, timeout=60) as answer:
+            return answer.status, answer.read(65536).decode("utf-8", "replace")
+    except urllib.error.HTTPError as exc:
+        return exc.code, exc.read(65536).decode("utf-8", "replace")
+    except (OSError, ValueError):
+        return 0, ""
+
+
+def alive(pid):
+    try:
+        os.kill(pid, 0)
+    except ProcessLookupError:
+        return False
+    except (PermissionError, OverflowError):
+        return True
+    return True
+
+
+# 1. The token and the endpoint (the shell checked that both are there).
+TOKEN = (read("sync-token") or "").strip()
+endpoint = config("caliber.mcpUrl")
+if not re.fullmatch(r"clb_[A-Za-z0-9_-]{16,200}", TOKEN) or not plain(endpoint):
+    sys.exit(0)
+base_path = urlsplit(endpoint).path.rstrip("/")
+for suffix in ("/mcp/plugin", "/mcp"):
+    if base_path.endswith(suffix):
+        base_path = base_path[:-len(suffix)]
+        break
+BASE = f"{urlsplit(endpoint).scheme}://{urlsplit(endpoint).netloc}{base_path}"
+SALT = ""
+
+
+def moved():
+    """Whether setup-usage moved the sync to another Caliber server (a new token or endpoint)
+    since this run read them."""
+    return (read("sync-token") or "").strip() != TOKEN or config("caliber.mcpUrl") != endpoint
+
+
+# 2. After a push: once the pushing git process has ended (at most two minutes). A
+# session's run: at most one an hour. One run per clone at a time.
+waited = os.environ.get("CALIBER_SYNC_WAIT") or ""
+if waited.isdigit():
+    deadline = time.time() + WAIT
+    while alive(int(waited)) and time.time() < deadline:
+        time.sleep(0.2)
+if TRIGGER == "session":
+    try:
+        last = float((read("sync-last") or "0").split()[0])
+    except (ValueError, IndexError):
+        last = 0.0
+    if time.time() - last < HOUR:
+        sys.exit(0)
+
+
+def take_lock():
+    path = where("sync.lock")
+    try:
+        fd = os.open(path, os.O_CREAT | os.O_EXCL | os.O_WRONLY, 0o600)
+    except FileExistsError:
+        try:
+            pid, started = (int(x) for x in (read("sync.lock") or "0 0").split()[:2])
+        except ValueError:
+            pid, started = 0, 0
+        if pid > 0 and alive(pid) and time.time() - started < LOCK_AGE:
+            return False
+        try:
+            os.remove(path)            # its process is gone, or it is too old: taken over
+        except OSError:
+            return False
+        return take_lock()
+    with os.fdopen(fd, "w") as fh:
+        fh.write(f"{os.getpid()} {int(time.time())}\n")
+    return True
+
+
+deadline = time.time() + (WAIT if TRIGGER == "push" else 0)
+while not take_lock():
+    if time.time() >= deadline:
+        sys.exit(0)                    # a run of this clone is under way
+    time.sleep(1)
+
+
+def release():
+    try:
+        if (read("sync.lock") or "").split()[:1] == [str(os.getpid())]:
+            os.remove(where("sync.lock"))
+    except OSError:
+        pass
+
+
+# The token and the endpoint again, now that this run holds the lock: setup-usage moves the
+# sync to another Caliber server while it holds the lock, and a run that read them before
+# must neither send the old token nor save the old server's state after the move (`save`
+# asks again before each file).
+if moved():
+    log("moved")
+    release()
+    sys.exit(0)
+
+own_email = config("user.email")
+logins = {}
+#: Whether this run may call gh, glab or a provider's API: until hello answers, what the
+#: clone's previous hello said (`sync-cli`; a first run: no); then this hello's `cli`.
+CLI = {"on": (read("sync-cli") or "").strip() == "1"}
+
+
+def own_login(host):
+    """The developer's own login, from the CLI of the remote's host: never guessed, and
+    never asked while the organisation does not allow the CLI."""
+    if not CLI["on"]:
+        return ""
+    if host not in logins:
+        login = ""
+        if host == "github.com" and shutil.which("gh"):
+            login = run(["gh", "api", "--hostname", "github.com", "user", "--jq", ".login"],
+                        timeout=30) or ""
+        elif host == "gitlab.com" and shutil.which("glab") and shutil.which("jq"):
+            out = run(["glab", "api", "--hostname", "gitlab.com", "user"], timeout=30)
+            login = run(["jq", "-r", ".username // empty"], stdin=out.encode(),
+                        timeout=30) or "" if out else ""
+        login = login.strip()
+        logins[host] = login if re.fullmatch(r"[A-Za-z0-9][A-Za-z0-9._-]{0,254}", login) else ""
+    return logins[host]
+
+
+def default_branch(remote, host, path):
+    found = re.search(r"^ref: refs/heads/(\S+)\tHEAD$",
+                      git("ls-remote", "--symref", remote, "HEAD", timeout=30) or "", re.M)
+    branch = found.group(1) if found else ""
+    if not branch and CLI["on"] and host == "github.com" and shutil.which("gh"):
+        branch = run(["gh", "repo", "view", f"{host}/{path}", "--json", "defaultBranchRef",
+                      "--jq", ".defaultBranchRef.name"], timeout=30) or ""
+    if not branch and CLI["on"] and host == "gitlab.com" and shutil.which("glab") \
+            and shutil.which("jq"):
+        out = run(["glab", "api", "--hostname", "gitlab.com",
+                   "projects/" + urllib.parse.quote(path, safe="")], timeout=30)
+        branch = (run(["jq", "-r", ".default_branch // empty"], stdin=out.encode(),
+                      timeout=30) or "") if out else ""
+    if not branch:
+        branch = (git("symbolic-ref", "--quiet", "--short", f"refs/remotes/{remote}/HEAD")
+                  or "").strip()
+        branch = branch[len(remote) + 1:] if branch.startswith(remote + "/") else ""
+    branch = branch.strip()
+    return branch if re.fullmatch(r"[A-Za-z0-9._/-]{1,255}", branch) and ".." not in branch \
+        else ""
+
+
+first = read("sync-tips") is None
+platform = sys.platform if sys.platform in ("darwin", "linux") else "other"
+asked = {"suggest": True}
+
+
+def hello(remote, key):
+    """`hello` for this remote: its answer as a dict, {} for a 204, None on a failure."""
+    host, path = key.split("/", 1)
+    asked["branch"] = default_branch(remote, host, path)
+    fields = {"repository": key, "default_branch": asked["branch"],
+              "own_email": own_email, "own_login": own_login(host),
+              "first": "1" if first else "0", "suggest": "1" if asked["suggest"] else "0",
+              "trigger": TRIGGER, "version": str(VERSION), "platform": platform}
+    asked["suggest"] = False
+    status, text = post("/caliber/sync/hello", urllib.parse.urlencode(fields).encode(),
+                        "application/x-www-form-urlencoded")
+    if status == 204:
+        return {}
+    if status != 200:
+        return None
+    answer = dict(line.split("=", 1) for line in text.splitlines() if "=" in line)
+    return answer if answer.get("run") else None
+
+
+def main():
+    global SALT
+    # 3. The remote: the one of caliber.syncRepository, else origin, upstream, the others.
+    remotes = (git("remote") or "").split()
+    wanted = config("caliber.syncRepository").lower()
+    wanted = wanted[:-4] if wanted.endswith(".git") else wanted
+    keys = {r: repository_of(config(f"remote.{r}.url")) for r in remotes}
+    named = [r for r in remotes if wanted and (keys[r] or "").lower() == wanted]
+    order = named or sorted((r for r in remotes if keys[r]),
+                            key=lambda r: ({"origin": 0, "upstream": 1}.get(r, 2), r))
+    if not order:
+        log("no-remote")
+        return
+    # 4. hello: the first remote that is the token's repository.
+    remote = key = answer = None
+    status = 204
+    for candidate in order:
+        answer = hello(candidate, keys[candidate])
+        if answer:
+            remote, key = candidate, keys[candidate]
+            break
+        if answer is None:
+            status = "failed"
+            break
+    save("sync-last", f"{int(time.time())}\n")
+    if not remote:
+        log("not-virtual" if status == 204 else "hello-failed", hello=status)
+        return
+    # The organisation's word on the CLI: `cli=0` and no gh, glab or provider API runs from
+    # here on; a server that does not say (older than the history read) allows it.
+    CLI["on"] = (answer.get("cli") or "1").strip() != "0"
+    save("sync-cli", ("1" if CLI["on"] else "0") + "\n")
+    try:
+        if VERSION < int(answer.get("min_version") or 0):
+            log("upgrade", hello=200)
+            return
+        limit = max(1, min(int(answer.get("max") or 2000), 10000))
+    except ValueError:
+        log("hello-failed", hello=200)
+        return
+    SALT = (answer.get("salt") or "").strip().lower()
+    if not re.fullmatch(r"[0-9a-f]{16,128}", SALT):
+        log("hello-failed", hello=200)
+        return
+    run_id = answer["run"].strip()
+    domains = {d.strip().lower() for d in (answer.get("domains") or "").split(",") if d.strip()}
+    text = answer.get("text") == "1"
+    since = (answer.get("first_since") or "").strip()
+    since = since if re.fullmatch(r"\d{4}-\d{2}-\d{2}", since) else ""
+    host, path = key.split("/", 1)
+    me = norm(own_email) if own_email else None
+    login = own_login(host)
+
+    def clear_email(email):
+        """The address in clear only when it is the developer's own or of an own domain."""
+        value = norm(email)
+        domain = value.rsplit("@", 1)[-1] if "@" in value else ""
+        return value if value and (value == me or domain in domains) else ""
+
+    def clear_login(value):
+        return value.strip(SPACE) if login and value and norm(value) == norm(login) else ""
+
+    # 5. A fetch that never asks; a failed one sends what the clone has.
+    git("fetch", remote, "--no-tags", "--quiet", timeout=600)
+
+    # 6. Commits of the remote's branches and of the push, not of the saved tips. A read
+    # of the history that fails or takes too long (None, not "") ends the run before
+    # anything is sent: the tips and the window stay, so the next run sends these commits.
+    refs = git("for-each-ref", "--format=%(objectname)", f"refs/remotes/{remote}/")
+    if refs is None:
+        log("history-failed", hello=200)
+        return
+    tips = [line.split()[0] for line in refs.splitlines() if line.strip()]
+    tips = list(dict.fromkeys(tips + PUSHED))
+    batch = run(["git", "cat-file", "--batch-check=%(objectname) %(objecttype)"],
+                stdin="\n".join(tips + (read("sync-tips") or "").split()).encode())
+    if batch is None:
+        log("history-failed", hello=200)
+        return
+    commits_known = {line.split()[0] for line in batch.splitlines()
+                     if line.endswith(" commit")}
+    tips = [t for t in tips if t in commits_known]
+    saved = [t for t in (read("sync-tips") or "").split()
+             if SHA.fullmatch(t) and t in commits_known]
+    rangeargs = list(tips)
+    if saved and not FULL:
+        rangeargs += ["--not", *saved]
+    if (first or not saved) and not FULL and since:
+        rangeargs.insert(0, f"--since={since}")
+    partial = config(f"remote.{remote}.promisor") == "true" \
+        or bool(config("extensions.partialclone"))
+    shallow = set((read_shallow() or "").split())
+    lines_of = {}
+    groups = []
+    if tips:
+        # --no-show-signature: with `log.showSignature` git prints gpg's lines into the
+        # output, which would cost a signed commit its message.
+        log_args = ["log", "--no-show-signature", "--no-merges", "--reverse",
+                    "--format=%x00%H%x09%aI%x09%ae"]
+        out = git(*log_args, *([] if partial else ["--numstat"]), *rangeargs, "--",
+                  timeout=1800)
+        written = None
+        if out is not None and text:
+            written = git("log", "--no-show-signature", "-z", "--no-merges", "--format=%H%n%B",
+                          *rangeargs, "--", timeout=1800)
+        if out is None or (text and written is None):
+            log("history-failed", hello=200)
+            return
+        messages = {}
+        for chunk in (written or "").split("\0"):
+            sha, _, body = chunk.lstrip("\n").partition("\n")
+            if SHA.fullmatch(sha):
+                # One character past the server's limit: the server stores MESSAGE_CHARS
+                # and marks the message `truncated`, as an import's.
+                messages[sha] = body.rstrip("\n")[:MESSAGE_CHARS + 1]
+        for chunk in out.split("\0")[1:]:
+            head, *stats = chunk.split("\n")
+            sha, _, rest = head.partition("\t")
+            authored, _, email = rest.partition("\t")
+            if not SHA.fullmatch(sha) or not authored:
+                continue
+            added = deleted = 0
+            for stat in stats:
+                parts = stat.split("\t", 2)
+                if len(parts) == 3:
+                    added += int(parts[0]) if parts[0].isdigit() else 0
+                    deleted += int(parts[1]) if parts[1].isdigit() else 0
+            sizes = ("", "") if partial or sha in shallow else (str(added), str(deleted))
+            email = email.strip(SPACE)
+            group = ["\t".join(("C", sha, authored, *sizes, hashed("e", email),
+                                clear_email(email)))]
+            if text and sha in messages:
+                group.append("\t".join(("M", sha, b64(messages[sha]))))
+            groups.append((group, None))
+            lines_of[sha] = authored
+        counts["commits"] = len(lines_of)
+
+    # 6a and 6b. The fingerprints of the branches not merged yet, and the pull requests the
+    # default branch's history names. Plain git on the clone: no provider is asked.
+    branch = asked.get("branch") or ""
+    default_tip = (git("rev-parse", "--verify", "--quiet",
+                       f"refs/remotes/{remote}/{branch}^{{commit}}") or "").strip() \
+        if branch else ""
+    if SHA.fullmatch(default_tip):
+        done = set(saved) if not FULL else set()
+        if not partial and not shallow:
+            groups += branch_groups(remote, branch, default_tip, PUSHED, done)
+        history = history_groups(default_tip, saved if not FULL else [],
+                                 since if (first or not saved) and not FULL else "",
+                                 host, path, branch, text, partial or bool(shallow),
+                                 clear_email)
+        if history is None:
+            log("history-failed", hello=200)
+            return
+        groups += history
+        counts["history"] = len(history)
+
+    # 7. Pull requests updated since the saved window start, oldest first; only where the
+    # organisation allows the CLI.
+    window = (read("sync-window") or "").strip() or None
+    start = None if FULL else (window or since or None)
+    pages = []
+    if not CLI["on"]:
+        pass
+    elif host == "github.com" and shutil.which("gh"):
+        pages = github_pages(f"{host}/{path}", start, text)
+        for rows in pages:
+            for index, pr in enumerate(rows):
+                last = index == len(rows) - 1
+                groups.append((github_lines(pr, text, clear_login),
+                               (pr.get("updatedAt") or None) if last else None))
+    elif host == "gitlab.com" and shutil.which("glab") and shutil.which("jq"):
+        pages = gitlab_pages(path, start, text)
+        for rows in pages:
+            for index, mr in enumerate(rows):
+                last = index == len(rows) - 1
+                groups.append((gitlab_lines(path, mr, text, clear_login),
+                               (mr.get("updated_at") or None) if last else None))
+    counts["prs"] = sum(len(rows) for rows in pages)
+
+    # 8. Parts of at most `limit` lines and PART_BYTES; the last one says so.
+    parts = deque(pack(groups, limit))
+    if not parts:
+        parts.append(Part())
+    requests = rehellos = 0
+    while parts:
+        part = parts.popleft()
+        body = "".join(line + "\n" for group, _ in part for line in group).encode("utf-8")
+        last = not parts
+        requests += 1
+        if requests > MAX_REQUESTS:
+            log("too-many", hello=200)
+            return
+        status, reply = post(f"/caliber/sync/activity?run={urllib.parse.quote(run_id)}"
+                             f"&last={1 if last else 0}", body,
+                             "text/tab-separated-values; charset=utf-8")
+        reason = reply.strip().split()[0] if reply.strip() else ""
+        if status == 200:
+            counts["parts"] += 1
+            found = re.search(r"skipped=(\d+)", reply)
+            counts["skipped"] += int(found.group(1)) if found else 0
+            for _, window_after in part:
+                if window_after:
+                    save("sync-window", window_after + "\n")
+            continue
+        if status == 409 and reason == "run-expired" and rehellos < 3:
+            rehellos += 1
+            again = hello(remote, key)
+            if again:
+                run_id = again["run"].strip()
+                parts.appendleft(part)
+                continue
+        if status == 413 and not getattr(part, "halved", False) and len(part_lines(part)) > 1:
+            first_half, second_half = halves(part)
+            parts.appendleft(second_half)
+            parts.appendleft(first_half)
+            continue
+        log("refused", hello=200, status=status, reason=re.sub(r"[^a-z-]", "", reason)[:20])
+        return
+    # Only now: the next run starts from these tips.
+    save("sync-tips", "".join(t + "\n" for t in tips))
+    log("ok", hello=200, status=200)
+
+
+def read_shallow():
+    path = os.environ.get("CALIBER_SYNC_SHALLOW") or ""
+    try:
+        with open(path, encoding="ascii", errors="replace") as fh:
+            return fh.read()
+    except OSError:
+        return None
+
+
+#: 6a: at most this many branches a run; a branch of more commits sends no `B` line.
+BRANCHES, BRANCH_COMMITS = 100, 250
+
+
+def fingerprint(base, tip):
+    """The first field of `git patch-id --stable` of the change base..tip, or "" (an empty
+    diff, a failure). The diff's form is pinned, so a clone's own diff settings (prefixes,
+    renames, algorithm, context, textconv) cannot give the same change another fingerprint;
+    the patch-id is a hash of the change and says nothing of the code."""
+    diff = run(["git", "diff", "--no-color", "--no-ext-diff", "--no-textconv", "--no-renames",
+                "--no-relative", "--full-index", "--src-prefix=a/", "--dst-prefix=b/",
+                "--diff-algorithm=default", "--indent-heuristic", "--unified=3",
+                "--inter-hunk-context=0", base, tip, "--"], timeout=600, raw=True)
+    if not diff:
+        return ""
+    found = (run(["git", "patch-id", "--stable"], stdin=diff, timeout=600) or "").split()
+    return found[0] if found and SHA.fullmatch(found[0]) else ""
+
+
+def branch_groups(remote, branch, default_tip, pushed, done):
+    """6a. One group of `B` lines per branch not merged into the default branch: the pushed
+    shas first, then the remote's branches; a saved tip (sent before) is left out."""
+    refs = git("for-each-ref", "--format=%(refname)%09%(objectname)", f"refs/remotes/{remote}/")
+    skip = (f"refs/remotes/{remote}/{branch}", f"refs/remotes/{remote}/HEAD")
+    tips = [sha.strip() for name, _, sha in (line.partition("\t")
+                                             for line in (refs or "").splitlines())
+            if name not in skip]
+    groups, seen, examined = [], set(), 0
+    for tip in [*pushed, *tips]:
+        if not SHA.fullmatch(tip) or tip in seen or tip in done:
+            continue
+        seen.add(tip)
+        if git("merge-base", "--is-ancestor", tip, default_tip) is not None:
+            continue                   # merged, or the default branch itself
+        examined += 1
+        if examined > BRANCHES:
+            break
+        base = (git("merge-base", default_tip, tip) or "").strip()
+        if not SHA.fullmatch(base):
+            continue
+        shas = [s for s in (git("rev-list", "--no-merges", f"--max-count={BRANCH_COMMITS + 1}",
+                                f"{base}..{tip}", "--") or "").split() if SHA.fullmatch(s)]
+        if not shas or len(shas) > BRANCH_COMMITS:
+            continue
+        mark = fingerprint(base, tip)
+        if mark:
+            groups.append(([f"B\t{mark}\t{sha}" for sha in shas], None))
+            counts["branches"] += 1
+    return groups
+
+
+def body_line(message):
+    """The first line of a message's body (after its first blank line), or ""."""
+    _, _, body = message.partition("\n\n")
+    return next((line.strip() for line in body.splitlines() if line.strip()), "")
+
+
+def named_pull_request(host, path, parents, message):
+    """(number, title, head ref) when the message names a pull request in the provider's
+    default form (PRD requirement 9), compared exactly; else None."""
+    first = message.split("\n", 1)[0]
+    if host == "github.com":
+        found = re.match(r"Merge pull request #(\d{1,10}) from (\S+)", first)
+        if found and len(parents) == 2:
+            head = found.group(2)
+            return found.group(1), body_line(message), head.split("/", 1)[1] if "/" in head \
+                else head
+        found = re.search(r" \(#(\d{1,10})\)$", first)
+        if found and len(parents) == 1:
+            return found.group(1), first[:found.start()], ""
+    elif host == "gitlab.com" and len(parents) in (1, 2):
+        for found in re.finditer(r"^See merge request (\S+)!(\d{1,10})$", message, re.M):
+            if found.group(1).lower() == path.lower():
+                paragraphs = [p for p in re.split(r"\n[ \t]*\n", message.strip("\n")) if p.strip()]
+                title = paragraphs[1].split("\n", 1)[0].strip() if len(paragraphs) > 1 else ""
+                head = re.match(r"Merge branch '([^']+)' into ", first)
+                return found.group(2), title, head.group(1) if head else ""
+    elif host == "bitbucket.org" and len(parents) in (1, 2):
+        found = re.match(r"Merged in (\S+) \(pull request #(\d{1,10})\)", first)
+        if found:
+            return found.group(2), body_line(message), found.group(1)
+    return None
+
+
+def earliest(dates):
+    """The earliest of ISO dates as written, compared as moments."""
+    moments = []
+    for value in dates:
+        try:
+            moments.append((datetime.fromisoformat(value.replace("Z", "+00:00")), value))
+        except ValueError:
+            continue
+    return min(moments)[1] if moments else ""
+
+
+def history_groups(default_tip, saved, since, host, path, branch, text, sizeless, clear_email):
+    """6b. An `H` line (with its `S` lines and, with text, a `T` line) for each commit of the
+    default branch's first-parent history, over step 6's range, whose message names a pull
+    request; None when the history cannot be read. `sizeless`: a partial or shallow clone,
+    whose counts and fingerprints stay empty."""
+    args = ["log", "--no-show-signature", "--first-parent",
+            "--format=%x1e%H%x00%P%x00%aI%x00%cI%x00%ae%x00%B"]
+    if since:
+        args.append(f"--since={since}")
+    args.append(default_tip)
+    if saved:
+        args += ["--not", *saved]
+    out = git(*args, "--", timeout=1800)
+    if out is None:
+        return None
+    groups, numbers = [], set()
+    for record in out.split("\x1e")[1:]:
+        fields = record.split("\0", 5)
+        if len(fields) != 6:
+            continue
+        sha, parents, authored, committed, email, message = fields
+        parents = parents.split()
+        if not SHA.fullmatch(sha) or not parents:
+            continue
+        found = named_pull_request(host, path, parents, message.rstrip("\n"))
+        if not found or int(found[0]) < 1 or str(int(found[0])) in numbers:
+            continue                   # newest first: a number merged twice, its last merge
+        number, title, head_ref = str(int(found[0])), found[1], found[2]
+        numbers.add(number)
+        first_parent, merge, head, brought = parents[0], sha, "", []
+        if len(parents) == 2:
+            head = parents[1]
+            listed = git("log", "--no-show-signature", "--no-merges", "--format=%H%x09%aI",
+                         f"{first_parent}..{head}", "--") or ""
+            brought = [(s, a) for s, _, a in (line.partition("\t")
+                                              for line in listed.splitlines())
+                       if SHA.fullmatch(s)]
+            authored = earliest(a for _, a in brought) or authored
+            if brought:                # else the merge's own author, as its own date
+                email = (git("log", "--no-show-signature", "-1", "--format=%ae", head, "--")
+                         or "").strip() or email
+            base = (git("merge-base", first_parent, head) or "").strip()
+            mark = fingerprint(base, head) if SHA.fullmatch(base) and not sizeless else ""
+            if host == "gitlab.com":
+                # GitLab's squash: the merge commit brings exactly one commit of one parent.
+                rows = (git("rev-list", "--parents", f"{first_parent}..{head}", "--")
+                        or "").splitlines()
+                if len(rows) == 1 and len(rows[0].split()) == 2:
+                    merge = rows[0].split()[0]
+        else:
+            mark = "" if sizeless else fingerprint(first_parent, sha)
+        added = deleted = ""
+        if not sizeless:
+            stats = git("diff", "--no-color", "--no-ext-diff", "--numstat", first_parent, sha,
+                        "--")
+            if stats is not None:
+                rows = [row.split("\t", 2) for row in stats.splitlines()]
+                added = str(sum(int(r[0]) for r in rows if len(r) == 3 and r[0].isdigit()))
+                deleted = str(sum(int(r[1]) for r in rows if len(r) == 3 and r[1].isdigit()))
+        email = email.strip(SPACE)
+        group = ["\t".join(("H", number, committed, authored, added, deleted, field(branch),
+                            head, merge, hashed("e", email), clear_email(email), mark))]
+        group += [f"S\t{number}\t{s}" for s, _ in brought]
+        if text:
+            group.append("\t".join(("T", number, b64(title), "", field(head_ref),
+                                    field(branch))))
+        groups.append((group, None))
+    groups.reverse()                   # oldest first, as the commits are
+    return groups
+
+
+class Part(list):
+    halved = False
+
+
+def part_lines(part):
+    return [line for group, _ in part for line in group]
+
+
+def history_marker(group):
+    """`H <n> -` when `group` is a pull request from the history (or the rest of one): the
+    first line of each later piece of it, so the server knows whose `S` and `T` lines go on
+    and never adds them to a pull request the provider described (v20)."""
+    fields = group[0].split("\t") if group else []
+    return f"H\t{fields[1]}\t-" if len(fields) > 2 and fields[0] == "H" else None
+
+
+def halves(part):
+    """A part refused as too large, in two: by its groups, or by its lines when it has one."""
+    if len(part) > 1:
+        cut = len(part) // 2
+        pieces = Part(part[:cut]), Part(part[cut:])
+    else:
+        (group, window_after), = part
+        cut = len(group) // 2
+        marker = history_marker(group)
+        rest = ([marker] if marker else []) + group[cut:]
+        pieces = Part([(group[:cut], None)]), Part([(rest, window_after)])
+    for piece in pieces:
+        piece.halved = True
+    return pieces
+
+
+def pack(groups, limit):
+    """Groups (a commit with its message; a pull request with all its lines) whole into
+    parts, in order; a group too large for one part alone is cut by its lines."""
+    parts, current, size, lines = [], Part(), 0, 0
+    for group, window_after in groups:
+        weight = sum(len(line.encode("utf-8")) + 1 for line in group)
+        if current and (len(group) > limit or weight > PART_BYTES
+                        or lines + len(group) > limit or size + weight > PART_BYTES):
+            parts.append(current)
+            current, size, lines = Part(), 0, 0
+        if len(group) > limit or weight > PART_BYTES:
+            piece, piece_size = [], 0
+            marker = history_marker(group)
+            for line in group:
+                line_size = len(line.encode("utf-8")) + 1
+                if piece and (len(piece) >= limit or piece_size + line_size > PART_BYTES):
+                    parts.append(Part([(piece, None)]))
+                    piece = [marker] if marker else []
+                    piece_size = len(marker) + 1 if marker else 0
+                piece.append(line)
+                piece_size += line_size
+            parts.append(Part([(piece, window_after)]))
+            continue
+        current.append((group, window_after))
+        size += weight
+        lines += len(group)
+    if current:
+        parts.append(current)
+    return parts
+
+
+GITHUB_FIELDS = ("number,state,createdAt,updatedAt,mergedAt,closedAt,additions,deletions,"
+                 "baseRefName,headRefName,headRefOid,mergeCommit,labels,commits,author")
+TEXT_FIELDS = ",title,body,files,changedFiles"
+#: A page's reviews and comments, through GraphQL: `gh pr list --json` names their authors by
+#: `login` alone, so an app (`coderabbitai`) would pass for a person; `__typename` tells.
+REVIEWS_QUERY = ("p{n}: pullRequest(number: {n}) {{ "
+                 "reviews(first: 100) {{ nodes {{ author {{ __typename login }} submittedAt }} }} "
+                 "comments(first: 100) {{ nodes {{ author {{ __typename login }} createdAt }} }} }}")
+
+
+def github_reviews(repository, rows):
+    """The reviews and comments of a page's pull requests, by number, with each author's
+    `__typename`; {} when GraphQL does not answer (`github_pages` then stops before the
+    page)."""
+    if not rows:
+        return {}
+    owner, _, name = repository.split("/", 1)[1].partition("/")
+    query = ("query($owner: String!, $name: String!) { repository(owner: $owner, name: $name) { "
+             + " ".join(REVIEWS_QUERY.format(n=r["number"]) for r in rows) + " } }")
+    out = run(["gh", "api", "graphql", "--hostname", "github.com", "-f", "query=" + query,
+               "-f", "owner=" + owner, "-f", "name=" + name], timeout=300)
+    try:
+        found = json.loads(out)["data"]["repository"] if out else None
+    except (ValueError, KeyError, TypeError):
+        found = None
+    result = {}
+    for r in rows:
+        pr = found.get(f"p{r['number']}") if isinstance(found, dict) else None
+        if isinstance(pr, dict):
+            result[r["number"]] = {kind: ((pr.get(kind) or {}).get("nodes") or [])
+                                   for kind in ("reviews", "comments")}
+    return result
+
+
+def github_pages(repository, start, text):
+    """At most PAGES pages of 100, oldest update first; a short page is the last."""
+    pages = []
+    for _ in range(PAGES):
+        query = ("" if start is None else f"updated:>={start} ") + "sort:updated-asc"
+        out = run(["gh", "pr", "list", "-R", repository, "--state", "all", "--limit", str(PAGE),
+                   "--search", query, "--json", GITHUB_FIELDS + (TEXT_FIELDS if text else "")],
+                  timeout=300)
+        try:
+            rows = json.loads(out) if out else None
+        except ValueError:
+            rows = None
+        if not isinstance(rows, list):
+            break
+        rows = sorted((r for r in rows
+                       if isinstance(r, dict) and isinstance(r.get("number"), int)),
+                      key=lambda r: r.get("updatedAt") or "")
+        reviews = github_reviews(repository, rows)
+        if rows and not reviews:
+            # GraphQL did not answer: the page waits for the next run, so the window does
+            # not move past pull requests whose reviews were never read.
+            break
+        for r in rows:
+            r.update(reviews.get(r["number"], {}))
+        pages.append(rows)
+        if len(rows) < PAGE or not rows[-1].get("updatedAt"):
+            break
+        start = rows[-1]["updatedAt"]
+    return pages
+
+
+def login_of(who):
+    return (who or {}).get("login") or "" if isinstance(who, dict) else ""
+
+
+def is_bot(who):
+    who = who if isinstance(who, dict) else {}
+    return who.get("__typename") == "Bot" or who.get("is_bot") is True \
+        or login_of(who).startswith("app/")
+
+
+def merged_at(oid, fallback):
+    """The merge commit's date from the clone when it has it, else the merged date."""
+    if oid and SHA.fullmatch(oid):
+        found = (git("log", "--no-show-signature", "-1", "--format=%cI", oid, "--")
+                 or "").strip()
+        if found:
+            return found
+    return fallback
+
+
+def github_lines(pr, text, clear_login):
+    number = str(pr["number"])
+    state = {"OPEN": "open", "MERGED": "merged", "CLOSED": "closed"}.get(pr.get("state"), "")
+    commits = [c for c in pr.get("commits") or [] if isinstance(c, dict)]
+    dates = sorted(when(c.get("authoredDate")) for c in commits if when(c.get("authoredDate")))
+    merge = (pr.get("mergeCommit") or {}).get("oid") or "" if isinstance(
+        pr.get("mergeCommit"), dict) else ""
+    author = login_of(pr.get("author")) or "ghost"
+    lines = ["\t".join(("P", number, state, when(pr.get("createdAt")), when(pr.get("mergedAt")),
+                        when(pr.get("closedAt")), dates[0] if dates else "",
+                        merged_at(merge, when(pr.get("mergedAt"))),
+                        count(pr.get("additions")), count(pr.get("deletions")),
+                        field(pr.get("baseRefName")), pr.get("headRefOid") or "", merge,
+                        hashed("l", author), clear_login(author)))]
+    for label in pr.get("labels") or []:
+        name = label.get("name") if isinstance(label, dict) else None
+        if isinstance(name, str) and name.strip():
+            lines.append("\t".join(("L", number, field(name))))
+    for commit in commits:
+        oid = commit.get("oid") or ""
+        if SHA.fullmatch(oid):
+            lines.append("\t".join(("S", number, oid)))
+    if text:
+        lines.append("\t".join(("T", number, b64(pr.get("title") or ""), b64(pr.get("body") or ""),
+                                field(pr.get("headRefName")), field(pr.get("baseRefName")))))
+        files = [f.get("path") for f in pr.get("files") or [] if isinstance(f, dict)
+                 and isinstance(f.get("path"), str)]
+        lines += ["\t".join(("F", number, b64(p))) for p in files]
+        changed = pr.get("changedFiles")
+        if len(files) >= 100 or (isinstance(changed, int) and changed > len(files)):
+            lines.append("\t".join(("F", number, "-")))
+    # Reviews and comments: their time and their author, hashed; never their text. The
+    # pull request's own author and the apps (`[bot]`) are left out.
+    me = norm(author)
+    reviewed = len(lines)
+    for kind, at in (("reviews", "submittedAt"), ("comments", "createdAt")):
+        for item in pr.get(kind) or []:
+            if not isinstance(item, dict):
+                continue
+            who = login_of(item.get("author"))
+            moment = when(item.get(at))
+            if not who or not moment or who.endswith("[bot]") or norm(who) == me:
+                continue
+            lines.append("\t".join(("R", number, moment, hashed("l", who), clear_login(who),
+                                    "1" if is_bot(item.get("author")) else "0")))
+    # Read (GraphQL answered for this pull request) and none by anyone else: the marker, so
+    # the server records the read with no first review. Not read: no line, it keeps its own.
+    if len(lines) == reviewed and "reviews" in pr and "comments" in pr:
+        lines.append("\t".join(("R", number, "-")))
+    return lines
+
+
+#: What `jq` keeps of GitLab's merge requests: the fields the lines are made of.
+GITLAB_JQ = ("[.[] | {iid, state, created_at, merged_at, closed_at, updated_at, target_branch, "
+             "source_branch, sha, merge_commit_sha, squash_commit_sha, labels, "
+             "author: (.author.username // \"\"), title, description}]")
+
+
+def gitlab(path, endpoint, program):
+    out = run(["glab", "api", "--hostname", "gitlab.com",
+               f"projects/{urllib.parse.quote(path, safe='')}/{endpoint}"], timeout=300)
+    if out is None:
+        return None
+    kept = run(["jq", "-c", program], stdin=out.encode(), timeout=120)
+    try:
+        return json.loads(kept) if kept else None
+    except ValueError:
+        return None
+
+
+def gitlab_pages(path, start, text):
+    pages = []
+    for _ in range(PAGES):
+        query = "merge_requests?state=all&scope=all&order_by=updated_at&sort=asc&per_page=100"
+        if start is not None:
+            query += "&updated_after=" + urllib.parse.quote(start, safe="")
+        rows = gitlab(path, query, GITLAB_JQ)
+        if not isinstance(rows, list):
+            break
+        rows = sorted((r for r in rows
+                       if isinstance(r, dict) and isinstance(r.get("iid"), int)),
+                      key=lambda r: r.get("updated_at") or "")
+        pages.append(rows)
+        if len(rows) < PAGE or not rows[-1].get("updated_at"):
+            break
+        start = rows[-1]["updated_at"]
+    return pages
+
+
+def gitlab_lines(path, mr, text, clear_login):
+    number = str(mr["iid"])
+    state = {"opened": "open", "locked": "open", "merged": "merged",
+             "closed": "closed"}.get(mr.get("state"), "")
+    merge = mr.get("merge_commit_sha") or mr.get("squash_commit_sha") or ""
+    author = mr.get("author") or "ghost"
+    # No line counts and no commit list in the listing: sent empty (stored as 0).
+    lines = ["\t".join(("P", number, state, when(mr.get("created_at")), when(mr.get("merged_at")),
+                        when(mr.get("closed_at")), "", merged_at(merge, when(mr.get("merged_at"))),
+                        "", "", field(mr.get("target_branch")), mr.get("sha") or "", merge,
+                        hashed("l", author), clear_login(author)))]
+    for label in mr.get("labels") or []:
+        if isinstance(label, str) and label.strip():
+            lines.append("\t".join(("L", number, field(label))))
+    if text:
+        lines.append("\t".join(("T", number, b64(mr.get("title") or ""),
+                                b64(mr.get("description") or ""), field(mr.get("source_branch")),
+                                field(mr.get("target_branch")))))
+        if FULL:                       # one call per merge request: only with --full
+            changes = gitlab(path, f"merge_requests/{number}/changes",
+                             "{paths: [.changes[]?.new_path], overflow: (.overflow // false)}")
+            if isinstance(changes, dict):
+                lines += ["\t".join(("F", number, b64(p))) for p in changes.get("paths") or []
+                          if isinstance(p, str)]
+                if changes.get("overflow"):
+                    lines.append("\t".join(("F", number, "-")))
+    return lines
+
+
+try:
+    main()
+except Exception as exc:  # noqa: BLE001 -- one log line, never the text of what failed
+    log("error", kind=type(exc).__name__)
+finally:
+    release()
+PY
+}
+
+# The local shas of the branches git is pushing (what it sent on stdin, in $refs): one
+# word each. (A function: bash 3.2 misreads a `case` inside $(...).)
+pushed_shas() {
+  printf '%s\n' "$refs" | while read -r _ local_sha remote_ref _; do
+    case "$remote_ref" in refs/heads/*) ;; *) continue ;; esac
+    case "$local_sha" in *[!0-9a-f]* | "") continue ;; *[!0]*) printf '%s ' "$local_sha" ;; esac
+  done
+}
+
+# The process of the push that runs this hook (its nearest `git` ancestor), which the sync
+# started from here waits for; empty when ps cannot tell.
+pushing_git() {
+  ps -A -o pid= -o ppid= -o comm= 2>/dev/null | awk -v start="$PPID" '
+    { parent[$1] = $2; name[$1] = $3 }
+    END {
+      p = start
+      for (i = 0; i < 8 && p > 1; i++) {
+        n = name[p]; sub(/.*\//, "", n)
+        if (n == "git") { print p; exit }
+        p = parent[p]
+      }
+    }'
+}
+
+if [ "${1:-}" = "--sync" ]; then
+  shift
+  [ "$(git config --local --type=bool --get caliber.syncActivity 2>/dev/null)" = true ] || exit 0
+  common=$(cd "$(git rev-parse --git-common-dir)" 2>/dev/null && pwd -P) || exit 0
+  # Only a copy outside the working tree sends the token: the git directory's, or the
+  # Caliber plugin's. From the working tree (a file a merge may have put there, run by
+  # hand) the sync is the git directory's copy's, or nobody's.
+  if [ "$here" != "$common/caliber/hooks" ]; then
+    tree=$(cd "$root" 2>/dev/null && pwd -P) || exit 0
+    case "$here/" in
+      "$tree/"*)
+        [ -x "$common/caliber/hooks/pre-push" ] || exit 0
+        exec "$common/caliber/hooks/pre-push" --sync "$@"
+        ;;
+    esac
+  fi
+  case "${1:-}" in
+    --session) trigger=session; shift ;;
+    --full) trigger=full; shift ;;
+    "") trigger=manual ;;
+    *) trigger=push ;;                 # from the git hook: <remote> <pushed sha>...
+  esac
+  git config --local --get caliber.mcpUrl >/dev/null 2>&1 || exit 0
+  [ -f "$common/caliber/sync-token" ] || exit 0
+  command -v python3 >/dev/null 2>&1 || exit 0
+  cd "$root" || exit 0
+  shallow=$(git rev-parse --git-path shallow 2>/dev/null) || shallow=""
+  case "$shallow" in "" | /*) ;; *) shallow="$root/$shallow" ;; esac
+  CALIBER_SYNC_TRIGGER=$trigger CALIBER_SYNC_STATE="$common/caliber" \
+    CALIBER_SYNC_SHALLOW=$shallow sync_run "$@" </dev/null >/dev/null 2>&1
+  exit 0
+fi
+
+if [ "${1:-}" = "--install" ]; then
+  shift
+  # --virtual: a clone of a virtual repository (setup says so): the sync, never the check.
+  # --session-only (with --virtual): no copy and no git hook; the Caliber plugin's session
+  # hook starts the sync with its own copy of this file.
+  virtual=""
+  session_only=""
+  repository=""
+  while [ "$#" -gt 0 ]; do
+    case "$1" in
+      --virtual) virtual=1 ;;
+      --session-only) session_only=1 ;;
+      --repository)
+        [ "$#" -ge 2 ] || { say "--repository needs host/owner/name"; exit 1; }
+        repository=$2
+        shift
+        ;;
+      *) say "unknown option: $1"; exit 1 ;;
+    esac
+    shift
+  done
+  if [ -n "$session_only" ] && [ -z "$virtual" ]; then
+    say "not installed: --session-only is for a clone of a virtual repository (--virtual)"
+    exit 1
+  fi
+  if [ -n "$repository" ] && ! printf '%s\n' "$repository" | grep -Eq '^[A-Za-z0-9.-]+(/[A-Za-z0-9._-]+){2,}$'; then
+    say "not installed: --repository must be host/owner/name, as the remote names it"
+    exit 1
+  fi
+  # The sync token comes on stdin (setup hands it over; it is never an argument, which
+  # other users of the machine could read). Nothing on stdin keeps the clone's token.
+  token=""
+  if [ -n "$virtual" ] && [ ! -t 0 ]; then IFS= read -r token || :; fi
+  case "$token" in
+    "") ;;
+    clb_*[!A-Za-z0-9_-]* | clb_) say "not installed: what came on stdin is no sync token"; exit 1 ;;
+    clb_*) ;;
+    *) say "not installed: what came on stdin is no sync token"; exit 1 ;;
+  esac
+  cd "$root" || exit 1
+  command -v python3 >/dev/null 2>&1 || { say "python3 is needed"; exit 1; }
+  # The endpoint the check reports to, and your token is sent to: fixed for this clone
+  # now, from the repository's MCP config, and never read from the working tree again.
+  # A repository with no Caliber server in its MCP configs (the plugin is the way in):
+  # CALIBER_URL's endpoint, or the plugin's default. A virtual repository's MCP configs are
+  # never read: the endpoint setup recorded (caliber.mcpUrl), else CALIBER_URL's or the
+  # default.
+  # A clone that has its endpoint keeps it: your token goes there, so it changes only
+  # when you say so, not because the repository's config names another one now. CALIBER_URL
+  # is read only for a clone with none: one that is no plain URL stops only that install.
+  pinned=$(git config --local --get caliber.mcpUrl 2>/dev/null) || pinned=""
+  if [ -n "$virtual" ]; then found=$(endpoint virtual); else found=$(endpoint); fi
+  case "$found" in
+    "bad-pin "*)
+      say "not installed: this clone's caliber.mcpUrl must be an https URL without credentials (${found#bad-pin })"
+      say "Set it to your Caliber's MCP address with git config --local caliber.mcpUrl, or unset it."
+      exit 1
+      ;;
+    "config "*) url=${found#config } ;;
+    "default "*) url=${pinned:-${found#default }} ;;
+    "bad-env "*)
+      if [ -z "$pinned" ]; then
+        say "not installed: CALIBER_URL must be an https URL without credentials (${found#bad-env })"
+        exit 1
+      fi
+      url=$pinned
+      ;;
+    *)
+      say "not installed: no Caliber server (an https URL) in this repository's MCP configs; run /caliber:setup first"
+      exit 1
+      ;;
+  esac
+  if [ -n "$pinned" ] && [ "$pinned" != "$url" ]; then
+    say "not changed: this clone reports to $pinned, and the repository's MCP config now names $url."
+    say "If the new one is right, set caliber.mcpUrl to it with git config --local."
+    exit 2
+  fi
+  hooks=$(git rev-parse --git-path hooks) || exit 1
+  case "$hooks" in /*) ;; *) hooks="$root/$hooks" ;; esac
+  # Husky: git runs stubs in .husky/_, which Husky rewrites; people's hooks are one up.
+  case "$hooks" in */.husky/_) hooks=${hooks%/_} ;; esac
+  hook="$hooks/pre-push"
+  # The clone's own hooks directory (inside the git directory, never committed), one the
+  # repository versions (core.hooksPath in the working tree, Husky), or one outside the
+  # repository, which other repositories share and this install does not write to.
+  # (Decided before anything is created: the directory may not exist yet.)
+  common=$(cd "$(git rev-parse --git-common-dir)" && pwd -P) || exit 1
+  where=$(python3 -I -c '
+import os, sys
+hooks, common, root = (os.path.realpath(p) for p in sys.argv[1:4])
+inside = lambda path, base: path == base or path.startswith(base + os.sep)
+print("own" if inside(hooks, common) else "versioned" if inside(hooks, root) else "shared")
+' "$hooks" "$common" "$root") || exit 1
+  if [ -n "$virtual" ]; then
+    # The token: in the git directory, never the working tree, readable by you alone. A
+    # clone that has one keeps it.
+    state_dir="$common/caliber"
+    if [ -n "$token" ]; then
+      mkdir -p "$state_dir" || exit 1
+      (umask 077 && printf '%s\n' "$token" >"$state_dir/sync-token.new") || exit 1
+      chmod 600 "$state_dir/sync-token.new" && mv -f "$state_dir/sync-token.new" "$state_dir/sync-token" || exit 1
+    elif [ ! -f "$state_dir/sync-token" ]; then
+      say "not installed: no sync token on stdin, and this clone has none (setup asks Caliber for one)"
+      exit 1
+    fi
+    # The Caliber plugin's session hook syncs with the plugin's own copy: nothing is copied
+    # and no hook is written or changed.
+    if [ -n "$session_only" ]; then
+      git config --local caliber.mcpUrl "$url" || exit 1
+      git config --local caliber.syncActivity true || exit 1
+      [ -z "$repository" ] || git config --local caliber.syncRepository "$repository" || exit 1
+      say "the activity sync is on for this clone, reporting to $url: at the start of each Claude Code session (off: git config --local caliber.syncActivity false)"
+      exit 0
+    fi
+    # The hook files the sync runs: copied to the git directory, where no checkout, merge
+    # or pull writes (the working tree's .caliber/hooks/ is excluded, and git replaces an
+    # excluded file with a tracked one of the same path without a word). The git hook,
+    # the session hook and --sync run this copy alone.
+    installed="$state_dir/hooks"
+    if [ "$here" != "$installed" ]; then
+      (umask 077 && mkdir -p "$installed") || exit 1
+      for name in pre-push check-on-push.sh agent-post-push.sh; do
+        [ -f "$here/$name" ] || { say "not installed: $here/$name is missing"; exit 1; }
+        cp "$here/$name" "$installed/$name.new" && chmod 755 "$installed/$name.new" \
+          && mv -f "$installed/$name.new" "$installed/$name" || exit 1
+      done
+    fi
+    # A virtual repository's own hooks are the client's: a versioned hook or a hooks
+    # directory outside the repository is never written to, and no line is offered.
+    if [ "$where" != own ]; then
+      git config --local caliber.mcpUrl "$url" || exit 1
+      git config --local caliber.syncActivity true || exit 1
+      [ -z "$repository" ] || git config --local caliber.syncRepository "$repository" || exit 1
+      say "the activity sync is on for this clone, reporting to $url; no hook was written ($hooks is the repository's or shared), so a push starts no sync: it runs at the start of a Claude Code session and by hand ($installed/pre-push --sync; --full sends the whole history). Off: git config --local caliber.syncActivity false"
+      exit 0
+    fi
+  fi
+  if [ "$where" != shared ]; then mkdir -p "$hooks" || exit 1; fi
+  # In a versioned hook: one line at its end, which keeps the result of what ran before
+  # it (it starts the check only after a success and ends with the status it found), and
+  # runs nothing of the repository unless this clone turned the check or the sync on.
+  # shellcheck disable=SC2016
+  line='caliber_rc=$?; if [ "$caliber_rc" -eq 0 ] && { [ "$(git config --local --type=bool --get caliber.checkOnPush 2>/dev/null)" = true ] || [ "$(git config --local --type=bool --get caliber.syncActivity 2>/dev/null)" = true ]; }; then caliber_hook="$(git rev-parse --show-toplevel)/.caliber/hooks/pre-push"; [ ! -x "$caliber_hook" ] || "$caliber_hook" "$@" || true; fi; (exit "$caliber_rc") '"$MARK"
+  state=$(CALIBER_LINE=$line keep "$hook" "$MARK" "$where") || exit 1
+  case "$state" in
+    created) say "the check on push was added: $hook" ;;
+    wrapped) say "the check on push was added: $hook runs the hook that was there first (kept as pre-push.caliber-previous), then starts the check" ;;
+    added)
+      say "the check on push was added to $hook"
+      # A hook that is switched off stays off: that was somebody's choice.
+      [ -x "$hook" ] || say "that hook is not executable, so git does not run it (chmod +x turns it on)"
+      ;;
+    updated) say "the Caliber part of $hook was updated to this version" ;;
+    already) say "the pre-push hook already has the Caliber line ($hook)" ;;
+    *)
+      case "$state" in
+        shared) say "not installed: $hooks is outside this repository (core.hooksPath), so other repositories use it too; this install does not write there." ;;
+        flow) say "not installed: $hook uses exec or exit, or ends mid-command, so a line added at its end might never run." ;;
+        taken) say "not installed: $hook.caliber-previous is in the way." ;;
+        itself) say "not installed: $hook asks for its own name or is no text, so it cannot be kept under another name." ;;
+        special) say "not installed: $hook is not a regular file." ;;
+        *) say "not installed: $hook is not a shell script." ;;
+      esac
+      if [ -n "$virtual" ]; then
+        git config --local caliber.mcpUrl "$url" || exit 1
+        git config --local caliber.syncActivity true || exit 1
+        [ -z "$repository" ] || git config --local caliber.syncRepository "$repository" || exit 1
+        say "No hook was written or changed; the activity sync is on for this clone and reports to $url: it runs at the start of a Claude Code session and by hand ($installed/pre-push --sync)."
+        exit 0
+      fi
+      git config --local caliber.mcpUrl "$url" || exit 1
+      git config --local caliber.checkOnPush true || exit 1
+      say "No hook was written or changed; this clone is on (caliber.checkOnPush) and reports to $url."
+      say "To start the check, add this to the pre-push hook as its last line, or just before a final exit that ends with the status of the command before it; never after an exec or exit (it keeps the result of what ran before it, and runs nothing in a clone that did not turn the check on):"
+      say "  $line"
+      exit 3
+      ;;
+  esac
+  git config --local caliber.mcpUrl "$url" || exit 1
+  if [ -n "$virtual" ]; then
+    # No check exists for a virtual repository: caliber.checkOnPush stays as it is.
+    git config --local caliber.syncActivity true || exit 1
+    [ -z "$repository" ] || git config --local caliber.syncRepository "$repository" || exit 1
+    say "the activity sync is on for this clone, reporting to $url: after each push and at the start of a Claude Code session (off: git config --local caliber.syncActivity false)"
+    exit 0
+  fi
+  git config --local caliber.checkOnPush true || exit 1
+  say "on for this clone, reporting to $url (off: git config --local caliber.checkOnPush false)"
+  exit 0
+fi
+
+# The check, and in a clone of a virtual repository the activity sync: each needs its
+# own answer in the clone's git config (the sync its token too).
+check_on=""
+[ "$(git config --type=bool --get caliber.checkOnPush 2>/dev/null)" != "true" ] || check_on=1
+sync_on=""
+if [ "$(git config --local --type=bool --get caliber.syncActivity 2>/dev/null)" = true ]; then
+  common=$(cd "$(git rev-parse --git-common-dir)" 2>/dev/null && pwd -P) || common=""
+  [ -z "$common" ] || [ ! -f "$common/caliber/sync-token" ] \
+    || [ ! -x "$common/caliber/hooks/pre-push" ] || sync_on=1
+fi
+[ -n "$check_on$sync_on" ] || exit 0
+remote=${1:-origin}
+if [ -t 0 ]; then refs=""; else refs=$(cat); fi
+
+# The sync of what this push sends, detached before the check part: it waits for the
+# push to end, and the push never waits for it. It is the git directory's copy, never the
+# working tree's.
+if [ -n "$sync_on" ] && command -v python3 >/dev/null 2>&1; then
+  shas=$(pushed_shas)
+  # shellcheck disable=SC2086 # the pushed shas: one word each
+  CALIBER_SYNC_WAIT=$(pushing_git) nohup python3 -I -c 'import os, sys
+try:
+    os.setsid()
+except OSError:
+    pass
+os.execv(sys.argv[1], sys.argv[1:])' \
+    "$common/caliber/hooks/pre-push" --sync "$remote" $shas </dev/null >/dev/null 2>&1 &
+fi
+[ -n "$check_on" ] || exit 0
+
+# The Caliber plugin of Claude Code, two answers: for the background check, whether it is
+# installed for your user (the scope a headless run loads) and enabled, and this
+# repository does not switch it off; for a Claude Code session, whether that session has
+# it on (.claude/settings.local.json over .claude/settings.json over yours). Read from
+# Claude Code's files; the CLI is asked only when they are not there (it is slow to start).
+plugin_state() {
+  python3 -I - "$root" 2>/dev/null <<'PY'
+import json
+import os
+import subprocess
+import sys
+
+ID = "caliber@caliber"
+home = os.environ.get("CLAUDE_CONFIG_DIR") or os.path.join(os.path.expanduser("~"), ".claude")
+
+
+def load(path):
+    try:
+        with open(path) as fh:
+            data = json.load(fh)
+    except FileNotFoundError:
+        return None
+    except (OSError, ValueError):
+        return {}
+    return data if isinstance(data, dict) else {}
+
+
+def enabled(settings):
+    value = (settings or {}).get("enabledPlugins")
+    value = value.get(ID) if isinstance(value, dict) else None
+    return value if isinstance(value, bool) else None
+
+
+installed = load(os.path.join(home, "plugins", "installed_plugins.json"))
+user = load(os.path.join(home, "settings.json"))
+if installed is None or user is None:
+    # Only when Claude Code's files are missing; a push waits for it 3 seconds at most,
+    # and no answer is the plugin off.
+    try:
+        out = subprocess.run(["claude", "plugin", "list", "--json"], capture_output=True,
+                             text=True, timeout=3, stdin=subprocess.DEVNULL).stdout
+        rows = json.loads(out)
+    except (OSError, ValueError, subprocess.SubprocessError):
+        rows = []
+    rows = [row for row in rows if isinstance(row, dict) and row.get("id") == ID
+            and row.get("scope") == "user"] if isinstance(rows, list) else []
+    present = bool(rows)
+    mine = any(row.get("enabled") is True for row in rows)
+else:
+    entries = (installed.get("plugins") or {}).get(ID) \
+        if isinstance(installed.get("plugins"), dict) else None
+    if isinstance(entries, dict):
+        entries = [entries]             # the file's first format: one install, the user's
+    present = isinstance(entries, list) and any(
+        isinstance(entry, dict) and entry.get("scope", "user") == "user" for entry in entries)
+    mine = enabled(user) is True
+project = enabled(load(os.path.join(sys.argv[1], ".claude", "settings.json")))
+local = enabled(load(os.path.join(sys.argv[1], ".claude", "settings.local.json")))
+ready = present and mine and project is not False
+session = present and (local if local is not None else project if project is not None
+                       else mine) is True
+print(("on" if ready else "off") + " " + ("on" if session else "off"))
+PY
+}
+plugin=""
+plugin_on() {
+  if [ -z "$plugin" ]; then
+    plugin=$(plugin_state) || plugin=""
+    [ -n "$plugin" ] || plugin="off off"
+  fi
+  case "$1" in
+    ready) [ "${plugin% *}" = on ] ;;
+    *) [ "${plugin#* }" = on ] ;;
+  esac
+}
+
+# A push made by an agent whose session hook has it run the check there: the hook in
+# the repository's file, or the Caliber plugin's in a Claude Code session.
+covered() { [ -n "$1" ] && grep -qs 'agent-post-push.sh' "$root/$2"; }
+in_session() {
+  [ "$(git config --type=bool --get caliber.checkInSession 2>/dev/null)" != "false" ] || return 1
+  covered "${CLAUDECODE:-}" .claude/settings.json ||
+    covered "${CODEX_SANDBOX:-}" .codex/hooks.json ||
+    covered "${CURSOR_AGENT:-}" .cursor/hooks.json ||
+    covered "${GEMINI_CLI:-}" .gemini/settings.json ||
+    { [ -n "${CLAUDECODE:-}" ] && command -v python3 >/dev/null 2>&1 && plugin_on session; }
+}
+
+# What the check needs; said once, on the first branch that would be checked.
+ready() {
+  if ! command -v python3 >/dev/null 2>&1; then
+    say "no check started: python3 is not installed"
+  elif [ -z "${CALIBER_TOKEN:-}" ] && ! plugin_on ready; then
+    say "no check started: install the Caliber plugin and sign in once, or export CALIBER_TOKEN"
+  elif ! command -v claude >/dev/null 2>&1; then
+    say "no check started: the claude CLI is not installed (npm i -g @anthropic-ai/claude-code)"
+  elif [ ! -x "$here/check-on-push.sh" ]; then
+    say "no check started: $here/check-on-push.sh is missing (run /caliber:setup)"
+  else
+    return 0
+  fi
+  return 1
+}
+
+default=$(git symbolic-ref --quiet --short "refs/remotes/$remote/HEAD" 2>/dev/null) || default=""
+default=${default#"$remote"/}
+
+if [ -z "$refs" ]; then
+  # Nothing on stdin: a hook earlier in the same file read what git sent, or the push
+  # sends nothing. The current branch it is, when the remote does not have its head yet.
+  current=$(git symbolic-ref --quiet --short HEAD 2>/dev/null) || exit 0
+  head=$(git rev-parse HEAD) || exit 0
+  [ "$(git rev-parse --verify --quiet "refs/remotes/$remote/$current" || true)" != "$head" ] || exit 0
+  refs="refs/heads/$current $head refs/heads/$current -"
+fi
+
+printf '%s\n' "$refs" | while read -r _ local_sha remote_ref _; do
+  case "$remote_ref" in refs/heads/*) ;; *) continue ;; esac   # a tag, a note
+  case "$local_sha" in *[!0]*) ;; *) continue ;; esac          # a deleted branch
+  branch=${remote_ref#refs/heads/}
+  if [ -n "$default" ]; then
+    [ "$branch" != "$default" ] || continue
+  else
+    case "$branch" in main | master) continue ;; esac
+  fi
+  if in_session; then
+    say "no background check: the agent session that pushed runs the check (its Caliber session hook)"
+    exit 0
+  fi
+  ready || exit 0
+  # Its own session, so the push (and a Ctrl-C after it) leaves it running.
+  nohup python3 -I -c 'import os, sys
+try:
+    os.setsid()
+except OSError:
+    pass
+os.execv(sys.argv[1], sys.argv[1:])' \
+    "$here/check-on-push.sh" "$branch" "$local_sha" "$remote" </dev/null >/dev/null 2>&1 &
+done
+exit 0
