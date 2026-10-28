@@ -14,6 +14,7 @@ requires:
 permissions:
   network:
     allow:
+      - claude.ai
       - repo.maven.apache.org
       - repo1.maven.org
       - build.shibboleth.net
@@ -189,10 +190,13 @@ setup:
         fi
 
     - user: "agent"
-      description: "git: rewrite ssh://git@ssh.github.com:443/ to https://github.com/ in ~/.gitconfig"
+      description: "git: map GitHub SSH remotes to https://github.com/ in ~/.gitconfig"
       command: |
         set -eu
-        git config --global url."https://github.com/".insteadOf "ssh://git@ssh.github.com:443/"
+        git config --global --replace-all url."https://github.com/".insteadOf git@github.com: '^git@github\.com:$'
+        git config --global --replace-all url."https://github.com/".insteadOf ssh://git@ssh.github.com:443/ '^ssh://git@ssh\.github\.com:443/$'
+        git config --global --replace-all url."https://github.com/".insteadOf ssh://git@github.com/ '^ssh://git@github\.com/$'
+        git config --global --replace-all url."https://github.com/".insteadOf git+ssh://git@github.com/ '^git\+ssh://git@github\.com/$'
 
 agentInstructions:
   content: |
@@ -209,6 +213,11 @@ agentInstructions:
     `build.shibboleth.net` (Maven, Gradle). A build failing with an HTTP 403
     mentioning "Blocked by network policy" needs that host added to the
     sandbox policy, not a build-file change.
+
+    ## claude.ai connectors reachable
+
+    Egress is allowed to `claude.ai` so the claude.ai connectors enabled
+    on the user's account work in the sandbox.
 
     ## Infinum plugins and house rules
 
