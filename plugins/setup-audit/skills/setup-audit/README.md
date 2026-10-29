@@ -1,20 +1,20 @@
-# claude-setup-audit
+# setup-audit
 
 Audit your Claude Code installation for vulnerabilities, malicious code, prompt injection, supply-chain risks, and configuration issues across all extensibility points.
 
 ## Usage
 
 ```
-/claude-setup-audit:claude-setup-audit
+/setup-audit:setup-audit
 ```
 
 Optionally pass a focus area to narrow the scope:
 
 ```
-/claude-setup-audit:claude-setup-audit hooks
-/claude-setup-audit:claude-setup-audit mcp
-/claude-setup-audit:claude-setup-audit skills
-/claude-setup-audit:claude-setup-audit commands
+/setup-audit:setup-audit hooks
+/setup-audit:setup-audit mcp
+/setup-audit:setup-audit skills
+/setup-audit:setup-audit commands
 ```
 
 If no argument is provided, the skill audits everything. (Plugin-installed skills are namespaced as `/<plugin>:<skill>`.)

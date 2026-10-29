@@ -8,7 +8,7 @@
   },
   "plugins": [
     { "name": "create-prd", "source": "./plugins/create-prd" },
-    { "name": "claude-setup-audit", "source": "./plugins/claude-setup-audit" },
+    { "name": "setup-audit", "source": "./plugins/setup-audit" },
     { "name": "ui-validation", "source": "./plugins/ui-validation" },
     { "name": "pr-review-code-simplicity", "source": "./plugins/pr-review-code-simplicity" },
     { "name": "download-figma-screenshot", "source": "./plugins/download-figma-screenshot" },
