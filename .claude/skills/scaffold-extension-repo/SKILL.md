@@ -180,7 +180,8 @@ pnpm dlx github:infinum/ai --remove <marketplace-name>
 Finish by printing the next steps that are not the skill's to do:
 
 - **Org-level availability** — if non-developers should install from this marketplace via Claude Desktop or Cowork, ask an org admin to grant the Claude GitHub App access to the new repository.
-- **Announce it** in the AI channel, and add the repo to the team's or project's onboarding checklist — the handbook does not list extension repos; new joiners learn about them during onboarding.
+- **Register it in the extension index** — if the organisation keeps a list of its extension repos, add the new repo to it in the same way as the existing rows, so that people can find it. For the Infinum organisation, this list is the *Extension repos* table in the [`infinum/ai-private` README](https://github.com/infinum/ai-private#extension-repos). Opening a PR against that repo is an outward-facing action: ask first, and if the user declines or has no access, print the table row to add.
+- **Announce it** in the AI channel, and add the repo to the team's or project's onboarding checklist — the handbook does not list extension repos, so new joiners learn about them during onboarding.
 - **Ownership** — the owner named in the README keeps the plugins versioned and the rules current.
 - **What belongs here vs. upstream** — anything general enough for every Infinum engineer should be a PR to `infinum/ai` instead; anything used by a single code repository should simply live in that repo's `.claude/` folder.
 
