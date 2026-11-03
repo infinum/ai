@@ -1,6 +1,6 @@
 {
-  "name": "claude-setup-audit",
-  "version": "1.0.1",
+  "name": "setup-audit",
+  "version": "2.0.0",
   "description": "Audit your Claude Code installation for vulnerabilities, malicious code, prompt injection, and security issues across all extensibility points.",
   "keywords": [
     "security",

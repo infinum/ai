@@ -1,5 +1,5 @@
 ---
-name: claude-setup-audit
+name: setup-audit
 description: Audit Claude Code setup for vulnerabilities, malicious code, prompt injection, and security issues in plugins, skills, MCP servers, hooks, and permissions. Not Cowork-ready — reads `~/.claude/` outside the workspace mount.
 ---
 
