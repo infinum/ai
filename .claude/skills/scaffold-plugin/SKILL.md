@@ -13,7 +13,7 @@ Regardless of the mode, the skill enforces the things humans routinely forget: a
 
 For reference:
 
-- Single-skill plugin: `plugins/create-prd/` or `plugins/claude-setup-audit/`.
+- Single-skill plugin: `plugins/create-prd/` or `plugins/setup-audit/`.
 - Multi-skill plugin with an MCP server: several skill directories under `skills/` paired with a `.mcp.json` — see [CONTRIBUTING.md — Cross-platform MCP](../../../CONTRIBUTING.md#cross-platform-mcp) for the MCP layout.
 - Full plugin component taxonomy: [`CONTRIBUTING.md` — What a plugin can contain](../../../CONTRIBUTING.md#what-a-plugin-can-contain).
 - Authoritative schema for `plugin.json`: [Claude Code plugins reference](https://docs.claude.com/en/docs/claude-code/plugins-reference).
