@@ -19,6 +19,7 @@ The skill walks you through a guided flow:
 3. **Get the skeleton** — a copy of the bundled [`template/`](template/) with the names filled in: `marketplace.json`, a README with the exact install command, agent instructions, and optionally a first plugin and a rule bundle. Everything the owning team must write is marked `TODO`.
 4. **Optionally create the GitHub repo** — the skill asks before running `gh repo create`.
 5. **Verify** — a local-path install against the real installer, then clean-up.
+6. **Register it** — add the repo to the organisation's list of extension repos, if it keeps one. For Infinum, this is the *Extension repos* table in the [`infinum/ai-private` README](https://github.com/infinum/ai-private#extension-repos). The skill asks before it opens a PR there.
 
 ## The template
 
