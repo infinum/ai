@@ -65,18 +65,14 @@ capabilities:
           description: "attribution: set attribution.commit and attribution.pr to \"\" in ~/.claude/settings.json"
           command: |
             set -eu
+            f="$HOME/.claude/settings.json"
             mkdir -p "$HOME/.claude"
-            # Resolve a symlinked settings.json so the replace below swaps the target, not the link.
-            f=$(readlink -f "$HOME/.claude/settings.json")
             # jq exits 0 with empty output on a whitespace-only file, so reseed that too.
             [ -s "$f" ] && [ -n "$(tr -d '[:space:]' < "$f")" ] || echo '{}' > "$f"
-            # Atomic replace next to the target; mktemp creates 0600, so carry over the original mode.
-            tmp=$(mktemp "$f.XXXXXX")
-            trap 'rm -f "$tmp"' EXIT
-            jq '.attribution.commit = "" | .attribution.pr = ""' "$f" > "$tmp"
-            [ -s "$tmp" ] || { echo "infinum-full kit: ERROR: jq produced no output for $f" >&2; exit 1; }
-            chmod --reference="$f" "$tmp"
-            mv "$tmp" "$f"
+            # A jq failure aborts before "$f" is touched; writing in place keeps its mode and owner.
+            merged=$(jq '.attribution.commit = "" | .attribution.pr = ""' "$f")
+            [ -n "$merged" ] || { echo "infinum-full kit: ERROR: jq produced no output for $f" >&2; exit 1; }
+            printf '%s\n' "$merged" > "$f"
 
         # The proxy variables are for the git clone under `claude plugin marketplace add`.
         - user: agent
