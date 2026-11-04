@@ -38,7 +38,7 @@ capabilities:
           - context7.com
           # Caliber MCP server and its OAuth sign-in
           - app.caliberhq.io
-          # OpenTelemetry export (Grafana Cloud)
+          # AI Stats
           - otlp-gateway-prod-eu-west-2.grafana.net
           # security-check skill: registry and advisory lookups
           - api.deps.dev
