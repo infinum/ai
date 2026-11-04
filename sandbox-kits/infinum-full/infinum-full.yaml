@@ -22,7 +22,7 @@ description: >-
 # against either shape of the claude kit (the `claude` workload or
 # `claude-mixin`), both of which provide it.
 #
-# `deb/jq` is new: the attribution hook and the startup reconciler merge
+# `deb/jq` is new: the attribution hook merges
 # ~/.claude/settings.json with jq under `set -e`, so a base without it fails
 # sandbox creation. v2 could not say so. The platform floor (SPEC-v3 §12)
 # covers bash, sh, curl and git, which is everything else the hooks call
@@ -39,8 +39,7 @@ capabilities:
   #              git/settings hooks reach nothing.
   #   runtime  — every v2 host: the agent in steady state (Maven, connectors,
   #              MCP servers, security-check lookups, GitHub for `gh`/git and
-  #              marketplace auto-update). The startup reconciler reaches
-  #              nothing.
+  #              marketplace auto-update).
   #
   # The Ubuntu/Docker apt hosts the claude kit's own background `apt-get
   # update` needs are not repeated here: that hook belongs to the claude kit,
@@ -100,11 +99,17 @@ capabilities:
             # Reseed when the file holds no JSON at all: -s only rules out 0 bytes,
             # and jq exits 0 with empty output on a whitespace-only file too.
             [ -s "$f" ] && [ -n "$(tr -d '[:space:]' < "$f")" ] || echo '{}' > "$f"
-            # Capture before writing: a jq failure aborts before "$f" is touched,
-            # and writing in place keeps the file's own mode and owner.
-            merged=$(jq '.attribution.commit = "" | .attribution.pr = ""' "$f")
-            [ -n "$merged" ] || { echo "infinum-full kit: ERROR: jq produced no output for $f" >&2; exit 1; }
-            printf '%s\n' "$merged" > "$f"
+            # Atomic write: merge into a temp file in the same directory, then
+            # rename over "$f", so no reader or concurrent writer ever sees a
+            # truncated file. A jq failure aborts before "$f" is touched. The
+            # hook runs as agent, so the new file keeps the owner; --reference
+            # carries over the mode (mktemp creates it 0600).
+            tmp=$(mktemp "$f.XXXXXX")
+            trap 'rm -f "$tmp"' EXIT
+            jq '.attribution.commit = "" | .attribution.pr = ""' "$f" > "$tmp"
+            [ -s "$tmp" ] || { echo "infinum-full kit: ERROR: jq produced no output for $f" >&2; exit 1; }
+            chmod --reference="$f" "$tmp"
+            mv "$tmp" "$f"
 
         # MIGRATION NOTE: `env:` is new and required. A v3 hook's environment is
         # deny-by-default, and `claude plugin marketplace add` clones over HTTPS
@@ -124,8 +129,8 @@ capabilities:
             REPO="infinum/ai"
             MARKET="infinum-ai"
             MARKET_DIR="$CLAUDE_DIR/plugins/marketplaces/$MARKET"
-            # Keep in sync with PLUGINS in the startup reconciler below. stack-essentials is
-            # left out on purpose: its only content is a SessionStart hook that runs `node`,
+            # stack-essentials is left out on purpose: its only content is a
+            # SessionStart hook that runs `node`,
             # which the v3 claude bases do not ship, and it checks a manifest only the
             # workstation installer writes, so here it could only ever fail.
             PLUGINS="create-prd pr-review-code-simplicity productive-debug setup-audit security-check"
@@ -275,54 +280,6 @@ capabilities:
             git config --global --replace-all url."https://github.com/".insteadOf ssh://git@ssh.github.com:443/ '^ssh://git@ssh\.github\.com:443/$'
             git config --global --replace-all url."https://github.com/".insteadOf ssh://git@github.com/ '^ssh://git@github\.com/$'
             git config --global --replace-all url."https://github.com/".insteadOf git+ssh://git@github.com/ '^git\+ssh://git@github\.com/$'
-
-      startup:
-        # MIGRATION NOTE: new; v2 had no startup hooks. Two install-time writes
-        # land in ~/.claude/settings.json — the attribution keys above, and the
-        # `enabledPlugins` entries `claude plugin install` adds — and the claude
-        # kits rewrite that same file during create: claude-mixin's install hook
-        # replaces it outright, and the platform seeds it late in the create
-        # sequence. Whichever lands last wins, and a lost `enabledPlugins` entry
-        # leaves a plugin installed but disabled. This reconciler re-applies both
-        # after boot. It is idempotent and never overwrites a user's choice: an
-        # `enabledPlugins` key already present (true or false) is left alone.
-        #
-        # It waits for `themeId`, the marker that the platform's own settings
-        # write has landed (the same signal the claude-mem kit uses), so it never
-        # creates the file first and makes the platform skip its seed. On timeout
-        # it merges only if the file exists. Backgrounded so the wait never holds
-        # up boot. Trace at /tmp/infinum-full-reconcile.log.
-        #
-        # No `env:` — reads nothing beyond the platform baseline, and reaches
-        # nothing on the network.
-        - user: agent
-          background: true
-          description: "Reconcile settings.json: re-apply attribution and the kit's enabledPlugins (idempotent, never overrides an existing enabledPlugins key)"
-          command:
-            - sh
-            - -c
-            - |
-              set -eu
-              exec > /tmp/infinum-full-reconcile.log 2>&1 </dev/null
-              f=/home/agent/.claude/settings.json
-              # Keep in sync with PLUGINS in the install hook above, plus caliber.
-              PLUGINS="create-prd@infinum-ai pr-review-code-simplicity@infinum-ai productive-debug@infinum-ai setup-audit@infinum-ai security-check@infinum-ai caliber@caliber"
-              i=0
-              while [ $i -lt 60 ]; do
-                grep -q themeId "$f" 2>/dev/null && break
-                sleep 1; i=$((i+1))
-              done
-              echo "waited ${i}s for platform settings"
-              [ -s "$f" ] || { echo "no $f; nothing to reconcile"; exit 0; }
-              merged=$(jq --arg p "$PLUGINS" '
-                .attribution.commit = "" | .attribution.pr = ""
-                | .enabledPlugins = (.enabledPlugins // {})
-                | reduce ($p | split(" ") | .[]) as $k (.;
-                    if .enabledPlugins | has($k) then . else .enabledPlugins[$k] = true end)
-              ' "$f")
-              [ -n "$merged" ] || { echo "jq produced no output for $f"; exit 1; }
-              printf '%s\n' "$merged" > "$f"
-              echo "reconciled"
 
   # MIGRATION NOTE: v2's `agentInstructions.content`, moved verbatim into the
   # body file. `filename:` is workload-only; a mixin contributes a body to the

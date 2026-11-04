@@ -31,10 +31,8 @@ v3 behaviour worth knowing when you edit it:
 - **Hook environments are deny-by-default.** The plugin hooks declare `HTTP_PROXY`/`HTTPS_PROXY` so the
   `git` clone under `claude plugin marketplace add` uses the sandbox proxy. A new hook must list every
   variable it, or anything it runs, reads.
-- **Startup reconciler.** The claude kits rewrite `~/.claude/settings.json` during sandbox creation. That
-  can drop the attribution keys and the `enabledPlugins` entries written by the install hooks. A
-  background startup hook waits for the platform's settings (up to 60s), then re-applies both. It never
-  overrides an `enabledPlugins` key that is already set. Its log is at `/tmp/infinum-full-reconcile.log`.
+- **Install hooks only, run once.** The kit has no startup hooks, so after creation it never touches
+  `~/.claude/settings.json` again and your changes to it stick.
 
 Check it locally (this builds the kit, which also validates it):
 
