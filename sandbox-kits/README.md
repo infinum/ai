@@ -35,7 +35,7 @@ The kits fail sandbox creation on error. They can be applied to a running sandbo
 sbx kit add <sandbox> "git+https://github.com/infinum/ai.git#dir=sandbox-kits/<kit>"
 ```
 
-Applying a kit to a running sandbox skips `agentInstructions.content` update for `kind: mixin` kits. It is preferred to use `sbx run --kit` to set up your sandbox at creation time.
+Applying a kit to a running sandbox skips the agent instructions (`agent-context@1`) update for `kind: mixin` kits. It is preferred to use `sbx run --kit` to set up your sandbox at creation time.
 
 ## Tips and tricks
 
