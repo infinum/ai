@@ -38,7 +38,10 @@ capabilities:
           - context7.com
           # Caliber MCP server and its OAuth sign-in
           - app.caliberhq.io
+          # OpenTelemetry export (Grafana Cloud)
+          - otlp-gateway-prod-eu-west-2.grafana.net
           # security-check skill: registry and advisory lookups
+          - api.deps.dev
           - pypi.org
           - crates.io
           - rubygems.org
@@ -50,14 +53,24 @@ capabilities:
     config:
       install:
         - user: agent
+          description: "git: map GitHub SSH remotes to https://github.com/ in ~/.gitconfig"
+          command: |
+            set -eu
+            git config --global --replace-all url."https://github.com/".insteadOf git@github.com: '^git@github\.com:$'
+            git config --global --replace-all url."https://github.com/".insteadOf ssh://git@ssh.github.com:443/ '^ssh://git@ssh\.github\.com:443/$'
+            git config --global --replace-all url."https://github.com/".insteadOf ssh://git@github.com/ '^ssh://git@github\.com/$'
+            git config --global --replace-all url."https://github.com/".insteadOf git+ssh://git@github.com/ '^git\+ssh://git@github\.com/$'
+
+        - user: agent
           description: "attribution: set attribution.commit and attribution.pr to \"\" in ~/.claude/settings.json"
           command: |
             set -eu
-            f="$HOME/.claude/settings.json"
             mkdir -p "$HOME/.claude"
+            # Resolve a symlinked settings.json so the replace below swaps the target, not the link.
+            f=$(readlink -f "$HOME/.claude/settings.json")
             # jq exits 0 with empty output on a whitespace-only file, so reseed that too.
             [ -s "$f" ] && [ -n "$(tr -d '[:space:]' < "$f")" ] || echo '{}' > "$f"
-            # Atomic replace; mktemp creates 0600, so carry over the original mode.
+            # Atomic replace next to the target; mktemp creates 0600, so carry over the original mode.
             tmp=$(mktemp "$f.XXXXXX")
             trap 'rm -f "$tmp"' EXIT
             jq '.attribution.commit = "" | .attribution.pr = ""' "$f" > "$tmp"
@@ -83,7 +96,7 @@ capabilities:
             add_marketplace() {
               if out=$(claude plugin marketplace add "$1" 2>&1); then
                 echo "$out"
-              elif echo "$out" | grep -qi "already"; then
+              elif echo "$out" | grep -qiE "already (on disk|installed|exists)"; then
                 echo "infinum-full kit: marketplace '$2' already registered."
               else
                 echo "infinum-full kit: ERROR: could not add the '$2' marketplace (network policy likely blocking github.com): $out" >&2
@@ -97,7 +110,7 @@ capabilities:
               for p in "$@"; do
                 if out=$(claude plugin install "$p@$m" 2>&1); then
                   echo "$out"
-                elif echo "$out" | grep -qi "already"; then
+                elif echo "$out" | grep -qiE "already (on disk|installed|exists)"; then
                   echo "infinum-full kit: plugin '$p@$m' already installed."
                 else
                   echo "infinum-full kit: ERROR: plugin '$p@$m' did not install: $out" >&2
@@ -193,15 +206,6 @@ capabilities:
               echo "infinum-full kit: ERROR: could not register the '$NAME' MCP server: $out" >&2
               exit 1
             fi
-
-        - user: agent
-          description: "git: map GitHub SSH remotes to https://github.com/ in ~/.gitconfig"
-          command: |
-            set -eu
-            git config --global --replace-all url."https://github.com/".insteadOf git@github.com: '^git@github\.com:$'
-            git config --global --replace-all url."https://github.com/".insteadOf ssh://git@ssh.github.com:443/ '^ssh://git@ssh\.github\.com:443/$'
-            git config --global --replace-all url."https://github.com/".insteadOf ssh://git@github.com/ '^ssh://git@github\.com/$'
-            git config --global --replace-all url."https://github.com/".insteadOf git+ssh://git@github.com/ '^git\+ssh://git@github\.com/$'
 
   - type: com.docker.sandbox/agent-context@1
     config:

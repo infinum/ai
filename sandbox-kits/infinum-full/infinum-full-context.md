@@ -24,7 +24,9 @@ or browse with `/plugin`. In this sandbox:
 - `setup-audit` reads this sandbox's `~/.claude/`, so its results only
   reflect this sandbox's config.
 - `security-check` needs local package managers
-  (`npm`/`pip`/`cargo`/`gem`/etc.) and an authenticated `gh`.
+  (`npm`/`pip`/`cargo`/`gem`/etc.) and `gh` (its GitHub auth is injected
+  by the sandbox proxy, so `gh auth status` showing "not logged in" is
+  expected).
 
 House rules live at `~/.claude/infinum/`, chained from `index.md`,
 imported by `~/.claude/CLAUDE.md`. `whoami.md` may still be the unedited
