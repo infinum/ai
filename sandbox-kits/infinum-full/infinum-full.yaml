@@ -73,20 +73,13 @@ capabilities:
             merged=$(jq '.attribution.commit = "" | .attribution.pr = ""' "$f")
             [ -n "$merged" ] || { echo "infinum-full kit: ERROR: jq produced no output for $f" >&2; exit 1; }
             printf '%s\n' "$merged" > "$f"
-
         # The proxy variables are for the git clone under `claude plugin marketplace add`.
         - user: agent
           env: [HTTP_PROXY, HTTPS_PROXY]
-          description: "plugins and house rules: register the infinum-ai and caliber marketplaces, install the Infinum and caliber plugins, install the house rules into ~/.claude/infinum/"
+          description: "plugins: register the infinum-ai and caliber marketplaces, install the Infinum and caliber plugins"
           command: |
             set -eu
             export PATH="$HOME/.local/bin:$HOME/.claude/local:$PATH"
-
-            CLAUDE_DIR="$HOME/.claude"
-            CONFIG_DIR="$CLAUDE_DIR/infinum"
-            REPO="infinum/ai"
-            MARKET="infinum-ai"
-            MARKET_DIR="$CLAUDE_DIR/plugins/marketplaces/$MARKET"
 
             # add_marketplace <repo> <name>
             add_marketplace() {
@@ -115,22 +108,23 @@ capabilities:
               done
             }
 
-            # Also leaves a clone at $MARKET_DIR, which the rules copy below reads.
-            add_marketplace "$REPO" "$MARKET"
-            install_plugins "$MARKET" create-prd pr-review-code-simplicity productive-debug setup-audit security-check
+            # Also leaves the clone the house rules hook below reads.
+            add_marketplace infinum/ai infinum-ai
+            install_plugins infinum-ai create-prd pr-review-code-simplicity productive-debug setup-audit security-check
 
             add_marketplace infinum/caliber-plugin caliber
             install_plugins caliber caliber
 
-            cat >&2 <<EOF
-            infinum-full kit: NOTE: the plugin's MCP server 'plugin:caliber:caliber'
-              (https://app.caliberhq.io/mcp/plugin) signs in with OAuth. Finish it
-              once, from inside this sandbox:
-                claude mcp login plugin:caliber:caliber
-              or, with no browser reachable from the session:
-                claude mcp login plugin:caliber:caliber --no-browser
-              Then run /caliber:setup once in each repository that should use Caliber.
-            EOF
+        - user: agent
+          description: "house rules: install the house rules from the infinum-ai marketplace into ~/.claude/infinum/"
+          command: |
+            set -eu
+
+            CLAUDE_DIR="$HOME/.claude"
+            CONFIG_DIR="$CLAUDE_DIR/infinum"
+            REPO="infinum/ai"
+            # Cloned by the plugins hook above, which must run first.
+            MARKET_DIR="$CLAUDE_DIR/plugins/marketplaces/infinum-ai"
 
             mkdir -p "$CONFIG_DIR"
 
@@ -176,23 +170,13 @@ capabilities:
             }
 
         - user: agent
-          description: "context7: register the context7 MCP server (remote HTTP, OAuth) at user scope"
+          description: "MCP servers: register the context7 MCP server (remote HTTP, OAuth) at user scope, print the Caliber and context7 login steps"
           command: |
             set -eu
             export PATH="$HOME/.local/bin:$HOME/.claude/local:$PATH"
 
             NAME=context7
             URL=https://mcp.context7.com/mcp/oauth
-
-            cat >&2 <<EOF
-            infinum-full kit: NOTE: '$NAME' is registered against Context7's OAuth
-              endpoint. Finish it once, from inside this sandbox:
-                claude mcp login $NAME
-              or, with no browser reachable from the session:
-                claude mcp login $NAME --no-browser
-              (opens a URL you can sign in with on any machine, then takes the
-              resulting redirect URL pasted back)
-            EOF
 
             if out=$(claude mcp add --transport http "$NAME" "$URL" -s user 2>&1); then
               echo "$out"
@@ -202,6 +186,15 @@ capabilities:
               echo "infinum-full kit: ERROR: could not register the '$NAME' MCP server: $out" >&2
               exit 1
             fi
+
+            cat >&2 <<EOF
+            infinum-full kit: NOTE: the Caliber and context7 MCP servers sign in with
+              OAuth. Finish both once, from inside this sandbox (add --no-browser when
+              no browser is reachable):
+                claude mcp login plugin:caliber:caliber
+                claude mcp login $NAME
+              Then run /caliber:setup once in each repository that should use Caliber.
+            EOF
 
   - type: com.docker.sandbox/agent-context@1
     config:
