@@ -188,12 +188,8 @@ capabilities:
             fi
 
             cat >&2 <<EOF
-            infinum-full kit: NOTE: the Caliber and context7 MCP servers sign in with
-              OAuth. Finish both once, from inside this sandbox (add --no-browser when
-              no browser is reachable):
-                claude mcp login plugin:caliber:caliber
-                claude mcp login $NAME
-              Then run /caliber:setup once in each repository that should use Caliber.
+            infinum-full kit: NOTE: the Caliber and $NAME MCP servers need a one-time OAuth
+              login, see https://github.com/infinum/ai/tree/main/sandbox-kits/infinum-full#oauth-logins
             EOF
 
   - type: com.docker.sandbox/agent-context@1

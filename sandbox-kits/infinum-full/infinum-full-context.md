@@ -8,9 +8,7 @@ line.
 ## Network egress
 
 Egress is allowed to `claude.ai` (the user's claude.ai connectors), Maven
-Central (`repo.maven.apache.org`, `repo1.maven.org`,
-`build.shibboleth.net`), GitHub, and the hosts the plugins and MCP
-servers below need. A request failing with an HTTP 403 mentioning
+Central, GitHub, and the hosts the plugins and MCP servers below need. A request failing with an HTTP 403 mentioning
 "Blocked by network policy" needs that host added to the sandbox policy,
 not a build-file change.
 
