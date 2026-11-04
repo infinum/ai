@@ -11,7 +11,7 @@ _A workflow, a set of skills, and a delivery platform — packaged together and 
 | 01 | [**PSDD**](psdd/README.md) | Pragmatic Spec Driven Development — Infinum's 4-step workflow for shipping features with AI. Depth scales with the work. |
 | 02 | [**Skills marketplace**](MARKETPLACE.md) | Per-repo installable plugins — PRD authoring, security audits, UI validation, local PR review, and more. Install only what the project needs. |
 | 03 | [**Caliber**](https://caliber.infinum.com/) | Infinum's AI delivery platform. **Define** specs (PRD, brief, tech spec, plan) following PSDD, reviewed and approved in the portal; **Assure** every PR with code, security, and spec-conformance audits plus a human sign-off; **Measure** AI cost and delivery per project, team, and person. Agents connect through one MCP server — Claude Code via [infinum/caliber-plugin](https://github.com/infinum/caliber-plugin). [Talk to us](https://caliber.infinum.com/talk-to-us/) to learn more. |
-| 04 | [**Sandbox kits**](sandbox-kits/README.md) | Docker Sandboxes kits for a `claude` sandbox — reusable mixins that configure sandbox setup (e.g. `infinum-full`: disables commit/PR attribution, installs Infinum plugins, registers the Context7 MCP server). |
+| 04 | [**Sandbox kits**](sandbox-kits/README.md) | Docker Sandboxes kits for a `claude` sandbox — reusable mixins that configure sandbox setup (e.g. `infinum-full`: disables commit/PR attribution, installs the Infinum plugins, house rules and Caliber, registers the Context7 MCP server). |
 
 ---
 
