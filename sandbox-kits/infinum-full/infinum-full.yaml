@@ -53,8 +53,8 @@ capabilities:
           description: "attribution: set attribution.commit and attribution.pr to \"\" in ~/.claude/settings.json"
           command: |
             set -eu
-            f=/home/agent/.claude/settings.json
-            mkdir -p /home/agent/.claude
+            f="$HOME/.claude/settings.json"
+            mkdir -p "$HOME/.claude"
             # jq exits 0 with empty output on a whitespace-only file, so reseed that too.
             [ -s "$f" ] && [ -n "$(tr -d '[:space:]' < "$f")" ] || echo '{}' > "$f"
             # Atomic replace; mktemp creates 0600, so carry over the original mode.
@@ -73,7 +73,7 @@ capabilities:
             set -eu
             export PATH="$HOME/.local/bin:$HOME/.claude/local:$PATH"
 
-            CLAUDE_DIR=/home/agent/.claude
+            CLAUDE_DIR="$HOME/.claude"
             CONFIG_DIR="$CLAUDE_DIR/infinum"
             REPO="infinum/ai"
             MARKET="infinum-ai"
