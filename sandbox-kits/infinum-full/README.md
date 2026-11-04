@@ -11,30 +11,18 @@ Base Infinum `claude` sandbox setup. It is not team-specific. The kit installs:
 
 ## Requires
 
-Base agent `claude` (`requires: ["claude", "deb/jq"]`), and an `sbx` release with kit v3 support. No
-credentials need to be set up in advance.
+Base agent `claude` and an `sbx` release with kit v3 support. No credentials need to be set up in advance.
 
-## Kit format (v3)
+## Editing the kit
 
-The kit uses the [v3 kit descriptor](https://github.com/docker/sbx-kits-contrib/blob/v3/CONTRIBUTING.md). It
-is a declaration-only `kind: mixin`, with no recipe:
+- [`infinum-full.yaml`](./infinum-full.yaml): the [v3 kit descriptor](https://github.com/docker/sbx-kits-contrib/blob/v3/CONTRIBUTING.md).
+- [`infinum-full-context.md`](./infinum-full-context.md): the agent instructions.
 
-- [`infinum-full.yaml`](./infinum-full.yaml): the descriptor. Deltas from the v2 `spec.yaml` are marked
-  `# MIGRATION NOTE:`.
-- [`infinum-full-context.md`](./infinum-full-context.md): the agent instructions (`agent-context@1`).
+Network policy is per phase: a host is reachable only in the phase (`install` or `runtime`) that lists it.
+Hook environments are deny-by-default: a hook must list in `env:` every variable it, or anything it runs,
+reads.
 
-v3 behaviour worth knowing when you edit it:
-
-- **Network policy is split by phase.** `install` allows only `github.com` and `api.github.com`, for the
-  marketplace clones and plugin installs. `runtime` holds every host listed below. A host missing from a
-  phase is blocked in that phase.
-- **Hook environments are deny-by-default.** The plugin hooks declare `HTTP_PROXY`/`HTTPS_PROXY` so the
-  `git` clone under `claude plugin marketplace add` uses the sandbox proxy. A new hook must list every
-  variable it, or anything it runs, reads.
-- **Install hooks only, run once.** The kit has no startup hooks, so after creation it never touches
-  `~/.claude/settings.json` again and your changes to it stick.
-
-Check it locally (this builds the kit, which also validates it):
+Validate it locally (this builds the kit):
 
 ```console
 sbx kit inspect ./infinum-full
@@ -99,7 +87,7 @@ should use Caliber; it writes the Caliber block into the repository's `CLAUDE.md
 
 ## Not installed by default
 
-The `superpowers` plugin (`obra/superpowers`) is no longer part of this kit. To add it to a sandbox:
+To add the `superpowers` plugin (`obra/superpowers`) to a sandbox:
 
 ```console
 sbx exec <sandbox> -- claude plugin marketplace add anthropics/claude-plugins-official
