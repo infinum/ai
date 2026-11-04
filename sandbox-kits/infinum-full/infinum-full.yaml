@@ -68,7 +68,7 @@ capabilities:
         # The proxy variables are for the git clone under `claude plugin marketplace add`.
         - user: agent
           env: [HTTP_PROXY, HTTPS_PROXY]
-          description: "plugins and house rules: register the infinum-ai marketplace, install the Infinum plugins, install the house rules into ~/.claude/infinum/"
+          description: "plugins and house rules: register the infinum-ai and caliber marketplaces, install the Infinum and caliber plugins, install the house rules into ~/.claude/infinum/"
           command: |
             set -eu
             export PATH="$HOME/.local/bin:$HOME/.claude/local:$PATH"
@@ -78,30 +78,52 @@ capabilities:
             REPO="infinum/ai"
             MARKET="infinum-ai"
             MARKET_DIR="$CLAUDE_DIR/plugins/marketplaces/$MARKET"
-            PLUGINS="create-prd pr-review-code-simplicity productive-debug setup-audit security-check"
 
-            # Also leaves a clone at $MARKET_DIR, which the rules copy below reads.
-            if out=$(claude plugin marketplace add "$REPO" 2>&1); then
-              echo "$out"
-            elif echo "$out" | grep -qi "already"; then
-              echo "infinum-full kit: marketplace '$MARKET' already registered."
-            else
-              echo "infinum-full kit: ERROR: could not add the '$MARKET' marketplace (network policy likely blocking github.com): $out" >&2
-              exit 1
-            fi
-
-            mkdir -p "$CONFIG_DIR"
-
-            for p in $PLUGINS; do
-              if out=$(claude plugin install "$p@$MARKET" 2>&1); then
+            # add_marketplace <repo> <name>
+            add_marketplace() {
+              if out=$(claude plugin marketplace add "$1" 2>&1); then
                 echo "$out"
               elif echo "$out" | grep -qi "already"; then
-                echo "infinum-full kit: plugin '$p' already installed."
+                echo "infinum-full kit: marketplace '$2' already registered."
               else
-                echo "infinum-full kit: ERROR: plugin '$p' did not install: $out" >&2
+                echo "infinum-full kit: ERROR: could not add the '$2' marketplace (network policy likely blocking github.com): $out" >&2
                 exit 1
               fi
-            done
+            }
+
+            # install_plugins <marketplace> <plugin>...
+            install_plugins() {
+              m=$1; shift
+              for p in "$@"; do
+                if out=$(claude plugin install "$p@$m" 2>&1); then
+                  echo "$out"
+                elif echo "$out" | grep -qi "already"; then
+                  echo "infinum-full kit: plugin '$p@$m' already installed."
+                else
+                  echo "infinum-full kit: ERROR: plugin '$p@$m' did not install: $out" >&2
+                  exit 1
+                fi
+              done
+            }
+
+            # Also leaves a clone at $MARKET_DIR, which the rules copy below reads.
+            add_marketplace "$REPO" "$MARKET"
+            install_plugins "$MARKET" create-prd pr-review-code-simplicity productive-debug setup-audit security-check
+
+            add_marketplace infinum/caliber-plugin caliber
+            install_plugins caliber caliber
+
+            cat >&2 <<EOF
+            infinum-full kit: NOTE: the plugin's MCP server 'plugin:caliber:caliber'
+              (https://app.caliberhq.io/mcp/plugin) signs in with OAuth. Finish it
+              once, from inside this sandbox:
+                claude mcp login plugin:caliber:caliber
+              or, with no browser reachable from the session:
+                claude mcp login plugin:caliber:caliber --no-browser
+              Then run /caliber:setup once in each repository that should use Caliber.
+            EOF
+
+            mkdir -p "$CONFIG_DIR"
 
             # Top-level rules only. whoami.md is the user's own, so upstream never replaces it.
             rules_found=0
@@ -143,41 +165,6 @@ capabilities:
               [ -s "$CLAUDE_DIR/CLAUDE.md" ] && printf '\n' >> "$CLAUDE_DIR/CLAUDE.md"
               printf '%s\n' "@$CONFIG_DIR/index.md  # managed by $REPO" >> "$CLAUDE_DIR/CLAUDE.md"
             }
-
-        - user: agent
-          env: [HTTP_PROXY, HTTPS_PROXY]
-          description: "caliber: register the infinum/caliber-plugin marketplace and install the caliber plugin from it"
-          command: |
-            set -eu
-            export PATH="$HOME/.local/bin:$HOME/.claude/local:$PATH"
-
-            if out=$(claude plugin marketplace add infinum/caliber-plugin 2>&1); then
-              echo "$out"
-            elif echo "$out" | grep -qi "already"; then
-              echo "infinum-full kit: marketplace 'caliber' already registered."
-            else
-              echo "infinum-full kit: ERROR: could not add the 'caliber' marketplace (network policy likely blocking github.com): $out" >&2
-              exit 1
-            fi
-
-            if out=$(claude plugin install caliber@caliber 2>&1); then
-              echo "$out"
-            elif echo "$out" | grep -qi "already"; then
-              echo "infinum-full kit: 'caliber' already installed."
-            else
-              echo "infinum-full kit: ERROR: could not install 'caliber' (network policy likely blocking github.com): $out" >&2
-              exit 1
-            fi
-
-            cat >&2 <<EOF
-            infinum-full kit: NOTE: the plugin's MCP server 'plugin:caliber:caliber'
-              (https://app.caliberhq.io/mcp/plugin) signs in with OAuth. Finish it
-              once, from inside this sandbox:
-                claude mcp login plugin:caliber:caliber
-              or, with no browser reachable from the session:
-                claude mcp login plugin:caliber:caliber --no-browser
-              Then run /caliber:setup once in each repository that should use Caliber.
-            EOF
 
         - user: agent
           description: "context7: register the context7 MCP server (remote HTTP, OAuth) at user scope"
