@@ -6,7 +6,7 @@ A kit packages a set of capabilities a sandbox can use, such as tools to install
 
 ## Kits
 
-- [**infinum-full**](./infinum-full/README.md): Base Infinum sandbox setup that disables Claude commit/PR attribution, installs the Infinum plugins, and registers Context7 MCP server.
+- [**infinum-full**](./infinum-full/README.md): Base Infinum sandbox setup. Disables Claude commit/PR attribution, installs the Infinum plugins, house rules and Caliber, and registers the Context7 MCP server.
 
 **Atlassian**, **Productive**, and **GitHub** MCPs are not included in the kit. Use Claude's
 built-in connectors, enabled on Claude account level.
