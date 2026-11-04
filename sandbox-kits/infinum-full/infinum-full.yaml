@@ -3,7 +3,7 @@ schemaVersion: "3"
 kind: mixin
 
 # The kit's own release number. Bump it when the declarations change.
-version: "1.0.0"
+version: "2.0.0"
 displayName: Infinum Full Setup
 description: >-
   Baseline Infinum setup for a Claude sandbox: disables commit/PR
