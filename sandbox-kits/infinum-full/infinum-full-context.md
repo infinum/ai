@@ -72,11 +72,8 @@ OAuth sign-in).
 
 ## `context7` MCP server
 
-Registered at user scope against Context7's OAuth endpoint. Resolves
-library/framework names to current, version-specific docs and code
-examples. Use it instead of guessing from training data (add "use
-context7" to a prompt, or call `resolve-library-id` then
-`get-library-docs`).
+Registered at user scope against Context7's OAuth endpoint. The server
+provides its own usage instructions.
 
 Tool calls fail with an auth error until a human runs
 `claude mcp login context7` (or `--no-browser` with no browser
