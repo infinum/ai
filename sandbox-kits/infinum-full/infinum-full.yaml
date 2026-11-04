@@ -1,14 +1,8 @@
 # syntax=docker/sandbox-kit:3
-# Migration of this kit's v2 spec.yaml. Deltas are marked MIGRATION NOTE inline.
 schemaVersion: "3"
 kind: mixin
 
-# The kit's own version, not the version of anything it installs: it is the
-# tag this kit publishes under. Bump it when this kit's declarations change.
-#
-# MIGRATION NOTE: v2 had no `version:` field. There is nothing to pin it to —
-# the marketplaces and plugins it installs track their default branches — so
-# it is the kit's own release number, and the kit declares no `provides`.
+# The kit's own release number. Bump it when the declarations change.
 version: "1.0.0"
 displayName: Infinum Full Setup
 description: >-
@@ -18,43 +12,19 @@ description: >-
   context7 MCP server via OAuth login (Caliber's own MCP server signs in
   the same way). See README.
 
-# MIGRATION NOTE: v2's `requires: {agent: claude}`, same name, so it resolves
-# against either shape of the claude kit (the `claude` workload or
-# `claude-mixin`), both of which provide it.
-#
-# `deb/jq` is new: the attribution hook merges
-# ~/.claude/settings.json with jq under `set -e`, so a base without it fails
-# sandbox creation. v2 could not say so. The platform floor (SPEC-v3 §12)
-# covers bash, sh, curl and git, which is everything else the hooks call
-# besides `claude` itself.
 requires: ["claude", "deb/jq"]
 
 capabilities:
-  # MIGRATION NOTE: v2 had one flat list; v3 is phase-scoped and an absent phase
-  # grants nothing. The split follows who reaches each host:
-  #
-  #   install  — only github.com and api.github.com. The plugin hooks clone the
-  #              `infinum/ai` and `infinum/caliber-plugin` marketplaces and
-  #              install plugins out of those clones. `claude mcp add` and the
-  #              git/settings hooks reach nothing.
-  #   runtime  — every v2 host: the agent in steady state (Maven, connectors,
-  #              MCP servers, security-check lookups, GitHub for `gh`/git and
-  #              marketplace auto-update).
-  #
-  # The Ubuntu/Docker apt hosts the claude kit's own background `apt-get
-  # update` needs are not repeated here: that hook belongs to the claude kit,
-  # and its policy already grants them.
   - type: com.docker.sandbox/network-policy@1
     config:
       install:
         allow:
+          # marketplace clones and plugin installs
           - github.com
           - api.github.com
       runtime:
         allow:
-          # claude.ai connectors enabled on the user's account. The claude kit
-          # grants this too; restated so the connectors note in the agent
-          # context does not depend on which claude kit this composes onto.
+          # claude.ai connectors
           - claude.ai
           # Maven, Gradle
           - repo.maven.apache.org
@@ -76,34 +46,18 @@ capabilities:
           - rustsec.org
           - registry.npmjs.org
 
-  # MIGRATION NOTE: v2's `setup.install`, one hook each, bodies carried over.
-  #
-  # WHY THESE STAY HOOKS rather than moving into a recipe: every one of them
-  # merges into a file the composed claude base owns and writes itself —
-  # ~/.claude/settings.json, ~/.claude/CLAUDE.md, ~/.claude.json (MCP servers),
-  # the shared plugin registry under ~/.claude/plugins/, ~/.gitconfig. An
-  # overlay's file entries replace the base's rather than merging with them,
-  # so shipping any of these in a layer would discard what the base put there.
-  # The plugins and house rules also deliberately track the marketplaces'
-  # default branches, which a build would freeze at publish.
   - type: com.docker.sandbox/lifecycle@1
     config:
       install:
-        # No `env:` — reads nothing beyond the platform baseline.
         - user: agent
           description: "attribution: set attribution.commit and attribution.pr to \"\" in ~/.claude/settings.json"
           command: |
             set -eu
             f=/home/agent/.claude/settings.json
             mkdir -p /home/agent/.claude
-            # Reseed when the file holds no JSON at all: -s only rules out 0 bytes,
-            # and jq exits 0 with empty output on a whitespace-only file too.
+            # jq exits 0 with empty output on a whitespace-only file, so reseed that too.
             [ -s "$f" ] && [ -n "$(tr -d '[:space:]' < "$f")" ] || echo '{}' > "$f"
-            # Atomic write: merge into a temp file in the same directory, then
-            # rename over "$f", so no reader or concurrent writer ever sees a
-            # truncated file. A jq failure aborts before "$f" is touched. The
-            # hook runs as agent, so the new file keeps the owner; --reference
-            # carries over the mode (mktemp creates it 0600).
+            # Atomic replace; mktemp creates 0600, so carry over the original mode.
             tmp=$(mktemp "$f.XXXXXX")
             trap 'rm -f "$tmp"' EXIT
             jq '.attribution.commit = "" | .attribution.pr = ""' "$f" > "$tmp"
@@ -111,12 +65,7 @@ capabilities:
             chmod --reference="$f" "$tmp"
             mv "$tmp" "$f"
 
-        # MIGRATION NOTE: `env:` is new and required. A v3 hook's environment is
-        # deny-by-default, and `claude plugin marketplace add` clones over HTTPS
-        # through the sandbox proxy, so the proxy variables its git child reads
-        # have to be named. PATH is extended explicitly rather than trusted:
-        # ~/.local/bin is where claude-mixin lands `claude`, ~/.claude/local the
-        # older layout some bases still use.
+        # The proxy variables are for the git clone under `claude plugin marketplace add`.
         - user: agent
           env: [HTTP_PROXY, HTTPS_PROXY]
           description: "plugins and house rules: register the infinum-ai marketplace, install the Infinum plugins, install the house rules into ~/.claude/infinum/"
@@ -129,10 +78,6 @@ capabilities:
             REPO="infinum/ai"
             MARKET="infinum-ai"
             MARKET_DIR="$CLAUDE_DIR/plugins/marketplaces/$MARKET"
-            # stack-essentials is left out on purpose: its only content is a
-            # SessionStart hook that runs `node`,
-            # which the v3 claude bases do not ship, and it checks a manifest only the
-            # workstation installer writes, so here it could only ever fail.
             PLUGINS="create-prd pr-review-code-simplicity productive-debug setup-audit security-check"
 
             # Also leaves a clone at $MARKET_DIR, which the rules copy below reads.
@@ -158,11 +103,10 @@ capabilities:
               fi
             done
 
-            # Flat copy: rules/<bundle>/ is never descended into, nothing is
-            # pruned, and whoami.md is skipped so upstream can't clobber it.
+            # Top-level rules only. whoami.md is the user's own, so upstream never replaces it.
             rules_found=0
             for f in "$MARKET_DIR"/rules/*.md; do
-              [ -f "$f" ] || continue  # unmatched glob stays literal; skip rather than trip set -e
+              [ -f "$f" ] || continue
               case "${f##*/}" in README.md | whoami.md) continue ;; esac
               cp "$f" "$CONFIG_DIR/"
               rules_found=1
@@ -172,7 +116,6 @@ capabilities:
               exit 1
             fi
 
-            # whoami.md is the user's own: create once, never overwrite.
             if [ ! -f "$CONFIG_DIR/whoami.md" ]; then
               cat > "$CONFIG_DIR/whoami.md" <<'WHOAMI'
             # Who you're working with
@@ -185,8 +128,7 @@ capabilities:
             WHOAMI
             fi
 
-            # Regenerated every run: whoami first, then every other rule
-            # alphabetically. Must never import itself.
+            # whoami first, then the other rules alphabetically.
             {
               echo "@$CONFIG_DIR/whoami.md"
               for f in "$CONFIG_DIR"/*.md; do
@@ -196,16 +138,12 @@ capabilities:
               done
             } > "$CONFIG_DIR/index.md"
 
-            # A leading newline only when appending to an existing file with no
-            # trailing newline keeps this off the end of the user's own last line;
-            # a brand-new CLAUDE.md shouldn't start with a blank line.
+            # The leading newline keeps the import off the user's last line.
             grep -qsF "@$CONFIG_DIR/index.md" "$CLAUDE_DIR/CLAUDE.md" || {
               [ -s "$CLAUDE_DIR/CLAUDE.md" ] && printf '\n' >> "$CLAUDE_DIR/CLAUDE.md"
               printf '%s\n' "@$CONFIG_DIR/index.md  # managed by $REPO" >> "$CLAUDE_DIR/CLAUDE.md"
             }
 
-        # MIGRATION NOTE: `env:` and the PATH line are new, for the same reasons
-        # as the hook above.
         - user: agent
           env: [HTTP_PROXY, HTTPS_PROXY]
           description: "caliber: register the infinum/caliber-plugin marketplace and install the caliber plugin from it"
@@ -241,8 +179,6 @@ capabilities:
               Then run /caliber:setup once in each repository that should use Caliber.
             EOF
 
-        # MIGRATION NOTE: the PATH line is new (see above). No proxy variables:
-        # `claude mcp add` only writes config and reaches nothing.
         - user: agent
           description: "context7: register the context7 MCP server (remote HTTP, OAuth) at user scope"
           command: |
@@ -271,7 +207,6 @@ capabilities:
               exit 1
             fi
 
-        # No `env:` — reads nothing beyond the platform baseline.
         - user: agent
           description: "git: map GitHub SSH remotes to https://github.com/ in ~/.gitconfig"
           command: |
@@ -281,9 +216,6 @@ capabilities:
             git config --global --replace-all url."https://github.com/".insteadOf ssh://git@github.com/ '^ssh://git@github\.com/$'
             git config --global --replace-all url."https://github.com/".insteadOf git+ssh://git@github.com/ '^git\+ssh://git@github\.com/$'
 
-  # MIGRATION NOTE: v2's `agentInstructions.content`, moved verbatim into the
-  # body file. `filename:` is workload-only; a mixin contributes a body to the
-  # claude kit's profile.
   - type: com.docker.sandbox/agent-context@1
     config:
       contentFile: ./infinum-full-context.md
