@@ -27,6 +27,10 @@ Claude won't receive the kit's instructions this way, so prefer a new sandbox:
 sbx kit add <sandbox> "git+https://github.com/infinum/ai.git#dir=sandbox-kits/infinum-full"
 ```
 
+> [!NOTE]
+> For `sbx kit add`, the sandbox name must be lowercase, because the command builds an image named after the
+> sandbox. Otherwise it fails with `invalid reference format: repository name (sandboxes-swap/...) must be lowercase`.
+
 ## After installing
 
 Do these in order. The first three are once per sandbox; repeat them if you recreate the sandbox.
