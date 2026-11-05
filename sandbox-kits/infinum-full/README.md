@@ -41,6 +41,8 @@ sbx exec <sandbox> -- claude mcp login plugin:caliber:caliber
 sbx exec <sandbox> -- claude mcp login context7
 ```
 
+You can also sign in from Claude: run `/mcp`, pick the server and choose **Authenticate**.
+
 ### Tell Claude who you are
 
 The house rules include `~/.claude/infinum/whoami.md`, which starts as a placeholder. Ask Claude in the sandbox to
