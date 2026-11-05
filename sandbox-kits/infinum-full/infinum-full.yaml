@@ -110,6 +110,7 @@ capabilities:
 
             # Also leaves the clone the house rules hook below reads.
             add_marketplace infinum/ai infinum-ai
+            # No stack-essentials: its banner tracks installer runs, but here rules update by re-applying the kit.
             install_plugins infinum-ai create-prd pr-review-code-simplicity productive-debug setup-audit security-check
 
             add_marketplace infinum/caliber-plugin caliber
