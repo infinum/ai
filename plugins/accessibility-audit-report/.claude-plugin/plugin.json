@@ -1,0 +1,12 @@
+{
+  "name": "accessibility-audit-report",
+  "version": "1.0.0",
+  "description": "Build or update a web or mobile accessibility audit report (Google Doc) in the Infinum format, and generate a matching VPAT/ACR on request.",
+  "keywords": [
+    "accessibility",
+    "audit",
+    "wcag",
+    "vpat",
+    "acr"
+  ]
+}
