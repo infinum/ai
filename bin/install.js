@@ -376,6 +376,8 @@ function sourceMatchesIntent(source, sourceLine) {
 	return sourceLine.includes(`(${source.marketplaceSource})`);
 }
 
+// Returns true when the marketplace is registered from the source this run
+// wants (already, or just now), false otherwise.
 function addMarketplace(source) {
 	const s = spinner();
 	const target = source.marketplaceSource;
@@ -385,7 +387,7 @@ function addMarketplace(source) {
 		if (sourceMatchesIntent(source, existing)) {
 			s.start(`Verifying marketplace: ${source.marketplaceName}`);
 			s.stop(`Marketplace already added: ${source.marketplaceName} (${target})`);
-			return;
+			return true;
 		}
 		s.stop(
 			`Marketplace ${source.marketplaceName} is registered but pointing at:\n  ${existing}\nNot what this run wants (${target}).`,
@@ -394,18 +396,19 @@ function addMarketplace(source) {
 		log.warn(
 			`Remove it first, then re-run:\n  claude plugin marketplace remove ${source.marketplaceName}`,
 		);
-		return;
+		return false;
 	}
 
 	s.start(`Adding marketplace: ${source.marketplaceName} (${target})`);
 	const add = runClaude(["plugin", "marketplace", "add", target]);
 	if (add.ok) {
 		s.stop(`Marketplace added: ${source.marketplaceName}`);
-		return;
+		return true;
 	}
 	s.stop(`Could not add marketplace: ${source.marketplaceName}`, 1);
 	log.warn(`Add it manually: claude plugin marketplace add ${target}`);
 	if (add.stderr) log.warn(add.stderr.trim().split("\n").slice(0, 4).join("\n"));
+	return false;
 }
 
 function sha256(buffer) {
@@ -858,16 +861,79 @@ async function cleanupStaleMcpRegistrations(currentManifest, sources) {
 // Claude Code's live view of installed plugins (ids are "<plugin>@<marketplace>").
 // We never mirror this in the manifest — it would desync if a user installs or
 // uninstalls plugins directly via /plugin.
-function liveInstalledPluginIds() {
+// Current Claude Code prints a top-level array; the object shapes are kept for
+// older versions.
+function liveInstalledPlugins() {
 	const r = runClaude(["plugin", "list", "--json"]);
 	if (!r.ok) return [];
 	try {
 		const j = JSON.parse(r.stdout);
-		const arr = j.installed_plugins ?? j.plugins ?? [];
-		return arr.map((p) => p?.id).filter((id) => typeof id === "string");
+		const arr = Array.isArray(j) ? j : (j.installed_plugins ?? j.plugins ?? []);
+		return arr.filter((p) => typeof p?.id === "string");
 	} catch {
 		return [];
 	}
+}
+
+function liveInstalledPluginIds() {
+	return liveInstalledPlugins().map((p) => p.id);
+}
+
+// ---- Re-run: update the plugins the user already has ----------------------
+
+// id -> version for user-scope installs (the scope this installer uses). An
+// entry without a scope comes from an older Claude Code and counts as user.
+function userScopePluginVersions() {
+	const out = new Map();
+	for (const p of liveInstalledPlugins()) {
+		if (p.scope === undefined || p.scope === "user") out.set(p.id, p.version);
+	}
+	return out;
+}
+
+// `claude plugin install` does nothing for a plugin that's already installed,
+// and `claude plugin update` compares against the local copy of the
+// marketplace, which Claude Code refreshes by itself only when auto-update is
+// on for that marketplace (off by default for any non-Anthropic marketplace).
+// So for each marketplace this run registered: refresh it, then update every
+// user-scope plugin installed from it. Nothing gets installed or enabled; a
+// disabled plugin is updated and stays disabled. Returns true when at least
+// one plugin changed version.
+function updateInstalledPlugins(sources) {
+	let changedAny = false;
+	for (const source of sources) {
+		const before = userScopePluginVersions();
+		const ids = [...before.keys()]
+			.filter((id) => id.endsWith(`@${source.marketplaceName}`))
+			.sort();
+		if (ids.length === 0) continue;
+
+		const s = spinner();
+		s.start(`Checking ${ids.length} installed plugin(s) from ${source.marketplaceName} for updates`);
+		const refresh = runClaude(["plugin", "marketplace", "update", source.marketplaceName]);
+		if (!refresh.ok) {
+			s.error(`Could not refresh marketplace ${source.marketplaceName}; its plugins were not updated`);
+			log.warn(`Try manually: claude plugin marketplace update ${source.marketplaceName}`);
+			continue;
+		}
+
+		const failed = ids.filter((id) => !runClaude(["plugin", "update", id]).ok);
+		const after = userScopePluginVersions();
+		const changed = ids.filter(
+			(id) => !failed.includes(id) && after.has(id) && after.get(id) !== before.get(id),
+		);
+		const current = ids.length - changed.length - failed.length;
+		if (changed.length > 0) changedAny = true;
+
+		const lines = [
+			`${source.marketplaceName}: ${changed.length} updated, ${current} already up to date`,
+			...changed.map((id) => `  ${id}  ${before.get(id) ?? "?"} → ${after.get(id) ?? "?"}`),
+		];
+		if (failed.length > 0) lines[0] += `, ${failed.length} failed`;
+		s.stop(lines.join("\n"));
+		for (const id of failed) log.warn(`Could not update ${id}. Try manually: claude plugin update ${id}`);
+	}
+	return changedAny;
 }
 
 async function removeSource(id, manifest) {
@@ -993,10 +1059,11 @@ function printSourceList(sources, skipped) {
 	note(lines.join("\n"), "Sources this run");
 }
 
-function printSummary() {
+function printSummary({ pluginsUpdated = false } = {}) {
 	outro(
 		[
 			"Done. What's next:",
+			...(pluginsUpdated ? ["  • Restart Claude Code to load the updated plugins"] : []),
 			`  • Personalize: edit ${join(CONFIG_DIR, "whoami.md")}`,
 			"  • Browse plugins: open Claude Code and run /plugin",
 			"",
@@ -1105,7 +1172,7 @@ async function main() {
 
 		printSourceList(sources, skipped);
 
-		for (const source of sources) addMarketplace(source);
+		const registered = sources.filter((source) => addMarketplace(source));
 
 		// Rules per source.
 		const ruleResults = {};
@@ -1165,7 +1232,8 @@ async function main() {
 		for (const source of sources) {
 			await installSelectedPlugins(source, currentManifest, CLI.plugins);
 		}
-		printSummary();
+		const pluginsUpdated = updateInstalledPlugins(registered);
+		printSummary({ pluginsUpdated });
 	} catch (err) {
 		cancel(`Setup failed: ${err instanceof Error ? err.message : String(err)}`);
 		process.exit(1);
