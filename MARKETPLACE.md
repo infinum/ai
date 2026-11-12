@@ -57,7 +57,7 @@ pnpm install && pnpm run setup
 
 > **pnpm 12 note:** no `--allow-build` flag is needed — the installer package has no lifecycle scripts. Older instructions passed `--allow-build=infinum-ai`; from pnpm 11.25 and in pnpm 12 that form fails with `ERR_PNPM_GIT_DEP_PREPARE_NOT_ALLOWED` for packages fetched from GitHub (pnpm no longer lets a bare name approve a git-hosted package's build scripts, see [GHSA-5wx6-mg75-v57r](https://github.com/pnpm/pnpm/security/advisories/GHSA-5wx6-mg75-v57r)). Drop the flag if you still have it in a shell alias or script.
 
-The script is idempotent — re-run it any time to update rules or pick up new plugins. Your edits to `~/.claude/infinum/whoami.md` are preserved on every re-run. To uninstall, the final summary block prints the exact commands.
+The script is idempotent — re-run it any time to update rules, update the plugins you already have, or pick up new plugins. Your edits to `~/.claude/infinum/whoami.md` are preserved on every re-run. To uninstall, the final summary block prints the exact commands.
 
 If you've pointed Claude Code at a non-default config directory via `CLAUDE_CONFIG_DIR`, the setup script honors it — rules, `whoami.md`, and the `CLAUDE.md` import line all land under that directory instead of `~/.claude`.
 
