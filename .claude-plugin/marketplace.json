@@ -20,6 +20,6 @@
     { "name": "ai-ready-figma", "source": "./plugins/ai-ready-figma" },
     { "name": "design-conventions", "source": "./plugins/design-conventions" },
     { "name": "purpose-driven-design", "source": "./plugins/purpose-driven-design" },
-    { "name": "accessibility-audit-report", "source": "./plugins/accessibility-audit-report" }
+    { "name": "infinum-accessibility", "source": "./plugins/infinum-accessibility" }
   ]
 }

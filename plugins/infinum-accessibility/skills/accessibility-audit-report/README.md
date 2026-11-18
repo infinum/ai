@@ -1,11 +1,11 @@
 # accessibility-audit-report
 
-Build or update a web or mobile accessibility audit report (Google Doc) in the Infinum format, and generate a matching VPAT/ACR on request. Use when the user is auditing a website, web app, or mobile app against WCAG 2.2 AA, wants findings logged in an audit report, or asks for a VPAT/ACR, or mentions `/accessibility-audit-report:accessibility-audit-report`.
+Build or update a web or mobile accessibility audit report (Google Doc) in the Infinum format, and generate a matching VPAT/ACR on request. Use when the user is auditing a website, web app, or mobile app against WCAG 2.2 AA, wants findings logged in an audit report, or asks for a VPAT/ACR, or mentions `/infinum-accessibility:accessibility-audit-report`.
 
 ## Usage
 
 ```
-/accessibility-audit-report:accessibility-audit-report
+/infinum-accessibility:accessibility-audit-report
 ```
 
 (Plugin-installed skills are namespaced as `/<plugin>:<skill>`.)
