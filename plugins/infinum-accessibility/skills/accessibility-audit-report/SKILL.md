@@ -7,7 +7,7 @@ description: Build or update a web or mobile accessibility audit report (Google 
 
 Use this when the user is auditing a website, web app, or mobile app (Android and/or iOS) against WCAG 2.2 AA (plus platform standards) and wants findings logged in an audit report Google Doc, or wants a VPAT/ACR produced from the audit. The auditor describes each issue in plain language; Claude turns it into the issue template below and keeps every summary in sync.
 
-The format was established on a mobile audit (MS Wallet and MS Verifier). For web audits, keep the same structure and rules and swap the platform-specific parts as noted under "Web vs mobile".
+The structure below works for mobile and web audits. For web audits, keep the same structure and rules and swap the platform-specific parts as noted under "Web vs mobile".
 
 ## Never invent findings
 
@@ -23,7 +23,7 @@ Only document issues the auditor has actually reported, shown in a screenshot th
 
 1. Ask (AskUserQuestion) whether a report already exists and whether the product is web, mobile, or both. If a report exists, get the Google Doc link and work in that doc. If not, create one.
 2. For a new report, collect once: client, product name(s), version(s) or URL(s) per product and platform, reviewer name and contact, review completion date, test environments (devices and OS versions, or browsers), and test tools. Do not guess versions if a version field is ambiguous.
-3. Build the new report by copying a previous report as a template when one is available (Drive copy), then clear all product-specific content: key information, issue tables, screenshots, summary counts, severity list, conformance table rows, assessment conclusion. If no template is available, build the structure below from scratch. Either way, the result contains no issues.
+3. Build the new report by making a Drive copy of the report template: https://docs.google.com/document/d/1CLnFxp-31nEcBAXMTNEia9vdS-TrLcfYlOONcgrzpRE/edit. Never edit the template itself. The template is written for a mobile app and contains placeholder text and two sample issues (01 and 02) that show the issue table format. In the copy, replace the placeholders and clear all sample content: key information, issue tables, screenshots, summary counts, severity list, conformance counts and conformance table rows, assessment conclusion. For a web audit, also adjust the platform-specific wording as noted under "Web vs mobile". If the template is not available to the user, build the structure below from scratch. Either way, the result contains no issues.
 
 ## Report structure (keep this order and these headings)
 
@@ -106,12 +106,59 @@ Rewrite it from the current findings whenever the audit changes materially.
 
 ## VPAT / ACR on request
 
+The VPAT template is one "International Edition" document that holds all three reports: WCAG 2.x, Revised Section 508 and EN 301 549. Different customers ask for different combinations, so the skill asks which ones the user needs, copies the template, and deletes everything that is not relevant.
+
+Template: https://docs.google.com/document/d/1LCB30cbC_nIPT8wKrxLmUASKqKLvbsNI3cBZYJcxwNo/edit. Make a Drive copy and never edit the template itself.
+
 When the auditor asks for a VPAT or ACR:
 
-1. Scope: confirm which product (it may be one of two; for example one app only). Use the audit's conformance table as the source of ratings.
-2. Template: copy an existing ACR in the VPAT 2.5Rev WCAG and 508 edition format (a prior ACR cleared of its product-specific content). If none exists, build it with these parts: title "<Product> Accessibility Conformance Report", "WCAG and 508 Edition (Based on VPAT Version 2.5Rev)", the top fields (Name of Product/Version, Report Date, Product Description, Contact Information, Notes, Evaluation Methods Used, Test devices, Test tools), Applicable Standards/Guidelines table, Terms, WCAG 2.2 Report (Table 1 Level A, Table 2 Level AA, Table 3 Level AAA removed with a note), Revised Section 508 Report (Chapter 3 FPC, Chapter 4 Hardware removed with a note, Chapter 5 Software, Chapter 6 Documentation).
-3. Clearing a template: remove everything specific to the old product (top fields, devices and tools, every Conformance Level and Remarks cell) but keep headings, the standards table, terms, "Heading cell" rows, "See WCAG 2.2" rows, the 4.1.1 row and the "Section removed" notes.
-4. Fill: Name of Product/Version as "<Product> Mobile Application Android and iOS" for mobile, or the product name and URL for web (no version unless unambiguous); a one-sentence product description; contact is the reviewer only (Accessibility Specialist, Infinum, their email); Notes say the client hired Infinum's Accessibility Team for an independent third party audit and which product the report covers; devices and tools from the audit with bold platform prefixes.
-5. Ratings come from the audit only: Does Not Support or Partially Supports for criteria with documented issues, with remarks that summarize those real issues in one or two sentences without issue numbers. For mobile, Not Applicable for media criteria, 1.4.12, 2.4.1 and 2.4.5 (remark: "This criterion is meant for websites") and for 504.x rows (empty remark); for web, evaluate those criteria normally. Map Section 508 rows to the matching WCAG results (302.x functional performance, 502.x interoperability, 503.2 user preferences).
-6. Rows with no documented issue are left blank for the auditor to confirm, unless they say to treat them as Supports (then fill Supports with a short remark). Leave the Report Date blank.
-7. Fill empty cells by inserting at the cell's start index (descending order), then apply bold to labels as needed.
+1. **Scope.** Confirm which product the VPAT covers (it may be one of two; for example one app only). The audit's conformance table is the source of ratings.
+2. **Ask what the VPAT must cover** (AskUserQuestion, all questions in one message):
+   - **Standards** (multi-select): WCAG 2.x, Revised Section 508, EN 301 549. Any combination is valid.
+   - **WCAG version and levels:** default WCAG 2.2, Level A and AA. Ask only if the user has not said.
+   - **Product types in scope** (multi-select): Web, Electronic documents, Software (open functionality), Closed functionality software, Authoring tool. Default from the audit: Web for a website or web app, Software for a mobile app.
+   Do not guess these. They decide what is deleted in the next step.
+3. **Copy the template** and prune the copy as described below. The WCAG 2.x Report always stays, even when only 508 or EN 301 549 is requested, because those two reports point back to it (EN 301 549 Clause 9 and Section 508 501.1 both say "see WCAG 2.x section").
+4. **Fill** the top fields and ratings (steps 5 to 7).
+
+### Pruning the copy
+
+Do all deletions before filling anything. Work from the end of the document to the start so earlier indexes stay valid, and re-read the doc after each batch.
+
+**Title and standards table**
+- Replace "International Edition" with the edition that matches the selection: WCAG only: "WCAG Edition"; WCAG and 508: "WCAG and 508 Edition"; WCAG and EN 301 549: "WCAG and EN 301 549 Edition"; all three: keep "International Edition".
+- In the Applicable Standards/Guidelines table, delete the rows for standards and WCAG versions that were not selected. In the rows that stay, answer Yes or No for each level (Level AAA is normally No) and answer Yes for Section 508 and EN 301 549.
+
+**WCAG 2.x Report**
+- The paragraph "Tables 1 and 2 also document conformance with:" lists EN 301 549 and Revised Section 508 clauses. Delete the EN 301 549 list when EN 301 549 was not selected, and the Revised Section 508 list when 508 was not selected. When neither was selected, delete the whole paragraph and both lists. Keep the scoping note that follows.
+- Delete the rows for criteria that do not exist in the selected WCAG version: rows marked "Level A 2.1 and 2.2" or "Level AA 2.1 and 2.2" for a WCAG 2.0 report, and rows marked "2.2 only" for a 2.0 or 2.1 report. Keep the 4.1.1 Parsing row in every case.
+- Table 3 (Level AAA): when AAA is not included, delete the table and leave the heading with one line, "Level AAA was not evaluated."
+
+**Inside each success criteria row (Tables 1 to 3)**
+- The Criteria cell has an "Also applies to:" block with an "EN 301 549 Criteria" list and a "Revised Section 508" list. When EN 301 549 was not selected, delete the "EN 301 549 Criteria" heading and every line under it. When 508 was not selected, delete the "Revised Section 508" heading and every line under it. When neither was selected, also delete "Also applies to:". Lines marked "Does not apply" stay in the blocks that stay.
+- The two "2.2 only" rows (3.2.6 and 3.3.7) list "EN 301 549 Criteria – Does not apply" and "Revised Section 508 – Does not apply". Prune them the same way.
+- The 4.1.1 row names EN 301 549 and Revised 508 in its "Applies to" list and its remarks. Remove the names of standards that were not selected and keep the WCAG text.
+- The Conformance Level and Remarks cells carry the labels Web, Electronic Docs, Software, Closed and Authoring Tool. They belong to the EN 301 549 edition, so when EN 301 549 was not selected, delete all the labels and keep a single value per cell, even when Section 508 was selected. When EN 301 549 was selected, keep only the labels for the product types in scope. Where a row has none of those labels, or only Web remains, delete the labels and keep a single value, so a row never has a label that its neighbours lack for the same product.
+
+**Revised Section 508 Report**
+- When 508 was not selected, delete the whole section: heading, notes and all four chapters.
+- When selected, keep Chapter 3 (Functional Performance Criteria), Chapter 5 (Software) and Chapter 6 (Support Documentation and Services). Replace the Chapter 4 (Hardware) table with one line, "Section removed: hardware is not part of this product."
+
+**EN 301 549 Report**
+- When EN 301 549 was not selected, delete the whole section: heading, notes and all clauses.
+- When selected, keep Clause 4 (Functional Performance Statements), Clause 5 (Generic Requirements), Clause 9 (Web, which points to the WCAG 2.x section) and Clause 12 (Documentation and Support Services).
+- Keep Clause 10 (Non-Web Documents) only when Electronic documents are in scope. Keep Clause 11 (Software) only when Software, Closed functionality software or Authoring tool is in scope.
+- Replace the table of Clause 6 (Two-Way Voice Communication), Clause 7 (Video Capabilities), Clause 8 (Hardware) and Clause 13 (Relay or Emergency Service Access) with one line, "Not applicable: this product has no such features.", unless the auditor says the product has them. Do the same for Clause 10 or 11 when they are out of scope.
+
+**Always**
+- Delete everything specific to the template's placeholder values: the top fields, devices and tools, and every Conformance Level and Remarks cell. Keep headings, the Terms section, "Heading cell" rows, "See WCAG 2.x" rows and "Section removed" notes.
+- Keep the "Legal Disclaimer" section only if the user gives a disclaimer. Otherwise delete the placeholder text and the heading.
+
+### Filling
+
+5. **Top fields:** Name of Product/Version as "<Product> Mobile Application Android and iOS" for mobile, or the product name and URL for web (no version unless unambiguous); a one-sentence product description; contact is the reviewer only (Accessibility Specialist, Infinum, their email); Notes say the client hired Infinum's Accessibility Team for an independent third party audit and which product the report covers; devices and tools from the audit with bold platform prefixes. Fill "[Company]" in the title with the product name.
+6. **Ratings come from the audit only:** Does Not Support or Partially Supports for criteria with documented issues, with remarks that summarize those real issues in one or two sentences without issue numbers. For mobile, Not Applicable for media criteria, 1.4.12, 2.4.1 and 2.4.5 (remark: "This criterion is meant for websites") and for 504.x rows (empty remark); for web, evaluate those criteria normally. Map the other standards to the matching WCAG results:
+   - Section 508: 302.x functional performance, 502.x interoperability, 503.2 user preferences.
+   - EN 301 549: Clause 4.2.x functional performance statements follow the matching 302.x rows; the Clause 9 and Clause 11 rows follow the WCAG criterion they cite.
+7. **Rows with no documented issue** are left blank for the auditor to confirm, unless they say to treat them as Supports (then fill Supports with a short remark). Leave the Report Date blank.
+8. **Mechanics:** fill empty cells by inserting at the cell's start index (descending order), then apply bold to labels as needed. When deleting, a cell's last paragraph cannot be removed on its own: delete from the newline before it instead, and when every paragraph in a cell goes, delete the text and keep the final newline. Use `replaceAllText` for wording changes such as the edition name and the Yes/No answers.

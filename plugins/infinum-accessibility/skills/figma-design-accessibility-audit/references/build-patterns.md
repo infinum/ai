@@ -12,7 +12,7 @@ Load the `figma-use` skill first. `use_figma` scripts are atomic: on error nothi
 2. Download PNG with curl.
 3. `upload_assets` (POST multipart to `submitUrl`, `curl -F file=@x.png`); the layer name = filename. Very wide images (>~16k px) will not upload: rebuild natively.
 4. Position at the original relative coordinates inside a SECTION (children x/y are relative to the section).
-- Use `sips` for crops (PIL may not be installed).
+- Crop with Python Pillow (`pip install pillow`) or, on macOS only, `sips`.
 
 ## Status icons (component keys from the guidelines library)
 Import with `figma.importComponentByKeyAsync(key)`; use `instance.swapComponent(comp)` to change status.

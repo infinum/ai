@@ -16,14 +16,15 @@ The skill asks whether a report already exists and whether the product is web, m
 2. **Logging issues** — the auditor describes each issue in plain language; the skill turns it into the report's issue template and keeps the severity list, conformance table, counts, and issue numbering in sync.
 3. **Screenshots** — each screenshot sent for an issue gets an annotated copy that circles the affected area.
 4. **Assessment conclusion** — a short prose summary of themes, strengths, and what needs fixing, with no counts and no specific issues.
-5. **VPAT/ACR** — on request, fills a VPAT 2.5Rev (WCAG and 508 edition) from the audit's conformance table.
+5. **VPAT/ACR** — on request, asks which standards the VPAT must cover (WCAG 2.x, Revised Section 508, EN 301 549, or any mix), which WCAG version and levels, and which product types are in scope. It copies the VPAT 2.5Rev template, deletes the sections and cross-references that do not apply, and fills the rest from the audit's conformance table.
 
 The skill never invents findings: it only documents issues the auditor reported, showed, or confirmed in testing.
 
 ## Requirements
 
 - Google Docs and Google Drive connectors (the report and ACR are Google Docs).
-- Python with Pillow for screenshot annotation.
+- Python 3 with Pillow (`pip install pillow`), for screenshot annotation and for parsing large Google Docs output.
+- Access to the report template and the VPAT template Google Docs linked in the skill.
 
 ## What the report contains
 

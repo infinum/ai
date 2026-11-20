@@ -30,7 +30,7 @@ Source files (user may swap for newer versions):
 
 Privacy: never put client names, NDA content or raw research into any external service. Figma files the user owns are fine.
 
-Per the Infinum planning rule, show a short checklist plan and get approval before starting the build.
+Before building anything, show a short checklist plan (the pages you will create, the frames in scope, and the steps below) and wait for the user's approval.
 
 ## Step 1: Plan and set up
 
@@ -70,7 +70,11 @@ Rules:
 
 ## Step 4: Issues found (separate top-level frame below the checklist)
 
-Model it on the Infinum example (mBIZ file `zOj3VpLcgucY4DAlfugigv`, node `50-10322`). Grid of `Example / <title>` cards: a cropped screenshot with red dashed issue outlines and numbered red markers, plus a column of callout cards (number badge, severity + criterion title, one-sentence description). The card header ends with a `↗` link to the original frame.
+Build one top-level frame holding a grid of cards, one card per audited screen or component that has at least one design-owned issue. Each card is named `Example / <title>` and contains:
+
+- **Header:** the example title, ending with a blue `↗` that links to the original frame.
+- **Screenshot:** a cropped screenshot of the screen inside a clipping frame, with a red dashed outline around each issue and a numbered red marker next to it (see "Annotated examples" in `references/build-patterns.md`).
+- **Callout column:** beside the screenshot, one callout card per marker, in marker order. Each card has a number badge matching the marker, the severity emoji with the criterion title, and a one-sentence description of the issue.
 
 Only design-owned issues get a callout. Include only examples with at least one real issue. Re-check callout positions by screenshot after placing them.
 
@@ -100,4 +104,4 @@ Sections 1-6 end with **Visual references**: cloned screenshots with blue dashed
 - Return and keep node IDs. Remove any stray uploads.
 - Final message: link to the file, counts by severity, which pages exist, what you could not measure (photos as backgrounds, hover/focus behaviour, off-states), and anything needing human review. Remind that AI output must be reviewed before it reaches a client, and that claims about contrast are estimates where noted.
 
-Use `designer-toolkit:ux-writing` for finding copy and `inclusive-*` skills for any criterion where unsure.
+If the `designer-toolkit:ux-writing` skill is installed, use it for the finding copy. It is optional; without it, keep each finding to one or two plain sentences.

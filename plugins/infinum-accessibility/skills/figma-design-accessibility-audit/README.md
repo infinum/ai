@@ -24,9 +24,13 @@ Findings use severity labels 🔴 must fix, 🟠 should address, 🔵 consider. 
 
 ## Requirements
 
-- Figma MCP connector (`use_figma`, `create_new_file`, `get_metadata`, `get_design_context`, `get_screenshot`).
+- Figma MCP connector (`create_session`, `create_new_file`, `use_figma`, `get_metadata`, `get_design_context`, `get_screenshot`, `upload_assets`, `whoami`).
 - The `figma-use` skill from the official Figma plugin, loaded before every `use_figma` call.
 - Access to the Infinum Accessibility Guidelines file.
+- `curl` on the machine running Claude, to download screenshots from Figma and upload them back (see `references/build-patterns.md`).
+- For cropping screenshots, Python 3 with Pillow (`pip install pillow`), or `sips` (macOS only).
+- Network access to `*.figma.com`. In a restricted workspace, such as Cowork with an allowed-domains list, the screenshot steps fail until that domain is allowed.
+- Optional: the `designer-toolkit:ux-writing` skill, used for the finding copy if present. Install it with `/plugin marketplace add Owl-Listener/designer-skills`, then `/plugin install designer-toolkit@designer-skills`.
 
 ## Part of
 
