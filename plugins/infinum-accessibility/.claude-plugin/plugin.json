@@ -1,0 +1,14 @@
+{
+  "name": "infinum-accessibility",
+  "version": "1.0.0",
+  "description": "Infinum accessibility audit toolkit in two parts: audit Figma designs against the Infinum Accessibility Guidelines (figma-design-accessibility-audit), then log findings in a web or mobile accessibility audit report and generate a VPAT/ACR (accessibility-audit-report).",
+  "keywords": [
+    "accessibility",
+    "a11y",
+    "audit",
+    "wcag",
+    "figma",
+    "vpat",
+    "acr"
+  ]
+}
