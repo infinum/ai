@@ -61,10 +61,6 @@ const bgOf=n=>{let p=n.parent;while(p){const s=Array.isArray(p.fills)&&solid(p.f
 - Outlines: transparent rectangle, red dashed stroke (e.g. `#E5484D`), named `Issue outline n`; markers: red circle with white number named `Issue marker n`.
 - Callout card: number badge + title text (severity emoji + criterion title) + description. When removing a callout, select the title among **direct** TEXT children (the first TEXT in the header is the number badge).
 
-## Guidelines page
-- Page background colour (0.7686, 0.8078, 0.8706); four SECTIONs (Perceivable, Operable, Understandable, Robust) with fill (0.8784, 0.9098, 0.9647), stacked vertically with gaps.
-- Children: images of original principle frames, category label bars named like `Perceivable / Adaptable`, criterion frames at original relative coordinates. Source image names may lack `.png`; match with an optional extension in regex.
-
 ## Notes for developers page
 - Build rows as auto-layout frames; 4 columns; owner chips coloured per owner.
 - Figures: clone the screenshot, add blue dashed outlines and blue numbered markers, add a legend card per figure. Drop legend items for stock credits, placeholders, passive indicators.

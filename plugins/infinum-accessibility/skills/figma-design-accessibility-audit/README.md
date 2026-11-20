@@ -1,6 +1,6 @@
 # figma-design-accessibility-audit
 
-Audit Figma designs against the Infinum Accessibility Guidelines and produce a new Figma file with three pages. Use when the user asks for an accessibility audit, a11y review, WCAG check or DIR of Figma screens, or says "audit these designs", or mentions `/infinum-accessibility:figma-design-accessibility-audit`.
+Audit Figma designs against the Infinum Accessibility Guidelines and produce a new Figma file with two pages. Use when the user asks for an accessibility audit, a11y review, WCAG check or DIR of Figma screens, or says "audit these designs", or mentions `/infinum-accessibility:figma-design-accessibility-audit`.
 
 ## Usage
 
@@ -14,11 +14,10 @@ The skill asks for the designs to audit (default: every screen), platform, compo
 
 ## What it produces
 
-A new Figma file with three pages:
+A new Figma file with two pages:
 
-1. **a11y design audit**: the Infinum checklist (60 criteria) filled in, plus an "Issues found" frame of annotated screenshots.
-2. **Guidelines**: a copy of the Infinum guideline examples.
-3. **Notes for developers**: dev-owned items (alt text, ARIA, focus order, behaviour) with screenshots.
+1. **a11y design audit**: the Infinum checklist (60 criteria) filled in, plus an "Issues found" frame of annotated screenshots. It links to the Infinum Accessibility Guidelines file instead of copying it.
+2. **Notes for developers**: dev-owned items (alt text, ARIA, focus order, behaviour) with screenshots.
 
 Findings use severity labels 🔴 must fix, 🟠 should address, 🔵 consider. Issues are sorted by owner, so dev-owned items go to the developer notes and copy or content issues are left out.
 

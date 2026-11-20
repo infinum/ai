@@ -1,15 +1,14 @@
 ---
 name: figma-design-accessibility-audit
-description: Figma Design Accessibility Audit. Audits Figma designs against the Infinum Accessibility Guidelines and creates a new Figma file with three pages - a filled-in checklist with annotated issue examples, a copy of the guidelines, and notes for developers. Use when the user asks for an accessibility audit, a11y review, WCAG check or DIR of Figma screens, or says "audit these designs".
+description: Figma Design Accessibility Audit. Audits Figma designs against the Infinum Accessibility Guidelines and creates a new Figma file with two pages - a filled-in checklist with annotated issue examples (linked to the guidelines), and notes for developers. Use when the user asks for an accessibility audit, a11y review, WCAG check or DIR of Figma screens, or says "audit these designs".
 ---
 
 # Figma Design Accessibility Audit
 
-Produces a new Figma file for a set of designs, with three pages:
+Produces a new Figma file for a set of designs, with two pages:
 
-1. **a11y design audit** - the Infinum checklist filled in, plus an "Issues found" frame of annotated screenshots.
-2. **Guidelines** - the Infinum guideline examples, copied as they are in the original.
-3. **Notes for developers** - everything that is dev-owned (alt text, ARIA, focus order, behaviour), with screenshots.
+1. **a11y design audit** - the Infinum checklist filled in, plus an "Issues found" frame of annotated screenshots. It links to the Infinum Accessibility Guidelines file instead of copying it.
+2. **Notes for developers** - everything that is dev-owned (alt text, ARIA, focus order, behaviour), with screenshots.
 
 Always load `figma-use` before any `use_figma` call and pass `skillNames: "figma-use"`. Read `references/lessons.md` before judging anything. Read `references/build-patterns.md` before building.
 
@@ -28,14 +27,12 @@ Source files (user may swap for newer versions):
 - Infinum Accessibility Guidelines: file key `XHKlFNWIQAEU81KlhrtjJY`. Examples node `510:29462`, checklist template node `518:30382`. Example frames link as `…/Accessibility-Guidelines?node-id=3827-<id>`.
 - Status icons come from the guidelines library (see `references/build-patterns.md`).
 
-Privacy: never put client names, NDA content or raw research into any external service. Figma files the user owns are fine.
-
 Before building anything, show a short checklist plan (the pages you will create, the frames in scope, and the steps below) and wait for the user's approval.
 
 ## Step 1: Plan and set up
 
 1. `create_session` for the guidelines file, the file to audit, and (after creating it) the new audit file.
-2. `create_new_file` for the audit file. Rename page 1 to `a11y design audit`. Add pages `Guidelines` and `Notes for developers`.
+2. `create_new_file` for the audit file. Rename page 1 to `a11y design audit`. Add the page `Notes for developers`.
 3. Read the checklist template (`get_metadata`, `get_design_context`, `get_screenshot`) and replicate its structure natively. Figma cannot copy nodes across files by API, so rebuild with the Plugin API. Import the status icon components with `importComponentByKeyAsync`.
 
 ## Step 2: Audit
@@ -56,7 +53,7 @@ Sort each finding by **owner** using `references/lessons.md`:
 
 ## Step 3: Fill the checklist (page: a11y design audit)
 
-One top-level frame: header (title, source link, scope, severity legend), status legend, then 5 columns: Perceivable, Operable, Understandable, Robust, European Web Accessibility Directive.
+One top-level frame: header (title, source link, a link to the Infinum Accessibility Guidelines file `https://www.figma.com/design/XHKlFNWIQAEU81KlhrtjJY/Accessibility-Guidelines`, scope, severity legend), status legend, then 5 columns: Perceivable, Operable, Understandable, Robust, European Web Accessibility Directive.
 
 Rules:
 - **Keep every guideline (60).** Criteria that pass get one generic finding: `All audited screens` / `Passes. No issues found in the audited designs.` with the pass icon. No specific passing examples.
@@ -78,11 +75,7 @@ Build one top-level frame holding a grid of cards, one card per audited screen o
 
 Only design-owned issues get a callout. Include only examples with at least one real issue. Re-check callout positions by screenshot after placing them.
 
-## Step 5: Guidelines page
-
-Copy the four principle sections (Perceivable, Operable, Understandable, Robust) **exactly as in the original**: same layout, same relative coordinates, same category bars and criterion frames, as images in SECTION nodes on a coloured page background. Do not re-render or restyle. Export screenshots at a size under the upload limit and rebuild any oversized strip natively. Do not copy the cover, intro, plugin list, template or EU section.
-
-## Step 6: Notes for developers page
+## Step 5: Notes for developers page
 
 One frame, 2200px wide, sections with rows `where | suggested spec | checklist item | owner chip` (Dev / Design / Content / Product / QA):
 
@@ -97,7 +90,7 @@ One frame, 2200px wide, sections with rows `where | suggested spec | checklist i
 
 Sections 1-6 end with **Visual references**: cloned screenshots with blue dashed outlines and blue numbered markers plus a legend. Include screenshots wherever they help. Use real element names from the designs.
 
-## Step 7: Verify and report
+## Step 6: Verify and report
 
 - Count: 60 Point frames; every Point has at least one Finding.
 - Screenshot each column and each new frame; fix clipping, overlaps, stray nodes, bad link ranges.
